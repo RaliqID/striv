@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Workout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Geist:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#c4c7c7",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "background": "#fdf8f8",
+                        "secondary-fixed": "#e1e0ff",
+                        "secondary": "#4648d4",
+                        "tertiary-fixed": "#e6e1df",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "on-background": "#1c1b1b",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface": "#1c1b1b",
+                        "surface-bright": "#fdf8f8",
+                        "tertiary": "#000000",
+                        "on-secondary-container": "#fffbff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#444748",
+                        "surface-container": "#f1edec",
+                        "secondary-container": "#6063ee",
+                        "on-primary-fixed-variant": "#474646",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "primary-fixed": "#e5e2e1",
+                        "tertiary-container": "#1c1b1a",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "outline": "#747878",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#313030",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1c1b1b",
+                        "surface-dim": "#ddd9d8",
+                        "primary": "#000000",
+                        "surface-container-high": "#ebe7e6",
+                        "surface": "#fdf8f8",
+                        "inverse-on-surface": "#f4f0ef",
+                        "on-primary-container": "#858383",
+                        "on-secondary-fixed": "#07006c",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-tint": "#5f5e5e",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "surface-container-low": "#f7f3f2",
+                        "on-tertiary-container": "#868381",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-primary-fixed": "#1c1b1b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-sm": ["Geist"],
+                        "metric-display": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(253, 248, 248, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 226, 225, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col md:flex-row selection:bg-primary-fixed selection:text-primary">
+<!-- SideNavBar (Hidden on Mobile, Flex on Desktop) -->
+<nav class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface-container-low border-r border-outline-variant py-8 px-4 gap-2 z-40">
+<div class="mb-8 px-2">
+<h1 class="font-metric-display text-headline-lg text-primary">Striv</h1>
+<p class="font-metric-sm text-metric-sm text-on-surface-variant mt-1">Intelligence <span class="font-normal opacity-75">• Premium Tier</span></p>
+</div>
+<ul class="flex flex-col gap-1 flex-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Overview</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-primary font-semibold bg-primary-fixed/30 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center" data-weight="fill" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+<span class="font-body-md text-body-md">Workout</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="font-body-md text-body-md">Progress</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-body-md text-body-md">Exercises</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span class="font-body-md text-body-md">Goals</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-body-md text-body-md">Insights</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-body-md text-body-md">History</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span class="font-body-md text-body-md">Records</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto px-2">
+<button class="w-full py-2 px-4 border border-outline-variant rounded font-metric-sm text-metric-sm hover:bg-surface-container-highest transition-colors">Upgrade to Pro</button>
+<div class="flex items-center gap-3 mt-4">
+<img alt="User profile" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A professional minimalist headshot of an athlete in a dimly lit, modern training studio. Black and white aesthetic, high contrast. Clean, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAMXaHeDSZiQkPDjrRxcWeUs6bMXChAD2GDFILGiYq9mTjbrA6xKCzk_wUgqWWUfLEdCGSy7u8Pb4eDT-Zd6gLhTG6tEzMh4VSNoOlNCuo1by2u520imyjVmehwmOv9QeJDZ6_bdyJtj4n-m2FJWZ56xGEIIL_za-JDCSAlI6OtiEUZxpnkjN40AX9o5xcIFRCWn1zTvz3o03AaMt_VSMRsg5WeVIBQ6des4acXvC2a_0XEOpAea8"/>
+<div class="flex flex-col">
+<span class="font-metric-sm text-metric-sm">Alex M.</span>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-widest">Active</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 w-full md:ml-64 relative min-h-screen pb-24 md:pb-0">
+<!-- TopAppBar (Mobile only for Nav, shared components injected here for structural parity) -->
+<header class="md:hidden sticky top-0 z-50 flex items-center justify-between px-margin-mobile py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant transition-all duration-200 ease-in-out">
+<h1 class="font-metric-display text-headline-lg-mobile text-primary tracking-tight">Striv</h1>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Desktop Top App Bar Area (Functional) -->
+<header class="hidden md:flex sticky top-0 z-50 items-center justify-between px-margin-desktop py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant transition-all duration-200 ease-in-out">
+<h2 class="font-headline-lg text-headline-lg">Lobby</h2>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-on-primary font-metric-sm text-metric-sm px-4 py-2 rounded hover:bg-primary-container transition-colors">Start Workout</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<div class="px-margin-mobile md:px-margin-desktop py-8 max-w-[1000px] mx-auto space-y-12">
+<!-- Quick Start Hero -->
+<section class="flex flex-col md:flex-row items-center gap-8 bg-surface-container-low border border-outline-variant rounded-xl p-8 hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow">
+<div class="flex-1 space-y-4">
+<div class="inline-flex items-center gap-2 px-2 py-1 bg-surface-container-highest rounded text-on-surface-variant font-label-caps text-label-caps uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ready to train
+                    </div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg">Start your session.</h2>
+<p class="text-on-surface-variant">Log an empty workout and build your routine on the fly. Focus on the execution, we'll track the rest.</p>
+</div>
+<button class="w-full md:w-auto bg-primary text-on-primary font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-primary-container transition-colors flex items-center justify-center gap-2 group">
+<span class="material-symbols-outlined transition-transform group-hover:translate-x-1" data-icon="play_arrow" data-weight="fill" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                    Start Empty Workout
+                </button>
+</section>
+<!-- AI Suggested (Bento Style) -->
+<section class="space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant pb-2">
+<h3 class="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="psychology_alt">psychology_alt</span> AI Suggested
+                    </h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Suggestion 1 -->
+<div class="group relative bg-surface border border-outline-variant rounded-xl p-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-all cursor-pointer overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+<div class="relative z-10 flex flex-col h-full">
+<div class="flex justify-between items-start mb-6">
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile">Recovery Day: Mobility &amp; Core</h4>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-6 flex-1">Based on yesterday's intense lower body session, focus on active recovery and stabilization.</p>
+<div class="flex items-center gap-4 text-xs font-metric-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span> 30 min</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="bolt">bolt</span> Low Intensity</span>
+</div>
+</div>
+</div>
+<!-- Suggestion 2 -->
+<div class="group relative bg-surface border border-outline-variant rounded-xl p-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-all cursor-pointer overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+<div class="relative z-10 flex flex-col h-full">
+<div class="flex justify-between items-start mb-6">
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile">Push Hypertrophy</h4>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-6 flex-1">Optimal readiness detected for chest and shoulders. Time to increase volume.</p>
+<div class="flex items-center gap-4 text-xs font-metric-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span> 65 min</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="bolt">bolt</span> High Intensity</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- My Routines -->
+<section class="space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant pb-2">
+<h3 class="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="folder_special">folder_special</span> My Routines
+                    </h3>
+<button class="text-primary font-metric-sm text-metric-sm hover:underline">View All</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Routine Card -->
+<div class="bg-surface border border-outline-variant rounded-xl p-5 hover:border-primary/30 transition-colors cursor-pointer group flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-metric-sm text-metric-sm text-lg">Push A</h4>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface-variant text-xs mb-4">6 Exercises • Focus: Chest, Triceps</p>
+<div class="mt-auto space-y-2">
+<div class="flex justify-between text-xs text-on-surface-variant border-t border-outline-variant/50 pt-2">
+<span>Last performed</span>
+<span class="font-metric-sm text-primary">3 days ago</span>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant">
+<span>Est. Duration</span>
+<span class="font-metric-sm text-primary">55 min</span>
+</div>
+</div>
+</div>
+<!-- Routine Card -->
+<div class="bg-surface border border-outline-variant rounded-xl p-5 hover:border-primary/30 transition-colors cursor-pointer group flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-metric-sm text-metric-sm text-lg">Pull A</h4>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface-variant text-xs mb-4">7 Exercises • Focus: Back, Biceps</p>
+<div class="mt-auto space-y-2">
+<div class="flex justify-between text-xs text-on-surface-variant border-t border-outline-variant/50 pt-2">
+<span>Last performed</span>
+<span class="font-metric-sm text-primary">Yesterday</span>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant">
+<span>Est. Duration</span>
+<span class="font-metric-sm text-primary">60 min</span>
+</div>
+</div>
+</div>
+<!-- Routine Card -->
+<div class="bg-surface border border-outline-variant rounded-xl p-5 hover:border-primary/30 transition-colors cursor-pointer group flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-metric-sm text-metric-sm text-lg">Legs Strength</h4>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface-variant text-xs mb-4">5 Exercises • Focus: Quads, Glutes</p>
+<div class="mt-auto space-y-2">
+<div class="flex justify-between text-xs text-on-surface-variant border-t border-outline-variant/50 pt-2">
+<span>Last performed</span>
+<span class="font-metric-sm text-primary">5 days ago</span>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant">
+<span>Est. Duration</span>
+<span class="font-metric-sm text-primary">75 min</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Mobile Bottom Navigation Shell (Suppressed Nav for Lobbies doesn't usually apply unless deep in flow, but assuming this is top-level Workout tab) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface/90 backdrop-blur-md border-t border-outline-variant pb-safe z-50">
+<ul class="flex justify-around items-center h-16">
+<li>
+<a class="flex flex-col items-center justify-center w-16 h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] font-metric-sm">Overview</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center justify-center w-16 h-full text-primary font-bold" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="fitness_center" data-weight="fill" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+<span class="text-[10px] font-metric-sm">Workout</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center justify-center w-16 h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="history">history</span>
+<span class="text-[10px] font-metric-sm">History</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center justify-center w-16 h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="settings">settings</span>
+<span class="text-[10px] font-metric-sm">Settings</span>
+</a>
+</li>
+</ul>
+</nav>
+</body></html>

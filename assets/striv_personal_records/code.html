@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Personal Records</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1c1b1b",
+                        "on-surface-variant": "#444748",
+                        "surface-tint": "#5f5e5e",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fdf8f8",
+                        "on-secondary-container": "#fffbff",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-high": "#ebe7e6",
+                        "inverse-on-surface": "#f4f0ef",
+                        "secondary-fixed": "#e1e0ff",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#4648d4",
+                        "surface-dim": "#ddd9d8",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "surface": "#fdf8f8",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-surface": "#1c1b1b",
+                        "surface-container": "#f1edec",
+                        "error": "#ba1a1a",
+                        "outline": "#747878",
+                        "inverse-primary": "#c8c6c5",
+                        "primary": "#000000",
+                        "on-primary-container": "#858383",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f7f3f2",
+                        "secondary-container": "#6063ee",
+                        "background": "#fdf8f8",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-variant": "#e5e2e1",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#e6e1df",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#1c1b1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#868381",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "inverse-surface": "#313030",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-container": "#1c1b1b",
+                        "outline-variant": "#c4c7c7",
+                        "tertiary": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "metric-sm": ["Geist"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .glass-panel { background: rgba(253, 248, 248, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(196, 199, 199, 0.3); }
+        .record-card { border: 1px solid theme('colors.outline-variant'); transition: all 0.2s ease-in-out; }
+        .record-card:hover { border-color: theme('colors.primary'); box-shadow: 0 4px 24px rgba(0,0,0,0.04); transform: translateY(-2px); }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased min-h-screen flex bg-background text-on-background">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 p-gutter bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant w-64 z-40 transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-3 mb-10 mt-2 px-2">
+<span class="material-symbols-outlined text-primary text-[32px]">hexagon</span>
+<div class="font-headline-lg text-headline-lg font-black text-primary tracking-tight">Striv</div>
+</div>
+<div class="flex flex-col gap-2 flex-grow overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-medium">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span class="font-medium">Workout</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="font-medium">Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-medium">Exercises</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span class="font-medium">Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-medium">Insights</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-medium">History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary-container text-on-secondary-container font-semibold transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span>Records</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-medium">Settings</span>
+</a>
+</div>
+<div class="mt-auto pt-6 border-t border-outline-variant/30">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-medium hover:bg-on-background transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                Start Tracking
+            </button>
+<div class="flex items-center gap-3 mt-6 px-2">
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden border border-outline-variant/50">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="A minimalist, professional avatar placeholder showing a subtle silhouette in soft gray tones against a pure white background, reflecting a clean, light-mode studio aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtKeC7KS964x4Fo3FldJ3cnfXeWH6AOnAA1ofX71-LyMOF4NY_3tMnVlZTvPI3Y87Y8jz5_59nM8CXNMHU3n3hEph8vM6oruHKBfUeRDp3CcC76pQLAbxW-BgN-Dda9JRti2jLCCG2FCeB45tX10D0KlGMzAXtI4JLsfsYJqkS5fCUBokThFxcaGmWZ0o4ACaufPpzbySfEk9l0qmBCjQ7lVMjSXJaMoGgu6rLj5xSFN77Zje37Vo"/>
+</div>
+<div>
+<div class="font-medium text-on-surface text-sm">Striv Intelligence</div>
+<div class="text-xs text-on-surface-variant">Premium Tier</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 w-full min-h-screen pb-24 md:pb-12 flex flex-col">
+<!-- TopAppBar (Mobile & Desktop) -->
+<header class="sticky top-0 w-full z-30 flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 md:border-none">
+<div class="flex items-center md:hidden">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Striv</span>
+</div>
+<div class="hidden md:flex items-center">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary">Personal Records</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors md:hidden">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<div class="px-margin-mobile md:px-margin-desktop py-8 max-w-container-max mx-auto w-full flex-grow">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary mb-8 md:hidden">Personal Records</h1>
+<!-- Category Filter -->
+<div class="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-hide -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+<button class="px-5 py-2 rounded-full bg-primary text-on-primary font-medium text-sm whitespace-nowrap">All Records</button>
+<button class="px-5 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary font-medium text-sm whitespace-nowrap transition-colors">Weight (1RM)</button>
+<button class="px-5 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary font-medium text-sm whitespace-nowrap transition-colors">Max Reps</button>
+<button class="px-5 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary font-medium text-sm whitespace-nowrap transition-colors">Volume</button>
+<button class="px-5 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary font-medium text-sm whitespace-nowrap transition-colors">Distance / Time</button>
+</div>
+<!-- Highlights Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+<!-- Highlight 1: Heaviest Lift -->
+<div class="record-card rounded-xl p-6 bg-surface-container-lowest flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+<div>
+<div class="flex justify-between items-start mb-4">
+<div class="font-label-caps text-label-caps text-secondary uppercase tracking-widest">Heaviest Lift</div>
+<span class="material-symbols-outlined text-secondary" data-icon="star">star</span>
+</div>
+<h3 class="text-xl font-semibold text-primary mb-1">Deadlift</h3>
+<p class="text-on-surface-variant text-sm mb-6">Conventional, Barbell</p>
+</div>
+<div>
+<div class="font-metric-display text-metric-display text-primary flex items-baseline gap-1">
+                            405<span class="text-lg font-medium text-on-surface-variant">lbs</span>
+</div>
+<div class="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span> Oct 12, 2023
+                        </div>
+</div>
+</div>
+<!-- Highlight 2: Best Est. 1RM -->
+<div class="record-card rounded-xl p-6 bg-surface-container-lowest flex flex-col justify-between relative overflow-hidden group md:col-span-2">
+<div class="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-secondary/20 via-transparent to-transparent"></div>
+<div class="relative z-10 flex flex-col h-full justify-between">
+<div class="flex justify-between items-start mb-4">
+<div class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                Highest Estimated 1RM
+                            </div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="monitoring">monitoring</span>
+</div>
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h3 class="text-2xl font-bold text-primary mb-1">Squat</h3>
+<p class="text-on-surface-variant text-sm">Low Bar, Sleeves</p>
+</div>
+<div class="text-left md:text-right">
+<div class="font-metric-display text-metric-display text-primary flex items-baseline md:justify-end gap-1">
+                                    335<span class="text-lg font-medium text-on-surface-variant">lbs</span>
+</div>
+<div class="text-xs text-on-surface-variant mt-2 inline-flex items-center gap-1 bg-surface-variant px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +15lbs from last block
+                                </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Standard Records List -->
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary mb-6">Powerlifting</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+<!-- Bench Press -->
+<div class="record-card bg-surface-container-lowest p-5 rounded-lg flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+</div>
+<div>
+<div class="font-semibold text-primary">Bench Press</div>
+<div class="text-xs text-on-surface-variant">1 Rep Max</div>
+</div>
+</div>
+<div class="text-right">
+<div class="font-metric-sm text-metric-sm text-primary text-lg">225 lbs</div>
+<div class="text-xs text-on-surface-variant">Sep 04, 2023</div>
+</div>
+</div>
+<!-- Overhead Press -->
+<div class="record-card bg-surface-container-lowest p-5 rounded-lg flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+</div>
+<div>
+<div class="font-semibold text-primary">Overhead Press</div>
+<div class="text-xs text-on-surface-variant">1 Rep Max</div>
+</div>
+</div>
+<div class="text-right">
+<div class="font-metric-sm text-metric-sm text-primary text-lg">145 lbs</div>
+<div class="text-xs text-on-surface-variant">Aug 12, 2023</div>
+</div>
+</div>
+<!-- Pull-ups -->
+<div class="record-card bg-surface-container-lowest p-5 rounded-lg flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="accessibility_new">accessibility_new</span>
+</div>
+<div>
+<div class="font-semibold text-primary">Pull-ups</div>
+<div class="text-xs text-on-surface-variant">Max Reps (Strict)</div>
+</div>
+</div>
+<div class="text-right">
+<div class="font-metric-sm text-metric-sm text-primary text-lg">18 reps</div>
+<div class="text-xs text-on-surface-variant">Oct 01, 2023</div>
+</div>
+</div>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary mb-6">Endurance</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- 5k Run -->
+<div class="record-card bg-surface-container-lowest p-5 rounded-lg flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="directions_run">directions_run</span>
+</div>
+<div>
+<div class="font-semibold text-primary">5km Run</div>
+<div class="text-xs text-on-surface-variant">Fastest Time</div>
+</div>
+</div>
+<div class="text-right">
+<div class="font-metric-sm text-metric-sm text-primary text-lg">22:45</div>
+<div class="text-xs text-on-surface-variant">Jul 18, 2023</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 z-40 pb-safe">
+<div class="flex justify-around items-center h-16">
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="fitness_center">fitness_center</span>
+<span class="text-[10px] font-medium">Workout</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-primary" href="#">
+<div class="bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full mb-1">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+</div>
+<span class="text-[10px] font-bold">Records</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="history">history</span>
+<span class="text-[10px] font-medium">History</span>
+</a>
+</div>
+</nav>
+</body></html>

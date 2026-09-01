@@ -1,0 +1,50 @@
+# Logs
+*.log
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# IDE
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+.phpactor.json
+.phpunit.result.cache
+/.phpunit.cache
+auth.json
+
+# Dependencies
+/node_modules
+/vendor
+
+# Build
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+
+# Frontend
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test/debug artifacts
+smoke_*.php
+check_*.php
+db_check.php
+debug_*.php
+
+# Laravel
+.env.backup
+Homestead.json
+Homestead.yaml
+.phpactor.json
