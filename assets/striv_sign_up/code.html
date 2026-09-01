@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Create Account</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Geist:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#868381",
+                      "surface": "#fdf8f8",
+                      "tertiary-fixed-dim": "#cac6c3",
+                      "on-secondary-container": "#fffbff",
+                      "secondary-container": "#6063ee",
+                      "surface-container": "#f1edec",
+                      "primary-container": "#1c1b1b",
+                      "on-primary-fixed": "#1c1b1b",
+                      "surface-dim": "#ddd9d8",
+                      "surface-tint": "#5f5e5e",
+                      "on-tertiary-fixed-variant": "#484645",
+                      "outline-variant": "#c4c7c7",
+                      "outline": "#747878",
+                      "on-primary-fixed-variant": "#474646",
+                      "surface-container-high": "#ebe7e6",
+                      "on-surface": "#1c1b1b",
+                      "secondary": "#4648d4",
+                      "surface-bright": "#fdf8f8",
+                      "primary-fixed": "#e5e2e1",
+                      "on-secondary": "#ffffff",
+                      "on-surface-variant": "#444748",
+                      "error": "#ba1a1a",
+                      "secondary-fixed-dim": "#c0c1ff",
+                      "inverse-primary": "#c8c6c5",
+                      "on-error-container": "#93000a",
+                      "surface-container-highest": "#e5e2e1",
+                      "surface-variant": "#e5e2e1",
+                      "on-background": "#1c1b1b",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "background": "#fdf8f8",
+                      "tertiary-container": "#1c1b1a",
+                      "on-secondary-fixed": "#07006c",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-fixed-variant": "#2f2ebe",
+                      "on-tertiary-fixed": "#1c1b1a",
+                      "secondary-fixed": "#e1e0ff",
+                      "surface-container-low": "#f7f3f2",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#f4f0ef",
+                      "tertiary-fixed": "#e6e1df",
+                      "primary": "#000000",
+                      "on-error": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-container": "#858383",
+                      "inverse-surface": "#313030",
+                      "tertiary": "#000000",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "margin-desktop": "40px",
+                      "container-max": "1200px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "metric-display": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Geist"
+                      ],
+                      "metric-sm": [
+                              "Geist"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "metric-display": [
+                              "48px",
+                              {
+                                      "lineHeight": "52px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "metric-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(253, 248, 248, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(196, 199, 199, 0.5);
+        }
+        .dark .glass-card {
+            background: rgba(28, 27, 27, 0.8);
+            border: 1px solid rgba(116, 120, 120, 0.3);
+        }
+        
+        .bg-grid-pattern {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(196, 199, 199, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(196, 199, 199, 0.1) 1px, transparent 1px);
+        }
+        
+        .dark .bg-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(116, 120, 120, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(116, 120, 120, 0.1) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background dark:bg-tertiary-container dark:text-surface antialiased min-h-screen flex flex-col font-body-md bg-grid-pattern">
+<!-- Top Navigation (Suppressed for transactional flow as per guidelines, but requested in prompt so we show a minimal version) -->
+<header class="w-full h-16 bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline flex justify-between items-center px-margin-desktop max-w-container-max mx-auto absolute top-0 z-50">
+<div class="font-headline-lg text-headline-lg font-bold text-primary dark:text-on-primary">
+            Striv
+        </div>
+<div class="hidden">
+<!-- Navigation links hidden for transactional flow -->
+</div>
+<div>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-on-primary transition-colors cursor-pointer transition-opacity active:opacity-70" href="#">
+                Sign In
+            </a>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center pt-24 pb-12 px-margin-mobile md:px-margin-desktop relative overflow-hidden">
+<!-- Ambient Data Visual (Background) -->
+<div class="absolute inset-0 pointer-events-none opacity-20 dark:opacity-10 z-0 flex items-center justify-center">
+<svg height="100%" preserveaspectratio="none" viewbox="0 0 1000 1000" width="100%">
+<path class="text-primary dark:text-surface" d="M0,500 Q250,300 500,500 T1000,500" fill="none" opacity="0.3" stroke="currentColor" stroke-width="1.5"></path>
+<path class="text-secondary" d="M0,600 Q250,400 500,600 T1000,600" fill="none" opacity="0.2" stroke="currentColor" stroke-width="1"></path>
+<circle class="text-secondary" cx="500" cy="500" fill="currentColor" r="4"></circle>
+</svg>
+</div>
+<div class="w-full max-w-md z-10">
+<!-- Sign Up Card -->
+<div class="glass-card rounded-xl p-8 shadow-sm">
+<div class="text-center mb-8">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary dark:text-on-primary mb-2">Create Account</h1>
+<p class="font-body-md text-body-md text-on-surface-variant dark:text-on-primary-container">
+                        Initialize your performance lab.
+                    </p>
+</div>
+<form class="space-y-6">
+<!-- Full Name -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface dark:text-on-primary uppercase tracking-wider block" for="fullName">Full Name</label>
+<input class="w-full h-12 bg-surface-container dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-lg px-4 font-body-md text-body-md text-on-surface dark:text-on-primary focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-on-primary transition-all" id="fullName" placeholder="Enter your full name" required="" type="text"/>
+</div>
+<!-- Email -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface dark:text-on-primary uppercase tracking-wider block" for="email">Email</label>
+<input class="w-full h-12 bg-surface-container dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-lg px-4 font-body-md text-body-md text-on-surface dark:text-on-primary focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-on-primary transition-all" id="email" placeholder="name@domain.com" required="" type="email"/>
+</div>
+<!-- Password -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface dark:text-on-primary uppercase tracking-wider block" for="password">Password</label>
+<input class="w-full h-12 bg-surface-container dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-lg px-4 font-body-md text-body-md text-on-surface dark:text-on-primary focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-on-primary transition-all" id="password" placeholder="••••••••" required="" type="password"/>
+</div>
+<!-- Experience Level (Custom Select/Radio group) -->
+<div class="space-y-3">
+<label class="font-label-caps text-label-caps text-on-surface dark:text-on-primary uppercase tracking-wider block">Strength Training Experience</label>
+<div class="grid grid-cols-3 gap-2">
+<label class="relative cursor-pointer">
+<input class="peer sr-only" name="experience" type="radio" value="beginner"/>
+<div class="h-12 flex items-center justify-center border border-outline-variant dark:border-outline rounded-lg font-body-md text-body-md text-on-surface-variant dark:text-on-primary-container peer-checked:border-primary dark:peer-checked:border-on-primary peer-checked:bg-primary dark:peer-checked:bg-surface peer-checked:text-on-primary dark:peer-checked:text-primary transition-all text-center px-1">
+                                    Beginner
+                                </div>
+</label>
+<label class="relative cursor-pointer">
+<input checked="" class="peer sr-only" name="experience" type="radio" value="intermediate"/>
+<div class="h-12 flex items-center justify-center border border-outline-variant dark:border-outline rounded-lg font-body-md text-body-md text-on-surface-variant dark:text-on-primary-container peer-checked:border-primary dark:peer-checked:border-on-primary peer-checked:bg-primary dark:peer-checked:bg-surface peer-checked:text-on-primary dark:peer-checked:text-primary transition-all text-center px-1">
+                                    Intermediate
+                                </div>
+</label>
+<label class="relative cursor-pointer">
+<input class="peer sr-only" name="experience" type="radio" value="advanced"/>
+<div class="h-12 flex items-center justify-center border border-outline-variant dark:border-outline rounded-lg font-body-md text-body-md text-on-surface-variant dark:text-on-primary-container peer-checked:border-primary dark:peer-checked:border-on-primary peer-checked:bg-primary dark:peer-checked:bg-surface peer-checked:text-on-primary dark:peer-checked:text-primary transition-all text-center px-1">
+                                    Advanced
+                                </div>
+</label>
+</div>
+</div>
+<!-- TOS -->
+<div class="flex items-start pt-2">
+<div class="flex items-center h-5">
+<input class="w-4 h-4 border-outline-variant dark:border-outline rounded bg-surface dark:bg-inverse-surface text-primary dark:text-surface focus:ring-0 focus:ring-offset-0 cursor-pointer" id="tos" required="" type="checkbox"/>
+</div>
+<div class="ml-3 text-sm">
+<label class="font-body-md text-body-md text-on-surface-variant dark:text-on-primary-container cursor-pointer" for="tos">
+                                I agree to the <a class="text-primary dark:text-on-primary hover:underline" href="#">Terms of Service</a> and <a class="text-primary dark:text-on-primary hover:underline" href="#">Privacy Policy</a>.
+                            </label>
+</div>
+</div>
+<!-- Submit -->
+<button class="w-full h-12 mt-6 bg-primary dark:bg-on-primary text-on-primary dark:text-primary font-body-md text-body-md font-semibold rounded-lg hover:bg-surface-tint dark:hover:bg-primary-fixed transition-colors flex justify-center items-center gap-2" type="submit">
+                        Create Account
+                        <span class="material-symbols-outlined" style="font-size: 20px;">arrow_forward</span>
+</button>
+</form>
+</div>
+<!-- Footer Text -->
+<div class="mt-8 text-center">
+<p class="font-body-md text-body-md text-on-surface-variant dark:text-on-primary-container">
+                    Already have an account? 
+                    <a class="text-primary dark:text-on-primary font-semibold hover:underline" href="#">Sign In</a>
+</p>
+</div>
+</div>
+</main>
+</body></html>

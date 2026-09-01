@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign In - Striv</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Geist:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#868381",
+                        "surface": "#fdf8f8",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "on-secondary-container": "#fffbff",
+                        "secondary-container": "#6063ee",
+                        "surface-container": "#f1edec",
+                        "primary-container": "#1c1b1b",
+                        "on-primary-fixed": "#1c1b1b",
+                        "surface-dim": "#ddd9d8",
+                        "surface-tint": "#5f5e5e",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "outline-variant": "#c4c7c7",
+                        "outline": "#747878",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-container-high": "#ebe7e6",
+                        "on-surface": "#1c1b1b",
+                        "secondary": "#4648d4",
+                        "surface-bright": "#fdf8f8",
+                        "primary-fixed": "#e5e2e1",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e5e2e1",
+                        "surface-variant": "#e5e2e1",
+                        "on-background": "#1c1b1b",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "background": "#fdf8f8",
+                        "tertiary-container": "#1c1b1a",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-low": "#f7f3f2",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#f4f0ef",
+                        "tertiary-fixed": "#e6e1df",
+                        "primary": "#000000",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#858383",
+                        "inverse-surface": "#313030",
+                        "tertiary": "#000000",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px",
+                        "container-max": "1200px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-display": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "metric-sm": ["Geist"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #fdf8f8;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-body-md text-body-md antialiased">
+<!-- Top Nav Placeholder -->
+    {{DATA:COMPONENTS:COMPONENTS_18}}
+    
+    <main class="flex-grow flex items-center justify-center p-gutter md:p-margin-desktop relative">
+<div class="absolute inset-0 z-0 pointer-events-none" style="background: radial-gradient(circle at center, rgba(0,0,0,0.03) 0%, transparent 70%);"></div>
+<div class="w-full max-w-md bg-surface border border-[#E5E5E5] rounded-xl p-8 relative z-10 transition-shadow duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+<div class="text-center mb-10">
+<h1 class="font-headline-lg text-headline-lg md:font-headline-lg md:text-headline-lg text-primary tracking-tight mb-2">Sign In</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">Access your AI Performance Lab</p>
+</div>
+<form class="space-y-6">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2" for="email">Email Address</label>
+<input autofocus="" class="w-full bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-200" id="email" name="email" placeholder="name@example.com" required="" type="email"/>
+</div>
+<div>
+<div class="flex justify-between items-center mb-2">
+<label class="block font-label-caps text-label-caps text-on-surface-variant" for="password">Password</label>
+<a class="font-label-caps text-label-caps text-primary hover:text-secondary transition-colors" href="#">Forgot Password?</a>
+</div>
+<input class="w-full bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-200" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+</div>
+<button class="w-full bg-primary text-on-primary font-metric-sm text-metric-sm py-4 rounded-lg hover:bg-inverse-surface transition-colors duration-200 flex items-center justify-center gap-2" type="submit">
+                    Sign In
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</form>
+<div class="mt-8">
+<div class="relative">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant"></div>
+</div>
+<div class="relative flex justify-center text-sm">
+<span class="px-2 bg-surface text-on-surface-variant font-label-caps text-label-caps">Or continue with</span>
+</div>
+</div>
+<div class="mt-6 grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-2 px-4 py-3 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors duration-200">
+<span class="material-symbols-outlined text-[20px] text-on-surface">account_circle</span>
+<span class="font-metric-sm text-metric-sm text-on-surface">Google</span>
+</button>
+<button class="flex items-center justify-center gap-2 px-4 py-3 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors duration-200">
+<span class="material-symbols-outlined text-[20px] text-on-surface">file_download</span>
+<span class="font-metric-sm text-metric-sm text-on-surface">Apple</span>
+</button>
+</div>
+</div>
+<div class="mt-8 text-center">
+<p class="text-on-surface-variant font-body-md text-body-md">
+                    Don't have an account? <a class="text-primary font-semibold hover:underline decoration-1 underline-offset-4" href="#">Sign Up</a>
+</p>
+</div>
+</div>
+</main>
+</body></html>

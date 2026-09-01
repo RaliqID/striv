@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - User Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Inter:wght@400;600;800&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#868381",
+                        "surface": "#fdf8f8",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "on-secondary-container": "#fffbff",
+                        "secondary-container": "#6063ee",
+                        "surface-container": "#f1edec",
+                        "primary-container": "#1c1b1b",
+                        "on-primary-fixed": "#1c1b1b",
+                        "surface-dim": "#ddd9d8",
+                        "surface-tint": "#5f5e5e",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "outline-variant": "#c4c7c7",
+                        "outline": "#747878",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-container-high": "#ebe7e6",
+                        "on-surface": "#1c1b1b",
+                        "secondary": "#4648d4",
+                        "surface-bright": "#fdf8f8",
+                        "primary-fixed": "#e5e2e1",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e5e2e1",
+                        "surface-variant": "#e5e2e1",
+                        "on-background": "#1c1b1b",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "background": "#fdf8f8",
+                        "tertiary-container": "#1c1b1a",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-low": "#f7f3f2",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#f4f0ef",
+                        "tertiary-fixed": "#e6e1df",
+                        "primary": "#000000",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#858383",
+                        "inverse-surface": "#313030",
+                        "tertiary": "#000000",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px",
+                        "container-max": "1200px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-display": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "metric-sm": ["Geist"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid theme('colors.outline-variant'); }
+        .minimal-card { border: 1px solid theme('colors.outline-variant'); background-color: theme('colors.surface-container-lowest'); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+        .minimal-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.04); transform: translateY(-1px); }
+        .input-precision { background: theme('colors.surface'); border: 1px solid theme('colors.surface-variant'); padding: 12px 16px; width: 100%; border-radius: theme('borderRadius.DEFAULT'); font-family: 'Inter', sans-serif; font-size: 16px; color: theme('colors.on-surface'); transition: border-color 0.2s; }
+        .input-precision:focus { outline: none; border-color: theme('colors.primary'); }
+        .label-precision { font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: theme('colors.on-surface-variant'); margin-bottom: 8px; display: block; }
+        .btn-primary { background-color: theme('colors.primary'); color: theme('colors.on-primary'); padding: 12px 24px; border-radius: theme('borderRadius.lg'); font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: inline-block; cursor: pointer; transition: opacity 0.2s; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-secondary { background-color: transparent; color: theme('colors.primary'); border: 1px solid theme('colors.outline-variant'); padding: 12px 24px; border-radius: theme('borderRadius.lg'); font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: inline-block; cursor: pointer; transition: background-color 0.2s; }
+        .btn-secondary:hover { background-color: theme('colors.surface-container'); }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col md:flex-row font-body-md text-body-md">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 fixed left-0 top-0 border-r border-outline-variant flex-col py-8 px-4 gap-2 z-40">
+<div class="mb-8 px-4">
+<h1 class="font-metric-display text-headline-lg text-primary tracking-tight">Striv</h1>
+<p class="text-on-surface-variant font-label-caps text-label-caps uppercase mt-1">Striv Intelligence</p>
+<p class="text-on-surface-variant text-sm">Premium Tier</p>
+</div>
+<div class="flex-1 flex flex-col gap-1 overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span>Workout</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span>Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span>Exercises</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span>Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span>Insights</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span>History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span>Records</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-semibold bg-primary-fixed/30 active:scale-95 transition-transform mt-auto" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="mt-4 px-4">
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-lg font-metric-sm text-metric-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="star">star</span>
+                 Upgrade to Pro
+             </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar (Mobile & Desktop) -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-margin-mobile md:px-margin-desktop py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4">
+<h1 class="md:hidden font-metric-display text-headline-lg-mobile text-primary tracking-tight">Striv</h1>
+<h2 class="hidden md:block font-headline-lg text-headline-lg text-primary tracking-tight">Profile Settings</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 p-margin-mobile md:p-margin-desktop max-w-container-max mx-auto w-full">
+<header class="mb-12">
+<p class="font-body-md text-body-md text-on-surface-variant">Manage your account details and integration preferences.</p>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Identity & Actions -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Profile Identity Card -->
+<div class="minimal-card p-6 flex flex-col items-center text-center rounded-xl">
+<div class="relative mb-6 group">
+<img class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-sm" data-alt="A highly professional, well-lit studio headshot of a person looking forward confidently, set against a pristine white background. The image should be extremely high resolution, reflecting a modern, premium aesthetic suitable for a high-end corporate or fitness technology platform. The lighting is soft and even, highlighting sharp details with a calm and precise mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKLQYebQv2EE3WJjsq6xE1pDK8hms05mTkMYPnnEp9TWwgzuJqEkjimWbwYDTFTOOHQ87xUD6FroC-HyODpKGvnmuWhm2YicrYGh6S6QUTwISOrgZNYTZ_OlDtOtKtwkErTYSn5724jONODUthvbcgn366QWz3Pt81JKzV2B0TZrcxqj9Paq3FB34jBKCN0NxeiQTiOiucwyLEQomKLrqYXKs8sdJCvDasVgokaTIHiUvDn9CvGXw"/>
+<button aria-label="Edit photo" class="absolute bottom-0 right-0 bg-primary text-on-primary p-2 rounded-full shadow-md hover:bg-surface-tint transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">edit</span>
+</button>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-1">Alex Thorne</h2>
+<div class="flex items-center gap-2 mb-4">
+<span class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2 py-1 rounded">PRO MEMBER</span>
+<span class="font-metric-sm text-metric-sm text-on-surface-variant">Since Oct 2022</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">Dedicated to optimizing performance through data-driven training and disciplined recovery protocols.</p>
+<div class="w-full flex flex-col gap-3">
+<button class="btn-primary w-full">View Public Profile</button>
+<button class="btn-secondary w-full">Sign Out</button>
+</div>
+</div>
+<!-- Security Quick Actions -->
+<div class="minimal-card p-6 rounded-xl">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-6 border-b border-outline-variant pb-2">Security</h3>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center group cursor-pointer hover:bg-surface-container-low p-2 -mx-2 rounded transition-colors">
+<div>
+<h4 class="font-metric-sm text-metric-sm text-primary mb-1">Password</h4>
+<p class="text-xs text-on-surface-variant font-body-md">Last updated 3 months ago</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<div class="flex justify-between items-center group cursor-pointer hover:bg-surface-container-low p-2 -mx-2 rounded transition-colors">
+<div>
+<h4 class="font-metric-sm text-metric-sm text-primary mb-1">Two-Factor Auth</h4>
+<p class="text-xs text-secondary font-body-md">Enabled via SMS</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Forms & Data -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Personal Information -->
+<section class="minimal-card p-6 md:p-8 rounded-xl">
+<div class="flex justify-between items-center mb-6 border-b border-outline-variant pb-4">
+<h3 class="font-label-caps text-label-caps text-primary">Personal Information</h3>
+<button class="text-secondary font-metric-sm text-metric-sm hover:underline">Edit</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<div>
+<label class="label-precision">First Name</label>
+<input class="input-precision" readonly="" type="text" value="Alex"/>
+</div>
+<div>
+<label class="label-precision">Last Name</label>
+<input class="input-precision" readonly="" type="text" value="Thorne"/>
+</div>
+</div>
+<div class="mb-6">
+<label class="label-precision">Email Address</label>
+<input class="input-precision" readonly="" type="email" value="alex.thorne@example.com"/>
+</div>
+<div>
+<label class="label-precision">Bio / Training Focus</label>
+<textarea class="input-precision h-24 resize-none" readonly="">Focusing on endurance and VO2 max improvements for upcoming ultramarathon. Utilizing AI insights to balance workload and recovery.</textarea>
+</div>
+</section>
+<!-- Physical Metrics -->
+<section class="minimal-card p-6 md:p-8 rounded-xl relative overflow-hidden">
+<!-- Subtle AI Glow background effect -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-secondary-container opacity-5 blur-[80px] rounded-full pointer-events-none -z-10"></div>
+<div class="flex justify-between items-center mb-6 border-b border-outline-variant pb-4">
+<div class="flex items-center gap-2">
+<h3 class="font-label-caps text-label-caps text-primary">Physical Metrics</h3>
+<span class="material-symbols-outlined text-secondary" style="font-size: 16px;">auto_awesome</span>
+</div>
+<button class="text-secondary font-metric-sm text-metric-sm hover:underline">Update</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Keeping these metrics up-to-date ensures maximum precision for your AI-generated training protocols.</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant flex flex-col items-center justify-center">
+<span class="label-precision !mb-1 text-on-tertiary-container">Height</span>
+<span class="font-metric-display text-[24px] text-primary">183<span class="text-sm text-on-surface-variant ml-1 font-body-md">cm</span></span>
+</div>
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant flex flex-col items-center justify-center">
+<span class="label-precision !mb-1 text-on-tertiary-container">Weight</span>
+<span class="font-metric-display text-[24px] text-primary">78<span class="text-sm text-on-surface-variant ml-1 font-body-md">kg</span></span>
+</div>
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant flex flex-col items-center justify-center">
+<span class="label-precision !mb-1 text-on-tertiary-container">Body Fat</span>
+<span class="font-metric-display text-[24px] text-primary">12<span class="text-sm text-on-surface-variant ml-1 font-body-md">%</span></span>
+</div>
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant flex flex-col items-center justify-center">
+<span class="label-precision !mb-1 text-on-tertiary-container">Resting HR</span>
+<span class="font-metric-display text-[24px] text-primary">48<span class="text-sm text-on-surface-variant ml-1 font-body-md">bpm</span></span>
+</div>
+</div>
+</section>
+<!-- Integrations -->
+<section class="minimal-card p-6 md:p-8 rounded-xl">
+<div class="flex justify-between items-center mb-6 border-b border-outline-variant pb-4">
+<h3 class="font-label-caps text-label-caps text-primary">Connected Integrations</h3>
+</div>
+<div class="flex flex-col gap-6">
+<!-- Integration Item -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary">monitor_heart</span>
+</div>
+<div>
+<h4 class="font-metric-sm text-metric-sm text-primary">Apple Health</h4>
+<p class="font-body-md text-sm text-on-surface-variant">Syncs daily steps, HR, and sleep data.</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-caps text-[10px] text-secondary tracking-widest">CONNECTED</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<!-- Integration Item -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary">directions_run</span>
+</div>
+<div>
+<h4 class="font-metric-sm text-metric-sm text-primary">Strava</h4>
+<p class="font-body-md text-sm text-on-surface-variant">Imports running and cycling activities.</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="btn-secondary !py-1 !px-4 text-sm">Connect</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden sticky bottom-0 z-50 flex items-center justify-around bg-surface/90 backdrop-blur-md border-t border-outline-variant pb-safe pt-2 px-2">
+<a class="flex flex-col items-center p-2 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] font-medium mt-1">Overview</span>
+</a>
+<a class="flex flex-col items-center p-2 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span class="text-[10px] font-medium mt-1">Workout</span>
+</a>
+<a class="flex flex-col items-center p-2 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="text-[10px] font-medium mt-1">Exercises</span>
+</a>
+<a class="flex flex-col items-center p-2 text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="text-[10px] font-medium mt-1">Settings</span>
+</a>
+</nav>
+</body></html>

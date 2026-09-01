@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Goals</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1c1b1b",
+                        "on-surface-variant": "#444748",
+                        "surface-tint": "#5f5e5e",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fdf8f8",
+                        "on-secondary-container": "#fffbff",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-high": "#ebe7e6",
+                        "inverse-on-surface": "#f4f0ef",
+                        "secondary-fixed": "#e1e0ff",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#4648d4",
+                        "surface-dim": "#ddd9d8",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "surface": "#fdf8f8",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-surface": "#1c1b1b",
+                        "surface-container": "#f1edec",
+                        "error": "#ba1a1a",
+                        "outline": "#747878",
+                        "inverse-primary": "#c8c6c5",
+                        "primary": "#000000",
+                        "on-primary-container": "#858383",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f7f3f2",
+                        "secondary-container": "#6063ee",
+                        "background": "#fdf8f8",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-variant": "#e5e2e1",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#e6e1df",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#1c1b1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#868381",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "inverse-surface": "#313030",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-container": "#1c1b1b",
+                        "outline-variant": "#c4c7c7",
+                        "tertiary": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "metric-sm": ["Geist"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .glass-panel { background: rgba(253, 248, 248, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid theme('colors.surface-variant'); }
+        .card-hover:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); transform: translateY(-2px); transition: all 0.3s ease; }
+        .progress-bar-fill { transition: width 1s ease-in-out; }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col md:flex-row">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 p-gutter bg-surface-container-low border-r border-outline-variant w-64 z-40 transition-all duration-200 ease-in-out">
+<div class="mb-8 px-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">fitness_center</span>
+<div>
+<h1 class="font-headline-lg text-headline-lg font-black text-primary" style="font-size: 24px; line-height: 28px;">Striv</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Premium Tier</p>
+</div>
+</div>
+<ul class="flex-1 space-y-2">
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">dashboard</span>Overview</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">fitness_center</span>Workout</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">trending_up</span>Progress</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">list_alt</span>Exercises</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold font-body-md text-body-md transition-all" href="#"><span class="material-symbols-outlined">flag</span>Goals</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">psychology</span>Insights</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">history</span>History</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">emoji_events</span>Records</a></li>
+<li><a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all font-body-md text-body-md" href="#"><span class="material-symbols-outlined">settings</span>Settings</a></li>
+</ul>
+<div class="mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-metric-sm text-metric-sm hover:bg-on-background transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span> Start Tracking
+            </button>
+</div>
+</nav>
+<!-- TopAppBar (Mobile & Desktop Header Area) -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<header class="sticky top-0 w-full z-30 flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant md:hidden">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">fitness_center</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Striv</span>
+</div>
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop w-full max-w-container-max mx-auto space-y-8">
+<header class="flex justify-between items-end mb-12 hidden md:flex">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary">Goals</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">Track and manage your fitness milestones.</p>
+</div>
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</header>
+<div class="md:hidden mb-8">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Goals</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Track and manage your fitness milestones.</p>
+</div>
+<!-- AI Insight Banner -->
+<div class="glass-panel p-6 rounded-2xl flex items-start gap-4 mb-8">
+<span class="material-symbols-outlined text-secondary mt-1">psychology</span>
+<div>
+<h3 class="font-metric-sm text-metric-sm text-primary mb-1">AI Insight</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Based on your recent progression rate, you are on track to hit your Bench Press goal 2 weeks ahead of schedule. Consider increasing training volume slightly on secondary pressing movements.</p>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Primary Goal Card (Spans 2 cols on Desktop) -->
+<div class="md:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 card-hover flex flex-col relative overflow-hidden">
+<div class="flex justify-between items-start mb-8 z-10">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2 block">Primary Goal</span>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Bench Press 100kg</h3>
+</div>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="flex-1 flex flex-col justify-end z-10">
+<div class="flex justify-between items-end mb-4">
+<div>
+<span class="font-metric-display text-metric-display text-primary block">85<span class="text-2xl text-on-surface-variant ml-1">kg</span></span>
+<span class="font-body-md text-body-md text-on-surface-variant">Current 1RM</span>
+</div>
+<div class="text-right">
+<span class="font-metric-sm text-metric-sm text-secondary bg-secondary/10 px-3 py-1 rounded-full inline-flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined" style="font-size: 16px;">trending_up</span> +2.5kg this month
+                                </span>
+<p class="font-body-md text-body-md text-on-surface-variant">Target: 100kg</p>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-variant rounded-full h-3 mb-2 overflow-hidden">
+<div class="bg-primary h-3 rounded-full progress-bar-fill" style="width: 85%;"></div>
+</div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant">
+<span>85% Completed</span>
+<span>Est. completion: Nov 2023</span>
+</div>
+</div>
+<!-- Subtle background decoration -->
+<span class="material-symbols-outlined absolute -bottom-10 -right-10 text-[160px] text-surface-variant opacity-20 pointer-events-none transform -rotate-12">fitness_center</span>
+</div>
+<!-- Secondary Goal: Train 4x/week -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 card-hover flex flex-col">
+<div class="flex justify-between items-start mb-6">
+<h3 class="font-metric-sm text-metric-sm text-primary font-semibold">Train 4x/week</h3>
+<span class="material-symbols-outlined text-on-surface-variant">calendar_month</span>
+</div>
+<div class="flex-1 flex items-center justify-center py-4">
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="transform -rotate-90 w-full h-full" viewbox="0 0 100 100">
+<circle class="text-surface-variant" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-primary" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-dasharray="282.7" stroke-dashoffset="70.675" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-metric-display text-metric-display text-primary text-3xl">3</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">/ 4 days</span>
+</div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant text-center mt-4">Current Week</p>
+</div>
+<!-- Secondary Goal: 100 Workouts -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 card-hover flex flex-col">
+<div class="flex justify-between items-start mb-6">
+<h3 class="font-metric-sm text-metric-sm text-primary font-semibold">100 Workouts</h3>
+<span class="material-symbols-outlined text-on-surface-variant">military_tech</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-metric-display text-metric-display text-primary text-4xl">72</span>
+<span class="font-body-md text-body-md text-on-surface-variant">/ 100</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2 mb-2 overflow-hidden">
+<div class="bg-primary h-2 rounded-full progress-bar-fill" style="width: 72%;"></div>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span> 28 workouts remaining</p>
+</div>
+</div>
+<!-- Secondary Goal: 10 Pull-ups -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 card-hover flex flex-col">
+<div class="flex justify-between items-start mb-6">
+<h3 class="font-metric-sm text-metric-sm text-primary font-semibold">10 Pull-ups</h3>
+<span class="material-symbols-outlined text-on-surface-variant">accessibility_new</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-metric-display text-metric-display text-primary text-4xl">6</span>
+<span class="font-body-md text-body-md text-on-surface-variant">/ 10</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2 mb-2 overflow-hidden">
+<div class="bg-primary h-2 rounded-full progress-bar-fill" style="width: 60%;"></div>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-secondary" style="font-size: 14px;">lightbulb</span> Add negatives to routine</p>
+</div>
+</div>
+<!-- Add New Goal Card -->
+<div class="bg-transparent border border-dashed border-outline-variant rounded-2xl p-6 hover:bg-surface-container-low transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[200px]">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center mb-4 text-on-surface-variant">
+<span class="material-symbols-outlined">add</span>
+</div>
+<span class="font-metric-sm text-metric-sm text-primary font-semibold">Create New Goal</span>
+</div>
+</div>
+</main>
+</div>
+</body></html>

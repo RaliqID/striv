@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Premium Training Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#e6e1df",
+                      "on-secondary-container": "#fffbff",
+                      "on-primary-fixed": "#1c1b1b",
+                      "on-primary-container": "#858383",
+                      "primary-container": "#1c1b1b",
+                      "on-tertiary-fixed-variant": "#484645",
+                      "on-surface-variant": "#444748",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "on-primary-fixed-variant": "#474646",
+                      "error": "#ba1a1a",
+                      "primary": "#000000",
+                      "inverse-on-surface": "#f4f0ef",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed": "#e1e0ff",
+                      "on-surface": "#1c1b1b",
+                      "secondary-fixed-dim": "#c0c1ff",
+                      "surface-container-highest": "#e5e2e1",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#4648d4",
+                      "primary-fixed": "#e5e2e1",
+                      "surface-bright": "#fdf8f8",
+                      "surface-tint": "#5f5e5e",
+                      "on-primary": "#ffffff",
+                      "surface-container-low": "#f7f3f2",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#cac6c3",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed-variant": "#2f2ebe",
+                      "outline-variant": "#c4c7c7",
+                      "surface-dim": "#ddd9d8",
+                      "on-background": "#1c1b1b",
+                      "tertiary-container": "#1c1b1a",
+                      "secondary-container": "#6063ee",
+                      "background": "#fdf8f8",
+                      "on-secondary-fixed": "#07006c",
+                      "surface-variant": "#e5e2e1",
+                      "inverse-primary": "#c8c6c5",
+                      "tertiary": "#000000",
+                      "surface-container": "#f1edec",
+                      "error-container": "#ffdad6",
+                      "surface": "#fdf8f8",
+                      "inverse-surface": "#313030",
+                      "outline": "#747878",
+                      "on-tertiary-fixed": "#1c1b1a",
+                      "surface-container-high": "#ebe7e6",
+                      "on-tertiary-container": "#868381",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "container-max": "1200px",
+                      "margin-desktop": "40px",
+                      "unit": "4px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "metric-sm": [
+                              "Geist"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "metric-display": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Geist"
+                      ]
+              },
+              "fontSize": {
+                      "metric-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "metric-display": [
+                              "48px",
+                              {
+                                      "lineHeight": "52px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+      </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+<!-- TopAppBar Semantic Shell -->
+<header class="sticky top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop bg-surface/80 backdrop-blur-md border-b border-outline-variant py-4">
+<div class="flex items-center gap-gutter">
+<span class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-black text-primary tracking-tighter">Striv</span>
+</div>
+<!-- Navigation Tabs (Hidden on Mobile) -->
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md transition-colors" href="#">Overview</a>
+<a class="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1" href="#">Workout</a>
+<a class="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1" href="#">Progress</a>
+<a class="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1" href="#">Insights</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden md:flex text-on-surface hover:bg-surface-container-low transition-colors p-2 rounded-full scale-95 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="text-on-surface hover:bg-surface-container-low transition-colors p-2 rounded-full scale-95 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<main class="flex-grow flex flex-col items-center justify-center pt-24 pb-32 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto gap-24">
+<!-- Hero Section -->
+<section class="w-full flex flex-col items-center text-center gap-8 max-w-3xl">
+<h1 class="font-metric-display text-metric-display md:text-[72px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
+                Your training has a story.
+            </h1>
+<p class="font-body-md text-body-md md:text-xl text-on-surface-variant max-w-2xl text-balance">
+                Track your workouts, discover your progress, and understand what your training data is telling you with precision analytics designed for serious athletes.
+            </p>
+<div class="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto">
+<button class="bg-primary text-on-primary font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-primary/90 transition-colors shadow-sm active:scale-95 duration-200">
+                    Start Tracking
+                </button>
+<button class="bg-surface text-primary border border-outline font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-surface-container-low transition-colors active:scale-95 duration-200">
+                    See How It Works
+                </button>
+</div>
+</section>
+<!-- Product UI Preview (Bento Grid) -->
+<section class="w-full grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[240px]">
+<!-- Main Chart Card -->
+<div class="md:col-span-8 row-span-2 border border-outline-variant rounded-xl p-8 bg-surface flex flex-col gap-6 relative overflow-hidden group hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow duration-300">
+<div class="flex justify-between items-start z-10">
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1">Volume Progression</h3>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-semibold">14,250 kg</p>
+</div>
+<span class="material-symbols-outlined text-secondary" data-icon="auto_graph">auto_graph</span>
+</div>
+<!-- Abstract Chart Representation -->
+<div class="absolute bottom-0 left-0 w-full h-2/3 opacity-80 pointer-events-none flex items-end">
+<svg class="w-full h-full stroke-primary fill-none vector-effect='non-scaling-stroke'" preserveaspectratio="none" viewbox="0 0 100 50">
+<path class="fill-surface-container-highest/30 stroke-none" d="M0,50 L0,40 L10,35 L20,45 L30,30 L40,25 L50,35 L60,15 L70,20 L80,10 L90,5 L100,10 L100,50 Z"></path>
+<path class="stroke-primary" d="M0,40 L10,35 L20,45 L30,30 L40,25 L50,35 L60,15 L70,20 L80,10 L90,5 L100,10" stroke-width="0.5"></path>
+<!-- AI Trend Line -->
+<path class="stroke-secondary" d="M0,45 Q 25,35 50,30 T 100,5" stroke-dasharray="2 2" stroke-width="0.5"></path>
+</svg>
+</div>
+</div>
+<!-- Stats Card 1 -->
+<div class="md:col-span-4 row-span-1 border border-outline-variant rounded-xl p-6 bg-surface flex flex-col justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow duration-300">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Next Session</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="fitness_center">fitness_center</span>
+</div>
+<div>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-semibold">Hypertrophy B</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Est. 65 mins</p>
+</div>
+</div>
+<!-- AI Insight Card -->
+<div class="md:col-span-4 row-span-1 border border-secondary/20 rounded-xl p-6 bg-secondary-fixed/30 flex flex-col justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow duration-300 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/10 blur-2xl rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+<div class="flex items-center gap-2 mb-4">
+<div class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(70,72,212,0.6)]"></div>
+<span class="font-label-caps text-label-caps text-secondary font-semibold uppercase tracking-wider">AI Insight</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed text-sm">
+                    Recovery indicates you can push harder on primary compound lifts today. Consider a 5% load increase.
+                </p>
+</div>
+</section>
+</main>
+</body></html>

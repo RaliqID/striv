@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Active Workout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Geist:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config injected from design system -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#000000",
+                    "inverse-on-surface": "#f4f0ef",
+                    "on-primary-fixed": "#1c1b1b",
+                    "outline-variant": "#c4c7c7",
+                    "outline": "#747878",
+                    "primary-fixed": "#e5e2e1",
+                    "on-secondary-fixed-variant": "#2f2ebe",
+                    "surface-bright": "#fdf8f8",
+                    "on-surface-variant": "#444748",
+                    "secondary-fixed": "#e1e0ff",
+                    "secondary-container": "#6063ee",
+                    "on-primary-container": "#858383",
+                    "tertiary-fixed": "#e6e1df",
+                    "surface-dim": "#ddd9d8",
+                    "on-tertiary-fixed-variant": "#484645",
+                    "surface": "#fdf8f8",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary-fixed": "#1c1b1a",
+                    "secondary-fixed-dim": "#c0c1ff",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-surface": "#1c1b1b",
+                    "on-secondary-container": "#fffbff",
+                    "tertiary-fixed-dim": "#cac6c3",
+                    "on-tertiary-container": "#868381",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "on-background": "#1c1b1b",
+                    "on-secondary-fixed": "#07006c",
+                    "tertiary": "#000000",
+                    "inverse-surface": "#313030",
+                    "background": "#fdf8f8",
+                    "tertiary-container": "#1c1b1a",
+                    "surface-container-low": "#f7f3f2",
+                    "surface-variant": "#e5e2e1",
+                    "surface-tint": "#5f5e5e",
+                    "on-error-container": "#93000a",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed-variant": "#474646",
+                    "primary-container": "#1c1b1b",
+                    "inverse-primary": "#c8c6c5",
+                    "surface-container": "#f1edec",
+                    "surface-container-highest": "#e5e2e1",
+                    "surface-container-high": "#ebe7e6",
+                    "secondary": "#4648d4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-desktop": "40px",
+                    "unit": "4px",
+                    "container-max": "1200px",
+                    "margin-mobile": "20px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "metric-display": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-caps": ["Geist"],
+                    "metric-sm": ["Geist"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "metric-display": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "metric-sm": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Custom styles for high-precision inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        
+        .set-row.completed {
+            background-color: var(--color-surface-container-low);
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+        
+        .timer-widget {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            transform: translateY(150%);
+            opacity: 0;
+        }
+        
+        .timer-widget.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface flex flex-col h-screen overflow-hidden selection:bg-surface-variant">
+<!-- 
+      Contextual Header (Active Workout)
+      Navigation shell suppressed per mandate for task-focused screens.
+    -->
+<header class="flex items-center justify-between px-margin-mobile md:px-margin-desktop py-4 border-b border-outline-variant bg-surface-container-lowest z-40 shrink-0">
+<button aria-label="Minimize workout" class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[24px]">expand_more</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="font-metric-sm text-metric-sm">Chest &amp; Triceps</h1>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span class="font-label-caps text-label-caps tracking-widest" id="global-timer">00:00</span>
+</div>
+</div>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-full font-metric-sm text-metric-sm hover:bg-on-surface-variant transition-colors shadow-sm">
+            Finish
+        </button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto w-full px-margin-mobile md:px-margin-desktop py-8 pb-32">
+<div class="max-w-[800px] mx-auto flex flex-col gap-8">
+<!-- Exercise Block 1 -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<!-- Header -->
+<div class="px-6 py-5 border-b border-outline-variant flex justify-between items-start bg-surface">
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg tracking-tight">Barbell Bench Press</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Target: 4 sets, 8-10 reps</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-2 px-6 py-3 bg-surface-container-low/50 border-b border-outline-variant">
+<div class="col-span-2 text-center font-label-caps text-label-caps text-on-surface-variant">SET</div>
+<div class="col-span-4 text-center font-label-caps text-label-caps text-on-surface-variant">KG</div>
+<div class="col-span-4 text-center font-label-caps text-label-caps text-on-surface-variant">REPS</div>
+<div class="col-span-2 text-center font-label-caps text-label-caps text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">check</span></div>
+</div>
+<!-- Sets -->
+<div class="flex flex-col">
+<!-- Row 1 -->
+<div class="set-row grid grid-cols-12 gap-4 px-6 py-4 items-center border-b border-outline-variant/50 last:border-b-0 group">
+<div class="col-span-2 flex justify-center">
+<span class="font-metric-sm text-metric-sm bg-surface-variant w-8 h-8 rounded-full flex items-center justify-center">1</span>
+</div>
+<div class="col-span-4">
+<input class="w-full h-12 bg-surface text-center font-metric-sm text-metric-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" inputmode="decimal" placeholder="-" type="number" value="80"/>
+</div>
+<div class="col-span-4">
+<input class="w-full h-12 bg-surface text-center font-metric-sm text-metric-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" inputmode="numeric" placeholder="-" type="number" value="10"/>
+</div>
+<div class="col-span-2 flex justify-center">
+<button class="set-toggle w-12 h-12 rounded-lg border-2 border-outline-variant flex items-center justify-center text-transparent transition-all hover:border-primary bg-surface" onclick="toggleSet(this)">
+<span class="material-symbols-outlined">check</span>
+</button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="set-row grid grid-cols-12 gap-4 px-6 py-4 items-center border-b border-outline-variant/50 last:border-b-0 group">
+<div class="col-span-2 flex justify-center">
+<span class="font-metric-sm text-metric-sm bg-surface-variant w-8 h-8 rounded-full flex items-center justify-center">2</span>
+</div>
+<div class="col-span-4">
+<input class="w-full h-12 bg-surface text-center font-metric-sm text-metric-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" inputmode="decimal" placeholder="-" type="number" value="85"/>
+</div>
+<div class="col-span-4">
+<input class="w-full h-12 bg-surface text-center font-metric-sm text-metric-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" inputmode="numeric" placeholder="-" type="number" value="8"/>
+</div>
+<div class="col-span-2 flex justify-center">
+<button class="set-toggle w-12 h-12 rounded-lg border-2 border-outline-variant flex items-center justify-center text-transparent transition-all hover:border-primary bg-surface" onclick="toggleSet(this)">
+<span class="material-symbols-outlined">check</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Add Set -->
+<button class="w-full py-4 flex items-center justify-center gap-2 font-metric-sm text-metric-sm text-on-surface-variant hover:text-primary bg-surface hover:bg-surface-container-low transition-colors border-t border-outline-variant">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                    Add Set
+                </button>
+</section>
+<!-- Exercise Block 2 -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<!-- Header -->
+<div class="px-6 py-5 border-b border-outline-variant flex justify-between items-start bg-surface">
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg tracking-tight">Incline Dumbbell Press</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Target: 3 sets, 10-12 reps</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-2 px-6 py-3 bg-surface-container-low/50 border-b border-outline-variant">
+<div class="col-span-2 text-center font-label-caps text-label-caps text-on-surface-variant">SET</div>
+<div class="col-span-4 text-center font-label-caps text-label-caps text-on-surface-variant">KG</div>
+<div class="col-span-4 text-center font-label-caps text-label-caps text-on-surface-variant">REPS</div>
+<div class="col-span-2 text-center font-label-caps text-label-caps text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">check</span></div>
+</div>
+<!-- Sets -->
+<div class="flex flex-col">
+<!-- Row 1 -->
+<div class="set-row grid grid-cols-12 gap-4 px-6 py-4 items-center border-b border-outline-variant/50 last:border-b-0">
+<div class="col-span-2 flex justify-center">
+<span class="font-metric-sm text-metric-sm bg-surface-variant w-8 h-8 rounded-full flex items-center justify-center">1</span>
+</div>
+<div class="col-span-4">
+<input class="w-full h-12 bg-surface text-center font-metric-sm text-metric-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" inputmode="decimal" placeholder="30" type="number"/>
+</div>
+<div class="col-span-4">
+<input class="w-full h-12 bg-surface text-center font-metric-sm text-metric-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" inputmode="numeric" placeholder="10" type="number"/>
+</div>
+<div class="col-span-2 flex justify-center">
+<button class="set-toggle w-12 h-12 rounded-lg border-2 border-outline-variant flex items-center justify-center text-transparent transition-all hover:border-primary bg-surface" onclick="toggleSet(this)">
+<span class="material-symbols-outlined">check</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Add Set -->
+<button class="w-full py-4 flex items-center justify-center gap-2 font-metric-sm text-metric-sm text-on-surface-variant hover:text-primary bg-surface hover:bg-surface-container-low transition-colors border-t border-outline-variant">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                    Add Set
+                </button>
+</section>
+<button class="w-full border-2 border-dashed border-outline-variant rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-on-surface-variant hover:border-primary hover:text-primary hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-[32px]">add_circle</span>
+<span class="font-metric-sm text-metric-sm">Add Exercise</span>
+</button>
+</div>
+</main>
+<!-- Floating Rest Timer Widget -->
+<div class="timer-widget fixed bottom-8 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant rounded-full px-2 py-2 flex items-center gap-4 shadow-lg z-50" id="rest-timer">
+<div class="w-12 h-12 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[20px]">timer</span>
+</div>
+<div class="flex flex-col pr-4 min-w-[80px]">
+<span class="font-label-caps text-label-caps text-on-surface-variant">RESTING</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile tabular-nums tracking-tighter leading-none" id="rest-countdown">1:30</span>
+</div>
+<button aria-label="Skip rest" class="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center transition-colors text-on-surface-variant" onclick="closeTimer()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<script>
+        let globalSeconds = 0;
+        let timerInterval;
+        let restInterval;
+        
+        // Global Workout Timer
+        setInterval(() => {
+            globalSeconds++;
+            const mins = Math.floor(globalSeconds / 60).toString().padStart(2, '0');
+            const secs = (globalSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('global-timer').innerText = `${mins}:${secs}`;
+        }, 1000);
+
+        function toggleSet(btn) {
+            const row = btn.closest('.set-row');
+            const isCompleted = row.classList.contains('completed');
+            const inputs = row.querySelectorAll('input');
+            
+            if (!isCompleted) {
+                // Complete set
+                row.classList.add('completed');
+                btn.classList.remove('border-outline-variant', 'text-transparent', 'bg-surface');
+                btn.classList.add('border-primary', 'bg-primary', 'text-on-primary');
+                inputs.forEach(input => input.setAttribute('readonly', 'true'));
+                
+                // Trigger Rest Timer
+                startRestTimer(90);
+            } else {
+                // Undo completion
+                row.classList.remove('completed');
+                btn.classList.remove('border-primary', 'bg-primary', 'text-on-primary');
+                btn.classList.add('border-outline-variant', 'text-transparent', 'bg-surface');
+                inputs.forEach(input => input.removeAttribute('readonly'));
+            }
+        }
+
+        function startRestTimer(seconds) {
+            const widget = document.getElementById('rest-timer');
+            const display = document.getElementById('rest-countdown');
+            let timeLeft = seconds;
+            
+            clearInterval(restInterval);
+            widget.classList.add('active');
+            
+            const updateDisplay = () => {
+                const m = Math.floor(timeLeft / 60);
+                const s = (timeLeft % 60).toString().padStart(2, '0');
+                display.innerText = `${m}:${s}`;
+            };
+            
+            updateDisplay();
+            
+            restInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft < 0) {
+                    clearInterval(restInterval);
+                    closeTimer();
+                    // Optional: Play a sound or vibrate here in a real app
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function closeTimer() {
+            clearInterval(restInterval);
+            document.getElementById('rest-timer').classList.remove('active');
+        }
+    </script>
+</body></html>

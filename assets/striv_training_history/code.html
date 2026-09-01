@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Geist:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1c1b1b",
+                        "on-surface-variant": "#444748",
+                        "surface-tint": "#5f5e5e",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fdf8f8",
+                        "on-secondary-container": "#fffbff",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-high": "#ebe7e6",
+                        "inverse-on-surface": "#f4f0ef",
+                        "secondary-fixed": "#e1e0ff",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#4648d4",
+                        "surface-dim": "#ddd9d8",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "surface": "#fdf8f8",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-surface": "#1c1b1b",
+                        "surface-container": "#f1edec",
+                        "error": "#ba1a1a",
+                        "outline": "#747878",
+                        "inverse-primary": "#c8c6c5",
+                        "primary": "#000000",
+                        "on-primary-container": "#858383",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f7f3f2",
+                        "secondary-container": "#6063ee",
+                        "background": "#fdf8f8",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-variant": "#e5e2e1",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#e6e1df",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#1c1b1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#868381",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "inverse-surface": "#313030",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-container": "#1c1b1b",
+                        "outline-variant": "#c4c7c7",
+                        "tertiary": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "metric-sm": ["Geist"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #fdf8f8; color: #1c1b1b; }
+        .glass-panel { background: rgba(253, 248, 248, 0.7); backdrop-filter: blur(12px); border: 1px solid #e5e2e1; }
+        .card-border { border: 1px solid #e5e2e1; }
+        .card-hover:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); transform: translateY(-1px); transition: all 0.2s ease; }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 p-gutter bg-surface-container-low border-r border-outline-variant w-64 z-40">
+<div class="mb-8 px-4 flex items-center justify-between mt-4">
+<span class="font-headline-lg text-headline-lg font-black text-primary">Striv</span>
+</div>
+<div class="mb-8 px-4 flex items-center gap-4">
+<img class="w-10 h-10 rounded-full object-cover grayscale border border-outline-variant" data-alt="A minimalist, high-contrast, black and white portrait of a user in a studio setting. The lighting is crisp and modern, highlighting the profile subtly. The style matches a premium, sophisticated fitness app identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAshoTo6P2W2kMWo7FqWrY3JQAHb6xDP9laAIZfzHeGQu14nqFz3yJWtdMYZ517DToiSIXHgm5R5xPhn6ek6ezBkFjCBt76_RlYbkYJOijKKvm1atdlu66q5S6hOXzOl7F_VJ06b6b3AxHwuqB32D9-hU-CznAXJ8pzsgM98dp6CQIPy98UJeBSzF6waVWuqAAU8LVhyC6fFkqn4zht7D88ZU8iH1vWzT3ZJOQBUhU2AIdT5OCkD_0"/>
+<div>
+<p class="font-body-md text-body-md text-primary font-semibold">Striv Intelligence</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Premium Tier</p>
+</div>
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="font-body-md text-body-md">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">fitness_center</span>
+<span class="font-body-md text-body-md">Workout</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">trending_up</span>
+<span class="font-body-md text-body-md">Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">list_alt</span>
+<span class="font-body-md text-body-md">Exercises</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">flag</span>
+<span class="font-body-md text-body-md">Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+<span class="font-body-md text-body-md">Insights</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">history</span>
+<span class="font-body-md text-body-md">History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">emoji_events</span>
+<span class="font-body-md text-body-md">Records</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all mt-auto" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+<button class="mt-4 w-full bg-primary text-on-primary font-body-md text-body-md py-3 rounded-full hover:opacity-90 transition-opacity">Start Tracking</button>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 w-full">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-30 flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant h-20">
+<div class="flex items-center gap-4">
+<span class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-primary md:hidden">Striv</span>
+<h1 class="hidden md:block font-headline-lg text-headline-lg text-primary">Training History</h1>
+</div>
+<div class="flex flex-1 justify-end items-center gap-4">
+<div class="hidden lg:flex items-center bg-surface-container-low rounded-full px-4 py-2 card-border w-64 group focus-within:border-primary transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 group-focus-within:text-primary transition-colors">search</span>
+<input class="bg-transparent border-none outline-none focus:ring-0 w-full font-body-md text-body-md text-primary placeholder-on-surface-variant/70" placeholder="Search workouts..." type="text"/>
+</div>
+<button class="p-2 text-primary hover:bg-surface-container-low rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"></span>
+</button>
+<button class="p-2 text-primary hover:bg-surface-container-low rounded-full transition-colors md:hidden">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<div class="p-margin-mobile md:p-margin-desktop max-w-container-max mx-auto pb-32 md:pb-margin-desktop">
+<h1 class="block md:hidden font-headline-lg-mobile text-headline-lg-mobile text-primary mb-6">Training History</h1>
+<!-- Filters & Controls -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-caps text-label-caps transition-all">All Workouts</button>
+<button class="px-4 py-2 rounded-full card-border bg-surface text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-low transition-all">Strength</button>
+<button class="px-4 py-2 rounded-full card-border bg-surface text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-low transition-all">Hypertrophy</button>
+<button class="px-4 py-2 rounded-full card-border bg-surface text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-low transition-all">Cardio</button>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg card-border bg-surface text-primary font-body-md text-body-md hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                    Last 30 Days
+                    <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+</div>
+<!-- History List (Chronological) -->
+<div class="space-y-8">
+<!-- Month Group -->
+<div>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant mb-4 sticky top-20 bg-surface/90 backdrop-blur-sm py-2 z-20">OCTOBER 2023</h2>
+<div class="flex flex-col gap-3">
+<!-- Workout Item 1 -->
+<div class="card-border rounded-xl p-5 bg-surface-container-lowest card-hover flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined">fitness_center</span>
+</div>
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-primary">Chest &amp; Triceps Focus</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 1h 15m
+                                        <span class="mx-1">•</span> Oct 24, 6:30 AM
+                                    </p>
+</div>
+</div>
+<div class="flex items-center gap-6 w-full md:w-auto mt-2 md:mt-0 justify-between md:justify-end border-t border-outline-variant md:border-t-0 pt-4 md:pt-0">
+<div class="text-left md:text-right">
+<p class="font-label-caps text-label-caps text-on-surface-variant">VOLUME</p>
+<p class="font-metric-sm text-metric-sm text-primary">12,450 kg</p>
+</div>
+<div class="text-left md:text-right">
+<p class="font-label-caps text-label-caps text-on-surface-variant">SETS</p>
+<p class="font-metric-sm text-metric-sm text-primary">24</p>
+</div>
+<div class="flex items-center text-secondary gap-1 bg-secondary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span class="font-label-caps text-label-caps font-semibold">PR +2</span>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Workout Item 2 -->
+<div class="card-border rounded-xl p-5 bg-surface-container-lowest card-hover flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined">directions_run</span>
+</div>
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-primary">Active Recovery: Zone 2</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 45m
+                                        <span class="mx-1">•</span> Oct 22, 5:45 PM
+                                    </p>
+</div>
+</div>
+<div class="flex items-center gap-6 w-full md:w-auto mt-2 md:mt-0 justify-between md:justify-end border-t border-outline-variant md:border-t-0 pt-4 md:pt-0">
+<div class="text-left md:text-right">
+<p class="font-label-caps text-label-caps text-on-surface-variant">DISTANCE</p>
+<p class="font-metric-sm text-metric-sm text-primary">5.2 km</p>
+</div>
+<div class="text-left md:text-right">
+<p class="font-label-caps text-label-caps text-on-surface-variant">AVG HR</p>
+<p class="font-metric-sm text-metric-sm text-primary">132 bpm</p>
+</div>
+<div class="w-16"></div> <!-- Spacer to align with above -->
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

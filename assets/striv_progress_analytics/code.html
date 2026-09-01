@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Progress Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#000000",
+                        "inverse-on-surface": "#f4f0ef",
+                        "on-primary-fixed": "#1c1b1b",
+                        "outline-variant": "#c4c7c7",
+                        "outline": "#747878",
+                        "primary-fixed": "#e5e2e1",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "surface-bright": "#fdf8f8",
+                        "on-surface-variant": "#444748",
+                        "secondary-fixed": "#e1e0ff",
+                        "secondary-container": "#6063ee",
+                        "on-primary-container": "#858383",
+                        "tertiary-fixed": "#e6e1df",
+                        "surface-dim": "#ddd9d8",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "surface": "#fdf8f8",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-surface": "#1c1b1b",
+                        "on-secondary-container": "#fffbff",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "on-tertiary-container": "#868381",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-background": "#1c1b1b",
+                        "on-secondary-fixed": "#07006c",
+                        "tertiary": "#000000",
+                        "inverse-surface": "#313030",
+                        "background": "#fdf8f8",
+                        "tertiary-container": "#1c1b1a",
+                        "surface-container-low": "#f7f3f2",
+                        "surface-variant": "#e5e2e1",
+                        "surface-tint": "#5f5e5e",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#474646",
+                        "primary-container": "#1c1b1b",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-container": "#f1edec",
+                        "surface-container-highest": "#e5e2e1",
+                        "surface-container-high": "#ebe7e6",
+                        "secondary": "#4648d4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "unit": "4px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "metric-display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "metric-sm": ["Geist"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-effect { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .chart-grid-line { stroke: #e5e2e1; stroke-width: 1; stroke-dasharray: 4 4; }
+        .chart-line-ai { stroke: #6063ee; stroke-width: 1.5; fill: none; }
+        .chart-line-primary { stroke: #000000; stroke-width: 1.5; fill: none; }
+        .chart-area-ai { fill: url(#aiGradient); }
+        
+        /* Custom Scrollbar for minimalist feel */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e2e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c4c7c7; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar (Desktop) -->
+<nav class="bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant dark:border-outline h-screen w-64 fixed left-0 top-0 flex flex-col py-8 px-4 gap-2 hidden md:flex z-40">
+<div class="mb-8 px-4">
+<h1 class="font-metric-display text-headline-lg text-primary tracking-tight">Striv</h1>
+</div>
+<div class="flex flex-col gap-1 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span class="font-body-md text-body-md">Workout</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary dark:text-primary-fixed font-semibold bg-primary-fixed/30 dark:bg-primary-container/20 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="font-body-md text-body-md">Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-body-md text-body-md">Exercises</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span class="font-body-md text-body-md">Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-body-md text-body-md">Insights</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-body-md text-body-md">History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span class="font-body-md text-body-md">Records</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors mt-auto" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+<div class="mt-4 p-4 border-t border-outline-variant">
+<div class="flex items-center gap-3">
+<img alt="User profile" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A clean, minimalist portrait of a modern fitness professional in monochrome lighting, conveying calm and focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD80JvRNaosF_CCKGRwzvvEo3ugfPMOeVlJEz9cenJL8J80l_ofbjZRQ-wNckn0uKyfO_DMRYlxQbd7cvwipQVm3G2F_seialZxUvvI735YTcSFBk5fJlo4r_QnY-Jh4OxmO85lZDIEE_NWDyl9JOZjWfMw5jdmoLgWGHoSwkSCzVYo6UtdSXK2o04sQPlivnnfhO3P2UJyCNttclChdng6heULDzRSkuYU5fWTg3-8mzuXXRO10vo"/>
+<div>
+<p class="font-metric-sm text-metric-sm text-primary">Striv Intelligence</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Premium Tier</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 relative min-h-screen flex flex-col">
+<!-- TopAppBar (Mobile) -->
+<header class="bg-surface dark:bg-surface-container-lowest border-b border-outline-variant dark:border-outline sticky top-0 z-50 flex items-center justify-between px-margin-mobile py-4 bg-surface/80 backdrop-blur-md md:hidden">
+<h1 class="font-metric-display text-headline-lg-mobile text-primary dark:text-primary-fixed tracking-tight">Striv</h1>
+<div class="flex items-center gap-4 text-primary dark:text-primary-fixed-dim">
+<button class="hover:text-primary dark:hover:text-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:text-primary dark:hover:text-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<div class="px-margin-mobile md:px-margin-desktop py-8 max-w-container-max mx-auto w-full flex-1 flex flex-col gap-8">
+<!-- Page Header & Time Filters -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Progress</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2 max-w-lg">Comprehensive analysis of your training trajectory. AI insights indicate a projected +4% strength increase in the next macrocycle.</p>
+</div>
+<div class="flex items-center bg-surface-container-low rounded-lg p-1 border border-outline-variant">
+<button class="px-4 py-2 rounded font-metric-sm text-metric-sm text-on-surface-variant hover:text-primary transition-colors">7D</button>
+<button class="px-4 py-2 rounded font-metric-sm text-metric-sm text-on-surface-variant hover:text-primary transition-colors">30D</button>
+<button class="px-4 py-2 rounded bg-surface border border-outline-variant shadow-sm font-metric-sm text-metric-sm text-primary transition-all duration-200 ease-in-out">90D</button>
+<button class="px-4 py-2 rounded font-metric-sm text-metric-sm text-on-surface-variant hover:text-primary transition-colors">1Y</button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min">
+<!-- Strength Progression (Main Chart) -->
+<div class="md:col-span-8 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300 relative overflow-hidden">
+<div class="flex justify-between items-start mb-8">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider">Estimated 1RM Avg</h3>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container" title="AI Predicted Data Available"></span>
+</div>
+<div class="flex items-baseline gap-3">
+<span class="font-metric-display text-metric-display text-primary">245</span>
+<span class="font-body-md text-body-md text-on-surface-variant">lbs</span>
+<span class="font-metric-sm text-metric-sm text-secondary-container bg-secondary-container/10 px-2 py-0.5 rounded ml-2">+12.4%</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<div class="h-64 w-full relative mt-auto">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 600 200">
+<defs>
+<lineargradient id="aiGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#6063ee" stop-opacity="0.1"></stop>
+<stop offset="100%" stop-color="#6063ee" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Grid Lines -->
+<line class="chart-grid-line" x1="0" x2="600" y1="50" y2="50"></line>
+<line class="chart-grid-line" x1="0" x2="600" y1="100" y2="100"></line>
+<line class="chart-grid-line" x1="0" x2="600" y1="150" y2="150"></line>
+<!-- Historical Data Line -->
+<path class="chart-line-primary" d="M0,180 Q50,170 100,160 T200,140 T300,120 T400,90 T450,70"></path>
+<!-- AI Prediction Line & Area -->
+<path class="chart-line-ai" d="M450,70 Q500,50 600,30" stroke-dasharray="4 4"></path>
+<!-- Data Points -->
+<circle cx="100" cy="160" fill="#000" r="3"></circle>
+<circle cx="200" cy="140" fill="#000" r="3"></circle>
+<circle cx="300" cy="120" fill="#000" r="3"></circle>
+<circle cx="400" cy="90" fill="#000" r="3"></circle>
+<circle cx="450" cy="70" fill="#000" r="4" stroke="#fff" stroke-width="2"></circle>
+</svg>
+<!-- Axis Labels -->
+<div class="absolute bottom-0 w-full flex justify-between text-[10px] text-outline font-label-caps mt-2 transform translate-y-full pt-2">
+<span>Sep</span>
+<span>Oct</span>
+<span>Nov</span>
+<span class="text-secondary-container">Projected</span>
+</div>
+</div>
+</div>
+<!-- Training Frequency (Donut/Radial Concept) -->
+<div class="md:col-span-4 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Weekly Frequency</h3>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-primary">4.2</span>
+<span class="font-body-md text-body-md text-on-surface-variant">days/wk</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex items-center justify-center relative min-h-[200px]">
+<!-- Abstract Radial Representation -->
+<div class="w-40 h-40 rounded-full border-4 border-surface-container-high relative flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle class="transition-all duration-1000 ease-out" cx="50" cy="50" fill="none" r="48" stroke="#000000" stroke-dasharray="301.59" stroke-dashoffset="60" stroke-width="4"></circle>
+</svg>
+<div class="text-center">
+<span class="block font-metric-display text-[32px] font-semibold text-primary">85%</span>
+<span class="block font-label-caps text-[10px] text-on-surface-variant mt-1">Adherence</span>
+</div>
+</div>
+</div>
+<div class="mt-4 flex justify-between items-center text-sm">
+<span class="text-on-surface-variant">Target: 5 days</span>
+<span class="font-metric-sm text-error bg-error-container/30 px-2 py-0.5 rounded">-0.8</span>
+</div>
+</div>
+<!-- Volume Distribution (Bar Chart) -->
+<div class="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Volume by Muscle Group</h3>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-primary">124k</span>
+<span class="font-body-md text-body-md text-on-surface-variant">lbs total</span>
+</div>
+</div>
+</div>
+<div class="h-48 w-full flex items-end gap-2 mt-auto pb-6 relative">
+<!-- Bars -->
+<div class="flex-1 flex flex-col items-center gap-2 group/bar cursor-pointer">
+<div class="w-full bg-surface-container-highest group-hover/bar:bg-outline-variant transition-colors rounded-t-sm h-[40%] relative"></div>
+<span class="font-label-caps text-[10px] text-outline absolute bottom-0">Chest</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar cursor-pointer">
+<div class="w-full bg-primary rounded-t-sm h-[85%] relative"></div>
+<span class="font-label-caps text-[10px] text-primary font-semibold absolute bottom-0">Back</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar cursor-pointer">
+<div class="w-full bg-surface-container-highest group-hover/bar:bg-outline-variant transition-colors rounded-t-sm h-[60%] relative"></div>
+<span class="font-label-caps text-[10px] text-outline absolute bottom-0">Legs</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar cursor-pointer">
+<div class="w-full bg-surface-container-highest group-hover/bar:bg-outline-variant transition-colors rounded-t-sm h-[30%] relative"></div>
+<span class="font-label-caps text-[10px] text-outline absolute bottom-0">Arms</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar cursor-pointer">
+<div class="w-full bg-surface-container-highest group-hover/bar:bg-outline-variant transition-colors rounded-t-sm h-[45%] relative"></div>
+<span class="font-label-caps text-[10px] text-outline absolute bottom-0">Core</span>
+</div>
+<!-- AI Insight Overlay -->
+<div class="absolute top-4 right-0 max-w-[140px] bg-surface/90 glass-effect border border-outline-variant p-3 rounded-lg shadow-sm hidden md:block">
+<div class="flex items-center gap-1.5 mb-1">
+<span class="material-symbols-outlined text-[14px] text-secondary-container" data-icon="psychology">psychology</span>
+<span class="font-label-caps text-[10px] text-secondary-container font-semibold">Insight</span>
+</div>
+<p class="font-body-md text-[11px] leading-tight text-on-surface">Back volume is 24% higher than average. Risk of overtraining detected.</p>
+</div>
+</div>
+</div>
+<!-- Consistency Grid (Heatmap style) -->
+<div class="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Consistency Map</h3>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-primary">32</span>
+<span class="font-body-md text-body-md text-on-surface-variant">active days</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-label-caps text-outline">Less</span>
+<div class="w-2 h-2 rounded-sm bg-surface-container-highest"></div>
+<div class="w-2 h-2 rounded-sm bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-sm bg-outline"></div>
+<div class="w-2 h-2 rounded-sm bg-primary"></div>
+<span class="text-[10px] font-label-caps text-outline">More</span>
+</div>
+</div>
+<div class="mt-auto overflow-x-auto pb-2">
+<div class="grid grid-cols-[repeat(12,_minmax(16px,_1fr))] gap-1.5 min-w-[300px]">
+<!-- Month Labels (Simplified) -->
+<div class="col-span-12 flex justify-between text-[10px] font-label-caps text-outline mb-1">
+<span>Sep</span><span>Oct</span><span>Nov</span>
+</div>
+<!-- Rows (Days of week implied) -->
+<!-- Row 1 -->
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<!-- Row 2 -->
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<!-- Row 3 -->
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<!-- Row 4 -->
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-primary"></div>
+<div class="w-full aspect-square rounded-sm bg-outline"></div>
+<div class="w-full aspect-square rounded-sm bg-surface-container-highest"></div>
+<div class="w-full aspect-square rounded-sm bg-outline-variant"></div>
+<div class="w-full aspect-square rounded-sm bg-primary relative ring-1 ring-primary ring-offset-1 ring-offset-surface"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="bg-surface dark:bg-surface-container-lowest border-t border-outline-variant dark:border-outline fixed bottom-0 w-full z-50 flex justify-around items-center h-16 pb-safe md:hidden shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant dark:text-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-[10px]">Overview</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant dark:text-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" data-icon="fitness_center">fitness_center</span>
+<span class="font-label-caps text-[10px]">Workout</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-primary dark:text-primary-fixed" href="#">
+<div class="bg-primary-fixed/30 dark:bg-primary-container/20 px-4 py-1 rounded-full mb-1">
+<span class="material-symbols-outlined text-[24px]" data-icon="trending_up">trending_up</span>
+</div>
+<span class="font-label-caps text-[10px] font-semibold">Progress</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant dark:text-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" data-icon="list_alt">list_alt</span>
+<span class="font-label-caps text-[10px]">Exercises</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant dark:text-surface-variant" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" data-icon="settings">settings</span>
+<span class="font-label-caps text-[10px]">Settings</span>
+</a>
+</nav>
+</body></html>

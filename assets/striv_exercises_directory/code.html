@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Striv - Exercises</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#c4c7c7",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "background": "#fdf8f8",
+                        "secondary-fixed": "#e1e0ff",
+                        "secondary": "#4648d4",
+                        "tertiary-fixed": "#e6e1df",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "on-background": "#1c1b1b",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface": "#1c1b1b",
+                        "surface-bright": "#fdf8f8",
+                        "tertiary": "#000000",
+                        "on-secondary-container": "#fffbff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#444748",
+                        "surface-container": "#f1edec",
+                        "secondary-container": "#6063ee",
+                        "on-primary-fixed-variant": "#474646",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "primary-fixed": "#e5e2e1",
+                        "tertiary-container": "#1c1b1a",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "outline": "#747878",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#313030",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1c1b1b",
+                        "surface-dim": "#ddd9d8",
+                        "primary": "#000000",
+                        "surface-container-high": "#ebe7e6",
+                        "surface": "#fdf8f8",
+                        "inverse-on-surface": "#f4f0ef",
+                        "on-primary-container": "#858383",
+                        "on-secondary-fixed": "#07006c",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-tint": "#5f5e5e",
+                        "on-tertiary-fixed": "#1c1b1a",
+                        "surface-container-low": "#f7f3f2",
+                        "on-tertiary-container": "#868381",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-primary-fixed": "#1c1b1b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "metric-sm": ["Geist"],
+                        "metric-display": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "metric-display": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid theme('colors.outline-variant'); }
+        .hover-lift { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col md:flex-row font-body-md text-body-md">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex bg-surface-container-low dark:bg-surface-container-lowest text-primary dark:text-primary-fixed font-body-md text-body-md h-screen w-64 fixed left-0 top-0 border-r border-outline-variant dark:border-outline flex-col py-8 px-4 gap-2 z-40">
+<div class="mb-8 px-4">
+<h1 class="font-metric-display text-headline-lg text-primary tracking-tight">Striv</h1>
+<p class="text-on-surface-variant font-label-caps text-label-caps uppercase mt-1">Striv Intelligence</p>
+<p class="text-on-surface-variant text-sm">Premium Tier</p>
+</div>
+<div class="flex-1 flex flex-col gap-1 overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span>Workout</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span>Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary dark:text-primary-fixed font-semibold bg-primary-fixed/30 dark:bg-primary-container/20 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt" style="font-variation-settings: 'FILL' 1;">list_alt</span>
+<span>Exercises</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+<span>Goals</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span>Insights</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span>History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span>Records</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-highest dark:hover:bg-surface-variant/10 transition-colors active:scale-95 transition-transform mt-auto" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="mt-4 px-4">
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-lg font-metric-sm text-metric-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="star">star</span>
+                 Upgrade to Pro
+             </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar (Mobile & Desktop) -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-margin-mobile md:px-margin-desktop py-4 bg-surface/80 backdrop-blur-md border-b border-outline-variant dark:border-outline transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4">
+<h1 class="md:hidden font-metric-display text-headline-lg-mobile text-primary dark:text-primary-fixed tracking-tight">Striv</h1>
+<h2 class="hidden md:block font-headline-lg text-headline-lg text-primary tracking-tight">Exercise Library</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center bg-surface-container-highest rounded-full px-4 py-2 border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none outline-none focus:ring-0 p-0 text-sm w-48 font-body-md text-body-md placeholder:text-on-surface-variant" placeholder="Search exercises..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+<button class="hidden md:flex bg-primary text-on-primary px-4 py-2 rounded-lg font-metric-sm text-metric-sm hover:opacity-90 transition-opacity">
+                    Start Workout
+                </button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 p-margin-mobile md:p-margin-desktop max-w-container-max mx-auto w-full">
+<!-- Mobile Search & Filter Row -->
+<div class="md:hidden mb-6 flex flex-col gap-4">
+<div class="flex items-center bg-surface-container-highest rounded-lg px-4 py-3 border border-outline-variant w-full">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none outline-none focus:ring-0 p-0 w-full font-body-md text-body-md placeholder:text-on-surface-variant" placeholder="Search exercises..." type="text"/>
+</div>
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="whitespace-nowrap px-4 py-2 bg-primary text-on-primary rounded-full font-label-caps text-label-caps uppercase tracking-wider">All</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest">Chest</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest">Back</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest">Legs</button>
+</div>
+</div>
+<!-- Desktop Filters -->
+<div class="hidden md:flex items-center justify-between mb-8">
+<div class="flex gap-3">
+<button class="px-5 py-2.5 bg-primary text-on-primary rounded-full font-label-caps text-label-caps uppercase tracking-wider transition-colors">All Muscles</button>
+<button class="px-5 py-2.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest transition-colors">Chest</button>
+<button class="px-5 py-2.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest transition-colors">Back</button>
+<button class="px-5 py-2.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest transition-colors">Legs</button>
+<button class="px-5 py-2.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-label-caps text-label-caps uppercase tracking-wider hover:bg-surface-container-highest transition-colors">Arms</button>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2.5 bg-surface-container border border-outline-variant text-on-surface rounded-lg font-metric-sm text-metric-sm hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                        Equipment
+                    </button>
+</div>
+</div>
+<!-- Exercise Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Item 1 -->
+<div class="glass-panel rounded-xl p-5 flex flex-col gap-4 hover-lift cursor-pointer group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center border border-outline-variant shrink-0">
+<span class="material-symbols-outlined text-on-surface" data-icon="fitness_center">fitness_center</span>
+</div>
+<div>
+<h3 class="font-metric-sm text-metric-sm text-primary mb-1 group-hover:text-secondary transition-colors">Barbell Bench Press</h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container text-on-surface-variant uppercase tracking-wider">Chest • Barbell</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="pt-4 border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium mb-1">Est. 1RM</p>
+<p class="font-metric-sm text-metric-sm text-primary">225 lbs <span class="text-secondary text-xs ml-1">↑ 5%</span></p>
+</div>
+<!-- Micro sparkline representation -->
+<div class="w-24 h-8 flex items-end justify-between gap-1 opacity-70">
+<div class="w-2 bg-surface-dim h-3 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-4 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-3 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-5 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-6 rounded-sm"></div>
+<div class="w-2 bg-secondary h-8 rounded-sm"></div>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="glass-panel rounded-xl p-5 flex flex-col gap-4 hover-lift cursor-pointer group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center border border-outline-variant shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover opacity-80 mix-blend-multiply" data-alt="A minimalist, high-contrast, black and white icon graphic representing a person performing a deadlift, clean modern lines, studio lighting aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL2VDyoLeDjeO9qV5_1f9SJAs0uB6r8Uhnhf42PMf-F9sfPxlz9TuH_ZgflBlMgW0eHPf5WKr3ShDaYqVtI8QNKBlieLHplt8Of4Ko9TuWUn8Aj2X_eL3HQk2NP-8nd20AOTwxEmaWYoN4QgdYJDv6ueYhXsycgudWUKtUunrB8bpeLp9xTCvN7GQezQ80eXxmp-ivwyER2P4JJsrtkFK3XneHJ-bpiNKEpOV2DC2vepjYgz28f1M"/>
+</div>
+<div>
+<h3 class="font-metric-sm text-metric-sm text-primary mb-1 group-hover:text-secondary transition-colors">Deadlift</h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container text-on-surface-variant uppercase tracking-wider">Legs • Barbell</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="pt-4 border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium mb-1">Est. 1RM</p>
+<p class="font-metric-sm text-metric-sm text-primary">315 lbs <span class="text-on-surface-variant text-xs ml-1">-</span></p>
+</div>
+<div class="w-24 h-8 flex items-end justify-between gap-1 opacity-70">
+<div class="w-2 bg-surface-dim h-6 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-6 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-5 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-6 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-6 rounded-sm"></div>
+<div class="w-2 bg-outline h-6 rounded-sm"></div>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="glass-panel rounded-xl p-5 flex flex-col gap-4 hover-lift cursor-pointer group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center border border-outline-variant shrink-0">
+<span class="material-symbols-outlined text-on-surface" data-icon="accessibility_new">accessibility_new</span>
+</div>
+<div>
+<h3 class="font-metric-sm text-metric-sm text-primary mb-1 group-hover:text-secondary transition-colors">Pull-up</h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container text-on-surface-variant uppercase tracking-wider">Back • Bodyweight</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="pt-4 border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-[11px] text-on-surface-variant uppercase tracking-wider font-medium mb-1">Max Reps</p>
+<p class="font-metric-sm text-metric-sm text-primary">12 <span class="text-secondary text-xs ml-1">↑ 2</span></p>
+</div>
+<div class="w-24 h-8 flex items-end justify-between gap-1 opacity-70">
+<div class="w-2 bg-surface-dim h-2 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-2 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-4 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-4 rounded-sm"></div>
+<div class="w-2 bg-surface-dim h-6 rounded-sm"></div>
+<div class="w-2 bg-secondary h-8 rounded-sm"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State / Load More -->
+<div class="mt-8 flex justify-center">
+<button class="px-6 py-3 bg-transparent border border-outline text-primary rounded-lg font-metric-sm text-metric-sm hover:bg-surface-container transition-colors">
+                    Load More Exercises
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden sticky bottom-0 z-50 flex items-center justify-around bg-surface/90 backdrop-blur-md border-t border-outline-variant dark:border-outline pb-safe pt-2 px-2">
+<a class="flex flex-col items-center p-2 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] font-medium mt-1">Overview</span>
+</a>
+<a class="flex flex-col items-center p-2 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="fitness_center">fitness_center</span>
+<span class="text-[10px] font-medium mt-1">Workout</span>
+</a>
+<a class="flex flex-col items-center p-2 text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt" style="font-variation-settings: 'FILL' 1;">list_alt</span>
+<span class="text-[10px] font-medium mt-1">Exercises</span>
+</a>
+<a class="flex flex-col items-center p-2 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-[10px] font-medium mt-1">Settings</span>
+</a>
+</nav>
+</body></html>
