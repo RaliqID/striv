@@ -52,7 +52,7 @@ export default function CoachPage() {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      const res = await apiClient.post<{ assistant_message: Message; remaining_today: number }>("/chat", { message: trimmed });
+      const res = await apiClient.post<{ assistant_message: Message; remaining_today: number }>("/chat", { content: trimmed });
       setMessages((prev) => [...prev, res.assistant_message]);
       setRemaining(res.remaining_today);
     } catch (e: any) {
