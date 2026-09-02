@@ -256,7 +256,7 @@ export default function DashboardPage() {
               : "Keep showing up."}
           </p>
           <div className="flex items-baseline gap-4 mb-8">
-            <h2 className="font-metric-display text-metric-display text-primary">{strengthDisplay}</h2>
+            <h2 className="font-metric-display text-[36px] leading-[40px] md:text-metric-display md:leading-[52px] text-primary">{strengthDisplay}</h2>
             <span className="font-headline-lg text-headline-lg text-on-surface-variant">Strength</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
@@ -302,7 +302,7 @@ export default function DashboardPage() {
             ) : weeklyData.length === 0 ? (
               <div className="flex items-center justify-center h-48 text-on-surface-variant font-body-md">{"No data yet."}</div>
             ) : (
-              <div className="flex-1 relative min-h-[240px] w-full">
+              <div className="flex-1 relative min-h-[200px] md:min-h-[240px] w-full">
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 400 200">
                   {/* Horizontal grid lines */}
                   <line stroke="#f1edec" strokeWidth="1" x1="0" x2="400" y1="50" y2="50" />
@@ -323,7 +323,7 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="minimal-card rounded-xl p-6 bg-surface-container-low border-none relative overflow-hidden border border-border">
+          <section className="minimal-card rounded-xl p-4 md:p-6 bg-surface-container-low border-none relative overflow-hidden border border-border">
             <div className="absolute top-0 right-0 p-4">
               <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>
                 auto_awesome

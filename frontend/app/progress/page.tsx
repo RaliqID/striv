@@ -203,12 +203,12 @@ export default function ProgressPage() {
               Comprehensive analysis of your training trajectory across volume, strength, and consistency.
             </p>
           </div>
-          <div className="flex items-center bg-surface-container-low rounded-lg p-1 border border-outline-variant">
+          <div className="flex flex-wrap items-center gap-1 bg-surface-container-low rounded-lg p-1 border border-outline-variant">
             {PERIODS.map((p) => (
               <button
                 key={p.label}
                 onClick={() => setPeriodDays(p.days)}
-                className={`px-4 py-2 rounded font-metric-sm text-metric-sm transition-colors ${
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded font-metric-sm text-metric-sm transition-colors ${
                   periodDays === p.days
                     ? "bg-surface border border-outline-variant shadow-sm text-primary"
                     : "text-on-surface-variant hover:text-primary"
@@ -236,7 +236,7 @@ export default function ProgressPage() {
         {!error && (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min">
             {/* Estimated 1RM Avg */}
-            <div className="md:col-span-8 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300 relative overflow-hidden">
+            <div className="md:col-span-8 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300 relative overflow-hidden">
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -329,7 +329,7 @@ export default function ProgressPage() {
             </div>
 
             {/* Weekly Frequency */}
-            <div className="md:col-span-4 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
+            <div className="md:col-span-4 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Weekly Frequency</h3>
@@ -386,7 +386,7 @@ export default function ProgressPage() {
             </div>
 
             {/* Weekly Volume */}
-            <div className="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
+            <div className="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Weekly Volume</h3>
@@ -449,7 +449,7 @@ export default function ProgressPage() {
             </div>
 
             {/* Consistency Map */}
-            <div className="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
+            <div className="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Consistency Map</h3>
@@ -473,7 +473,7 @@ export default function ProgressPage() {
                   <span className="text-[10px] font-label-caps text-outline">More</span>
                 </div>
               </div>
-              <div className="mt-auto overflow-x-auto pb-2">
+              <div className="mt-auto overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-2">
                 {loading ? (
                   <div className="grid grid-cols-[repeat(12,_minmax(16px,_1fr))] gap-1.5 min-w-[300px]">
                     {Array.from({ length: 12 * 7 }).map((_, i) => (

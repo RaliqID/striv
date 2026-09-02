@@ -560,7 +560,7 @@ export default function ActiveWorkoutPage() {
         >
           <span className="material-symbols-outlined text-[24px]">expand_more</span>
         </Link>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center min-w-0">
           <h1 className="font-metric-sm text-metric-sm">Workout</h1>
           <div className="flex items-center gap-1 text-on-surface-variant">
             <span className="material-symbols-outlined text-[14px]">schedule</span>
