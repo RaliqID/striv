@@ -79,6 +79,10 @@ export const apiClient = {
     return api<T>(path, {
       ...options,
       method: "POST",
+      headers: {
+        ...(options?.headers || {}),
+        "Content-Type": "application/json",
+      },
       body: body ? JSON.stringify(body) : undefined,
     });
   },
@@ -86,6 +90,10 @@ export const apiClient = {
     return api<T>(path, {
       ...options,
       method: "PUT",
+      headers: {
+        ...(options?.headers || {}),
+        "Content-Type": "application/json",
+      },
       body: body ? JSON.stringify(body) : undefined,
     });
   },
