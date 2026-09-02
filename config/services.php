@@ -47,4 +47,16 @@ return [
         'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
     ],
 
+    'xkiro' => [
+        'key' => env('XKIRO_API_KEY'),
+        'base_uri' => env('XKIRO_BASE_URI', 'https://api.xkiro.com/v1'),
+        'model' => env('XKIRO_MODEL', 'minimax/minimax-m2.7-highspeed:free'),
+    ],
+
+    // Primary AI provider + fallback chain (tried in order)
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'xkiro'),
+        'fallback' => env('AI_FALLBACK', 'groq'),
+    ],
+
 ];

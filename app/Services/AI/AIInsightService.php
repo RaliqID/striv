@@ -43,10 +43,10 @@ class AIInsightService
         }
 
         $created = [];
-        $provider = $this->provider();
+        $providers = $this->providers();
 
         foreach ($candidates as $pattern) {
-            $insight = $this->buildInsight($user, $pattern, $provider);
+            $insight = $this->buildInsight($user, $pattern, $providers);
             if ($insight) {
                 $created[] = $insight;
             }
@@ -56,15 +56,42 @@ class AIInsightService
     }
 
     /**
-     * Provider factory. Returns null when Groq is unconfigured (deterministic-only mode).
+     * Provider chain: primary from config('services.ai.provider'), then fallback.
+     * Returns null when neither is configured (deterministic-only mode).
+     *
+     * @return array<int, AIProviderInterface>
+     */
+    public function providers(): array
+    {
+        $chain = [];
+        $primary = config('services.ai.provider', 'xkiro');
+        $fallback = config('services.ai.fallback', 'groq');
+
+        foreach (array_unique([$primary, $fallback]) as $key) {
+            $provider = $this->makeProvider($key);
+            if ($provider !== null) {
+                $chain[] = $provider;
+            }
+        }
+
+        return $chain;
+    }
+
+    /**
+     * Legacy single-provider accessor (primary only). Kept for compatibility.
      */
     public function provider(): ?AIProviderInterface
     {
-        $apiKey = config('services.groq.key');
-        if (empty($apiKey)) {
+        return $this->providers()[0] ?? null;
+    }
+
+    private function makeProvider(string $key): ?AIProviderInterface
+    {
+        $cfg = config("services.{$key}");
+        if (!is_array($cfg) || empty($cfg['key'])) {
             return null;
         }
-        return new GroqProvider();
+        return new OpenAICompatibleProvider($key);
     }
 
     private function isDuplicate(User $user, array $pattern): bool
@@ -92,17 +119,20 @@ class AIInsightService
         return $query->exists();
     }
 
-    private function buildInsight(User $user, array $pattern, ?AIProviderInterface $provider): ?AiInsight
+    private function buildInsight(User $user, array $pattern, array $providers): ?AiInsight
     {
         $context = $this->contextBuilder->build($user, $pattern);
 
         $aiResult = null;
-        if ($provider !== null) {
+        foreach ($providers as $provider) {
             try {
                 $aiResult = $provider->generateInsight($context);
             } catch (\Throwable $e) {
                 Log::warning('AIInsightService provider threw', ['error' => $e->getMessage()]);
                 $aiResult = null;
+            }
+            if ($aiResult !== null) {
+                break; // primary succeeded; skip fallback
             }
         }
 

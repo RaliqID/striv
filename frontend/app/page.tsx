@@ -108,6 +108,41 @@ function SmartNav({
 
 export default function LandingPage() {
   const router = useRouter();
+  const [contactStatus, setContactStatus] = useState<null | 'loading' | 'success' | 'error'>(null);
+  const [contactError, setContactError] = useState('');
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const name = (form.querySelector('#contact-name') as HTMLInputElement).value.trim();
+    const email = (form.querySelector('#contact-email') as HTMLInputElement).value.trim();
+    const message = (form.querySelector('#contact-msg') as HTMLTextAreaElement).value.trim();
+    if (!name || !email || !message) {
+      setContactError('Please fill in all fields.');
+      return;
+    }
+    setContactStatus('loading');
+    setContactError('');
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const res = await fetch(`${base}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to send message.');
+      }
+      setContactStatus('success');
+      form.reset();
+    } catch (err: any) {
+      setContactError(err.message || 'Something went wrong. Try again later.');
+      setContactStatus('error');
+    } finally {
+      setTimeout(() => setContactStatus(null), 5000);
+    }
+  };
 
   const handleNavClick = (path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -378,13 +413,79 @@ export default function LandingPage() {
               </h3>
             </div>
             <Reveal delay={150}>
-              <div className="relative w-full h-[440px] md:h-[600px] flex items-center justify-center mt-8">
-                <div className="absolute w-11/12 md:w-3/4 max-w-2xl bg-surface border border-outline-variant rounded-xl shadow-lg p-2 z-10 -translate-x-6 -translate-y-6 md:-translate-x-12 md:-translate-y-8">
-                  <div className="w-full h-full bg-surface-container-low rounded-lg aspect-[4/3] flex items-center justify-center text-outline-variant font-label-caps text-[12px] md:text-[14px]">Dashboard UI Placeholder</div>
+              <div className="relative w-full h-[460px] md:h-[620px] flex items-center justify-center mt-8">
+
+                {/* Back card — Dashboard mock */}
+                <div className="absolute w-11/12 md:w-3/4 max-w-2xl bg-surface border border-outline-variant rounded-xl shadow-lg p-2 z-10 -translate-x-4 -translate-y-6 md:-translate-x-12 md:-translate-y-8">
+                  <div className="w-full bg-surface-container-low rounded-lg overflow-hidden">
+                    {/* Fake browser chrome */}
+                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-outline-variant bg-surface-container-lowest">
+                      <span className="w-2.5 h-2.5 rounded-full bg-error/60"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-outline-variant/60"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-secondary/40"></span>
+                      <span className="ml-3 text-[10px] font-label-caps text-on-surface-variant">striv.app/dashboard</span>
+                    </div>
+                    <div className="p-4 md:p-6 flex flex-col gap-4">
+                      <div className="flex items-baseline gap-3">
+                        <span className="font-metric-display text-[28px] md:text-[36px] font-bold text-primary leading-none">+12.8%</span>
+                        <span className="font-body-md text-sm text-on-surface-variant">Strength</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Workouts', value: '16' },
+                          { label: 'Sets', value: '184' },
+                          { label: 'Volume', value: '18.4k' },
+                        ].map(m => (
+                          <div key={m.label} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
+                            <p className="text-[9px] md:text-[10px] font-label-caps text-on-surface-variant uppercase">{m.label}</p>
+                            <p className="text-[16px] md:text-[20px] font-bold text-primary">{m.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Mini chart */}
+                      <svg className="w-full h-16 md:h-24" preserveAspectRatio="none" viewBox="0 0 300 60" aria-hidden="true">
+                        <line x1="0" x2="300" y1="20" y2="20" stroke="#f1edec" strokeWidth="1" />
+                        <line x1="0" x2="300" y1="40" y2="40" stroke="#f1edec" strokeWidth="1" />
+                        <path d="M0,52 Q40,48 70,42 T140,32 T210,20 T260,14" fill="none" stroke="#000" strokeWidth="1.5" />
+                        <path d="M260,14 L300,6" fill="none" stroke="#4648d4" strokeWidth="1.5" strokeDasharray="3 3" />
+                        <circle cx="260" cy="14" r="2.5" fill="#000" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute w-11/12 md:w-3/4 max-w-2xl bg-surface border border-outline-variant rounded-xl shadow-xl p-2 z-20 translate-x-6 translate-y-6 md:translate-x-12 md:translate-y-8">
-                  <div className="w-full h-full bg-surface-container-lowest rounded-lg aspect-[4/3] flex items-center justify-center text-outline-variant font-label-caps text-[12px] md:text-[14px]">Progress Analytics UI Placeholder</div>
+
+                {/* Front card — Progress Analytics mock */}
+                <div className="absolute w-11/12 md:w-3/4 max-w-2xl bg-surface border border-outline-variant rounded-xl shadow-xl p-2 z-20 translate-x-4 translate-y-6 md:translate-x-12 md:translate-y-8">
+                  <div className="w-full bg-surface-container-lowest rounded-lg overflow-hidden">
+                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-outline-variant">
+                      <span className="w-2.5 h-2.5 rounded-full bg-error/60"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-outline-variant/60"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-secondary/40"></span>
+                      <span className="ml-3 text-[10px] font-label-caps text-on-surface-variant">striv.app/progress</span>
+                    </div>
+                    <div className="p-4 md:p-6 flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[9px] md:text-[10px] font-label-caps text-on-surface-variant uppercase">Estimated 1RM</p>
+                          <p className="text-[20px] md:text-[26px] font-bold text-primary leading-tight">102.5 kg
+                            <span className="ml-2 text-[10px] md:text-[12px] font-semibold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">+14%</span>
+                          </p>
+                        </div>
+                        <span className="material-symbols-outlined text-secondary text-[20px]">psychology</span>
+                      </div>
+                      {/* Bars */}
+                      <div className="flex items-end gap-1.5 h-16 md:h-24">
+                        {[35, 55, 42, 70, 58, 85, 72, 100].map((h, i) => (
+                          <div key={i} className={`flex-1 rounded-t-sm ${i === 7 ? 'bg-secondary' : 'bg-primary/80'}`} style={{ height: `${h}%` }}></div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[8px] md:text-[9px] font-label-caps text-outline">
+                        <span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span><span>W7</span><span className="text-secondary font-semibold">Now</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </Reveal>
           </section>
@@ -420,21 +521,33 @@ export default function LandingPage() {
               </h3>
             </div>
             <div className="md:w-1/2">
-              <form className="flex flex-col gap-6" onSubmit={(e) => e.preventDefault()}>
+              <form className="flex flex-col gap-6" onSubmit={handleContactSubmit}>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="contact-name" className="font-label-caps text-label-caps text-on-surface-variant">Name</label>
-                  <input id="contact-name" className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors" type="text" />
+                  <input id="contact-name" required className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors" type="text" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="contact-email" className="font-label-caps text-label-caps text-on-surface-variant">Email</label>
-                  <input id="contact-email" className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors" type="email" />
+                  <input id="contact-email" required className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors" type="email" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="contact-msg" className="font-label-caps text-label-caps text-on-surface-variant">Message</label>
-                  <textarea id="contact-msg" className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors min-h-[120px]" rows={4} />
+                  <textarea id="contact-msg" required className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors min-h-[120px]" rows={4} />
                 </div>
-                <button type="submit" className="bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 rounded-lg hover:bg-primary/90 transition-all shadow-sm self-start active:scale-95 duration-200">
-                  Send Message
+
+                {contactStatus === 'success' && (
+                  <div className="bg-secondary/10 border border-secondary/30 text-secondary rounded-lg p-3 font-body-md text-sm" role="status">
+                    Message sent! We&apos;ll get back to you soon.
+                  </div>
+                )}
+                {contactError && (
+                  <div className="bg-error-container text-on-error-container rounded-lg p-3 font-body-md text-sm" role="alert">
+                    {contactError}
+                  </div>
+                )}
+
+                <button type="submit" disabled={contactStatus === 'loading'} className="bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 rounded-lg hover:bg-primary/90 transition-all shadow-sm self-start active:scale-95 duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {contactStatus === 'loading' ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
             </div>
