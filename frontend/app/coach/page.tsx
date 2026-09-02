@@ -23,8 +23,8 @@ export default function CoachPage() {
 
   const fetchHistory = async () => {
     try {
-      const res = await apiClient.get<{ data: Message[]; remaining_today: number }>("/chat");
-      setMessages(res.data ?? []);
+      const res = await apiClient.get<{ messages: Message[]; remaining_today: number }>("/chat");
+      setMessages(res.messages ?? []);
       setRemaining(res.remaining_today ?? 20);
     } catch (e: any) {
       if (e.status === 401) { window.location.href = "/login"; return; }

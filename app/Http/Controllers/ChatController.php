@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\AI\ChatService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class ChatController extends Controller
@@ -32,6 +33,12 @@ class ChatController extends Controller
      */
     public function store(Request $request)
     {
+        Log::debug('Chat store request', [
+            'all' => $request->all(),
+            'json' => $request->json()->all(),
+            'content' => $request->getContent(),
+        ]);
+
         $validated = $request->validate([
             'content' => 'required|string|min:1|max:' . ChatService::MAX_MESSAGE_CHARS,
         ]);
