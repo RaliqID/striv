@@ -70,4 +70,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/chat', [\App\Http\Controllers\ChatController::class, 'store']);
         Route::delete('/chat', [\App\Http\Controllers\ChatController::class, 'destroy']);
     });
+
+    // Public contact form (landing page) — rate limited
+    Route::post('/contact', [\App\Http\Controllers\ContactController::class, 'store'])
+        ->middleware('throttle:3,60');
 });
