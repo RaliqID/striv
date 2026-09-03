@@ -53,10 +53,17 @@ return [
         'model' => env('XKIRO_MODEL', 'minimax/minimax-m2.7-highspeed:free'),
     ],
 
+    'bai' => [
+        'key' => env('BAI_API_KEY'),
+        'base_uri' => env('BAI_BASE_URI', 'https://api.b.ai/v1'),
+        'model' => env('BAI_MODEL', 'glm-5.3-flash'),
+    ],
+
     // Primary AI provider + fallback chain (tried in order)
     'ai' => [
         'provider' => env('AI_PROVIDER', 'xkiro'),
         'fallback' => env('AI_FALLBACK', 'groq'),
+        'vision' => env('AI_VISION_PROVIDER', 'bai'),
     ],
 
 ];

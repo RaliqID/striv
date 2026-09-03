@@ -65,7 +65,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/reviews/weekly/{id}', [\App\Http\Controllers\WeeklyReviewController::class, 'show'])->whereNumber('id');
         Route::post('/reviews/weekly/generate', [\App\Http\Controllers\WeeklyReviewController::class, 'generate']);
 
-        // AI Coach chat
+        // AI Coach chat — sessions
+        Route::get('/chat/sessions', [\App\Http\Controllers\ChatSessionController::class, 'index']);
+        Route::post('/chat/sessions', [\App\Http\Controllers\ChatSessionController::class, 'store']);
+        Route::get('/chat/sessions/{sessionId}', [\App\Http\Controllers\ChatSessionController::class, 'show'])->whereNumber('sessionId');
+        Route::delete('/chat/sessions/{sessionId}', [\App\Http\Controllers\ChatSessionController::class, 'destroy'])->whereNumber('sessionId');
+
+        // AI Coach chat — conversation
         Route::get('/chat', [\App\Http\Controllers\ChatController::class, 'index']);
         Route::post('/chat', [\App\Http\Controllers\ChatController::class, 'store']);
         Route::delete('/chat', [\App\Http\Controllers\ChatController::class, 'destroy']);

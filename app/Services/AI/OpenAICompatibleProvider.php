@@ -15,8 +15,8 @@ use Throwable;
 class OpenAICompatibleProvider implements AIProviderInterface
 {
     private const TIMEOUT_SECONDS = 30;
-    private const MAX_ATTEMPTS = 3;
-    private const RETRY_BACKOFF_MS = 200;
+    private const MAX_ATTEMPTS = 4;
+    private const RETRY_BACKOFF_MS = 500;
 
     public function __construct(private readonly string $providerKey)
     {
@@ -143,11 +143,19 @@ class OpenAICompatibleProvider implements AIProviderInterface
 
                 if ($response->successful()) {
                     $content = $response->json('choices.0.message.content');
-                    return (is_string($content) && $content !== '') ? $content : null;
+                    if (!is_string($content) || trim($content) === '') {
+                        // Reasoning models can exhaust max_tokens before emitting content.
+                        Log::warning("[{$this->providerKey}] empty content", [
+                            'finish_reason' => $response->json('choices.0.finish_reason'),
+                            'usage' => $response->json('usage'),
+                        ]);
+                        return null;
+                    }
+                    return $content;
                 }
 
                 if ($attempt < self::MAX_ATTEMPTS && $this->isTransient($response->status())) {
-                    usleep(self::RETRY_BACKOFF_MS * 1000);
+                    usleep(self::RETRY_BACKOFF_MS * 1000 * $attempt);
                     continue;
                 }
 
@@ -159,7 +167,7 @@ class OpenAICompatibleProvider implements AIProviderInterface
             } catch (Throwable $e) {
                 $lastError = $e;
                 if ($attempt < self::MAX_ATTEMPTS) {
-                    usleep(self::RETRY_BACKOFF_MS * 1000);
+                    usleep(self::RETRY_BACKOFF_MS * 1000 * $attempt);
                     continue;
                 }
             }

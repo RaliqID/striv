@@ -85,6 +85,19 @@ class AIInsightService
         return $this->providers()[0] ?? null;
     }
 
+    /**
+     * Vision-capable provider (config('services.ai.vision')) for chat
+     * messages carrying images. Null when not configured.
+     */
+    public function visionProvider(): ?AIProviderInterface
+    {
+        $visionKey = config('services.ai.vision');
+        if (!is_string($visionKey) || $visionKey === '') {
+            return null;
+        }
+        return $this->makeProvider($visionKey);
+    }
+
     private function makeProvider(string $key): ?AIProviderInterface
     {
         $cfg = config("services.{$key}");
