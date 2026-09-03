@@ -3,7 +3,7 @@
 param([Parameter(Position=0)][string]$Action = "status")
 
 $ErrorActionPreference = "SilentlyContinue"
-$BackendPort = 8000
+$BackendPort = 8001
 $FrontendPort = 3000
 $Root = $PSScriptRoot
 
