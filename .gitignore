@@ -48,3 +48,4 @@ debug_*.php
 Homestead.json
 Homestead.yaml
 .phpactor.json
+.playwright-mcp/

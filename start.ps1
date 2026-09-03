@@ -18,26 +18,31 @@ function Stop-Process-On-Port {
 }
 
 function Watch-Dev {
+    # NOTE: Backend must match dev.ps1 / frontend/.env.local (port 8001).
+    # Frontend must run in DEV mode (`npm run dev`) — never `next start`.
+    # Running `next build`/`next start` while `next dev` is live overwrites
+    # the shared .next folder and wipes dev chunks -> client-side 404s and
+    # "Application error: a client-side exception has occurred" on navigation.
     while ($true) {
-        $backend = netstat -ano | findstr ":8000 " | findstr "LISTENING"
+        $backend = netstat -ano | findstr ":8001 " | findstr "LISTENING"
         $frontend = netstat -ano | findstr ":3000 " | findstr "LISTENING"
 
         if (-not $backend) {
             Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Backend down. Restarting..."
-            Stop-Process-On-Port 8000
-            Start-Process -FilePath "php" -ArgumentList "artisan","serve","--host=127.0.0.1","--port=8000" -WorkingDirectory "C:\Users\raso8\Striv" -WindowStyle Hidden
+            Stop-Process-On-Port 8001
+            Start-Process -FilePath "php" -ArgumentList "artisan","serve","--host=127.0.0.1","--port=8001" -WorkingDirectory "C:\Users\raso8\Striv" -WindowStyle Hidden
         }
         if (-not $frontend) {
             Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Frontend down. Restarting..."
             Stop-Process-On-Port 3000
-            Start-Process -FilePath "cmd.exe" -ArgumentList "/c","cd /d C:\Users\raso8\Striv\frontend && npx next start -p 3000" -WindowStyle Hidden
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c","cd /d C:\Users\raso8\Striv\frontend && npm run dev > dev.log 2>&1" -WindowStyle Hidden
         }
         Start-Sleep -Seconds 5
     }
 }
 
 if ($Force) {
-    Stop-Process-On-Port 8000
+    Stop-Process-On-Port 8001
     Stop-Process-On-Port 3000
     Start-Sleep -Seconds 2
 }

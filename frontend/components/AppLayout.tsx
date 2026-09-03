@@ -139,9 +139,12 @@ export default function AppLayout({
         {/* Start Tracking button — only when expanded */}
         {!collapsed && (
           <div className="p-3 border-t border-outline-variant">
-            <button className="w-full bg-primary text-on-primary font-metric-sm text-metric-sm py-3 rounded-lg hover:bg-primary/90 transition-colors">
+            <Link
+              href="/workout"
+              className="block w-full bg-primary text-on-primary font-metric-sm text-metric-sm py-3 rounded-lg hover:bg-primary/90 transition-colors text-center"
+            >
               Start Tracking
-            </button>
+            </Link>
           </div>
         )}
       </aside>
