@@ -15,7 +15,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const res = await fetch("http://localhost:8001/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -36,7 +36,7 @@ export default function LoginPage() {
       let completed = profile?.onboarding_completed_at;
       if (completed == null) {
         try {
-          const meRes = await fetch("http://localhost:8000/api/v1/auth/user", {
+          const meRes = await fetch("http://localhost:8001/api/v1/auth/user", {
             headers: {
               Authorization: `Bearer ${data.token}`,
               Accept: "application/json",
@@ -143,7 +143,7 @@ export default function LoginPage() {
           </div>
 
           <a
-            href="http://localhost:8000/api/v1/auth/google/redirect"
+            href="http://localhost:8001/api/v1/auth/google/redirect"
             className="flex w-full items-center justify-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-container-low"
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
