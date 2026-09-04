@@ -149,10 +149,13 @@ export default function AppLayout({
         )}
       </aside>
 
-      {/* Main content */}
+      {/* Main content — responsive left margin: 0 on mobile (sidebar hidden),
+          sidebar width on md+ via Tailwind classes (inline style would leak
+          the margin into mobile and force horizontal scroll) */}
       <main
-        className="flex-1 w-full transition-all duration-200 ease-in-out"
-        style={{ marginLeft: collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED }}
+        className={`flex-1 w-full transition-all duration-200 ease-in-out ${
+          collapsed ? "md:ml-[72px]" : "md:ml-[256px]"
+        }`}
       >
         <div className="px-margin-mobile py-8 md:px-margin-desktop max-w-container-max mx-auto">
           {children}

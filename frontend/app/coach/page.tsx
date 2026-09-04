@@ -47,6 +47,19 @@ const fmtRelative = (iso: string) => {
   });
 };
 
+// Map network-level failures (fetch TypeError, "Failed to fetch") to a
+// readable message. Server messages (e.g. 429) pass through untouched.
+const friendlyError = (e: any, fallback: string): string => {
+  const raw = typeof e?.message === "string" ? e.message : "";
+  if (
+    e?.name === "TypeError" ||
+    /failed to fetch|networkerror|load failed/i.test(raw)
+  ) {
+    return "Can't reach the server. Check your connection and try again.";
+  }
+  return raw || fallback;
+};
+
 // Downscale image via canvas to max 1024px longest edge, JPEG q0.8 data URL.
 const downscaleImage = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -127,7 +140,7 @@ export default function CoachPage() {
         setActiveSessionId(res.session?.id ?? null);
       } catch (e: any) {
         if (!handle401(e)) {
-          setError(e.message || "Could not load chat.");
+          setError(friendlyError(e, "Could not load chat."));
         }
       } finally {
         fetchSessions();
@@ -153,7 +166,7 @@ export default function CoachPage() {
       setMessages(res.messages ?? []);
     } catch (e: any) {
       if (!handle401(e)) {
-        setError(e.message || "Could not open conversation.");
+        setError(friendlyError(e, "Could not open conversation."));
       }
     } finally {
       setSwitching(false);
@@ -171,7 +184,7 @@ export default function CoachPage() {
       setMessages([]);
     } catch (e: any) {
       if (!handle401(e)) {
-        setError(e.message || "Could not start a new conversation.");
+        setError(friendlyError(e, "Could not start a new conversation."));
       }
     } finally {
       setSwitching(false);
@@ -199,7 +212,7 @@ export default function CoachPage() {
       }
     } catch (e: any) {
       if (!handle401(e)) {
-        setError(e.message || "Could not delete conversation.");
+        setError(friendlyError(e, "Could not delete conversation."));
       }
     }
   };
@@ -281,88 +294,83 @@ export default function CoachPage() {
       });
     } catch (e: any) {
       if (handle401(e)) return;
-      setError(e.message || "Couldn't send message.");
+      setError(friendlyError(e, "Couldn't send message."));
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setLoading(false);
     }
   };
 
-  const sessionRail = (
-    <div className="flex flex-col h-full border border-outline-variant rounded-xl bg-surface-container-lowest">
-      <div className="p-3 border-b border-outline-variant">
-        <button
-          onClick={startNewChat}
-          disabled={switching}
-          className="w-full bg-primary text-on-primary rounded-lg px-4 py-2.5 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          New chat
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {sessions.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant px-3 py-4 text-center">
-            No conversations yet.
-          </p>
-        ) : (
-          sessions.map((s) => (
-            <div
-              key={s.id}
-              className={`group relative rounded-lg transition-colors cursor-pointer ${
-                s.id === activeSessionId
-                  ? "bg-secondary-container text-on-secondary-container"
-                  : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
-              }`}
-              onClick={() => switchSession(s.id)}
-            >
-              <div className="px-3 py-2.5 pr-10">
-                <p className="font-metric-sm text-metric-sm truncate">{s.title}</p>
-                <p
-                  className={`font-label-caps text-label-caps mt-0.5 ${
-                    s.id === activeSessionId
-                      ? "text-on-secondary-container/70"
-                      : "text-on-surface-variant/70"
-                    }`}
-                >
-                  {fmtRelative(s.last_message_at)}
-                </p>
-              </div>
-              <button
-                onClick={(ev) => {
-                  ev.stopPropagation();
-                  deleteSession(s.id);
-                }}
-                aria-label={`Delete conversation: ${s.title}`}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
-              >
-                <span className="material-symbols-outlined text-[18px]">delete</span>
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto flex flex-col h-[calc(100vh-9rem)]">
-        <div className="mb-4">
+      <div className="max-w-6xl mx-auto flex flex-col h-[calc(100dvh-9rem)] min-h-0">
+        <div className="mb-4 shrink-0">
           <h1 className="font-headline-lg text-headline-lg text-primary">AI Coach</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
             Ask about your training, progress, or get advice based on your data.
           </p>
         </div>
 
-        <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0">
-          {/* Desktop sessions rail */}
-          <div className="hidden md:flex w-[260px] shrink-0 min-h-0">
-            {sessionRail}
+        <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 min-w-0">
+          {/* Desktop sessions rail — direct flex child so it stretches to the
+              exact same height as the chat pane (flex row stretch) */}
+          <div className="hidden md:flex md:flex-col w-[260px] shrink-0 min-h-0 overflow-hidden border border-outline-variant rounded-xl bg-surface-container-lowest">
+            <div className="p-3 border-b border-outline-variant shrink-0">
+              <button
+                onClick={startNewChat}
+                disabled={switching}
+                className="w-full max-w-full bg-primary text-on-primary rounded-lg px-4 py-2.5 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                New chat
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 p-2 space-y-1">
+              {sessions.length === 0 ? (
+                <p className="font-body-md text-body-md text-on-surface-variant px-3 py-4 text-center">
+                  No conversations yet.
+                </p>
+              ) : (
+                sessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`group relative w-full min-w-0 overflow-hidden rounded-lg transition-colors cursor-pointer ${
+                      s.id === activeSessionId
+                        ? "bg-secondary-container text-on-secondary-container"
+                        : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
+                    }`}
+                    onClick={() => switchSession(s.id)}
+                  >
+                    <div className="min-w-0 px-3 py-2.5 pr-10">
+                      <p className="font-metric-sm text-metric-sm truncate">{s.title}</p>
+                      <p
+                        className={`font-label-caps text-label-caps mt-0.5 truncate ${
+                          s.id === activeSessionId
+                            ? "text-on-secondary-container/70"
+                            : "text-on-surface-variant/70"
+                        }`}
+                      >
+                        {fmtRelative(s.last_message_at)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        deleteSession(s.id);
+                      }}
+                      aria-label={`Delete conversation: ${s.title}`}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
-          {/* Mobile: horizontal chips row */}
-          <div className="md:hidden flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 items-center">
+          {/* Mobile: horizontal chips row — contained, never forces page scroll */}
+          <div className="md:hidden flex flex-nowrap gap-2 overflow-x-auto min-w-0 max-w-full pb-1 items-center">
             <button
               onClick={startNewChat}
               disabled={switching}
@@ -397,8 +405,8 @@ export default function CoachPage() {
           </div>
 
           {/* Chat pane */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto border border-outline-variant rounded-xl bg-surface-container-lowest p-4 space-y-4">
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+            <div className="flex-1 overflow-y-auto min-h-0 border border-outline-variant rounded-xl bg-surface-container-lowest p-4 space-y-4">
               {switching && (
                 <div className="flex justify-center py-2">
                   <div className="flex gap-1">
@@ -419,28 +427,45 @@ export default function CoachPage() {
                 messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex min-w-0 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`max-w-[80%] rounded-xl px-4 py-3 ${
-                        msg.role === "user"
-                          ? "bg-primary text-on-primary"
-                          : "bg-surface-container-low border border-outline-variant text-on-surface"
-                      }`}
-                    >
-                      {msg.role === "user" && msg.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
+                    {msg.role === "user" && msg.image_url ? (
+                      // Image message: standalone image, text in its own bubble below (WhatsApp pattern)
+                      <div className="flex flex-col items-end min-w-0 max-w-[80%]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={msg.image_url}
                           alt="Attached image"
-                          className="rounded-lg max-h-48 object-cover mb-2"
+                          className="block w-auto max-w-full max-h-56 rounded-xl border border-outline-variant"
                         />
-                      )}
-                      <p className="font-body-md text-body-md whitespace-pre-wrap">{msg.content}</p>
-                      <p className="text-[10px] opacity-60 mt-1">
-                        {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
+                        {msg.content && (
+                          <div className="mt-2 min-w-0 max-w-full rounded-xl px-4 py-3 bg-primary text-on-primary">
+                            <p className="font-body-md text-body-md whitespace-pre-wrap">{msg.content}</p>
+                            <p className="text-[10px] opacity-60 mt-1">
+                              {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        )}
+                        {!msg.content && (
+                          <p className="text-[10px] opacity-60 mt-1">
+                            {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className={`min-w-0 max-w-[80%] rounded-xl px-4 py-3 ${
+                          msg.role === "user"
+                            ? "bg-primary text-on-primary"
+                            : "bg-surface-container-low border border-outline-variant text-on-surface"
+                        }`}
+                      >
+                        <p className="font-body-md text-body-md whitespace-pre-wrap">{msg.content}</p>
+                        <p className="text-[10px] opacity-60 mt-1">
+                          {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -459,13 +484,15 @@ export default function CoachPage() {
             </div>
 
             {error && (
-              <div className="mt-2 text-error font-body-md text-sm">{error}</div>
+              <div className="mt-2 text-error font-body-md text-sm shrink-0">
+                {error}
+              </div>
             )}
 
             {/* Image preview before send */}
             {imagePreview && (
-              <div className="mt-2 flex items-center gap-2">
-                <div className="relative">
+              <div className="mt-2 flex items-center gap-2 shrink-0">
+                <div className="relative shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imagePreview}
@@ -486,7 +513,7 @@ export default function CoachPage() {
               </div>
             )}
 
-            <form onSubmit={sendMessage} className="mt-4 flex gap-2 items-end">
+            <form onSubmit={sendMessage} className="mt-4 flex flex-nowrap gap-2 items-end shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -511,13 +538,13 @@ export default function CoachPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about your training..."
-                className="flex-1 rounded-xl border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition disabled:opacity-50"
+                className="flex-1 min-w-0 rounded-xl border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition disabled:opacity-50"
                 disabled={loading}
               />
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="bg-primary text-on-primary rounded-xl px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="shrink-0 bg-primary text-on-primary rounded-xl px-4 sm:px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Send
               </button>
