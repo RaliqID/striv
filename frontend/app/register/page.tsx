@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiUrl } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8001/api/v1/auth/register", {
+      const res = await fetch(apiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
@@ -157,7 +158,7 @@ export default function RegisterPage() {
           </div>
 
           <a
-            href="http://localhost:8001/api/v1/auth/google/redirect"
+            href={apiUrl("/auth/google/redirect")}
             className="flex w-full items-center justify-center rounded-[4px] border border-outline-variant bg-surface px-4 py-2 text-[14px] font-medium text-primary transition-colors hover:bg-surface-container-low"
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

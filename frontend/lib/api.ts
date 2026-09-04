@@ -1,5 +1,11 @@
+// API base URL. Set NEXT_PUBLIC_API_URL for deployed environments (Vercel);
+// falls back to the local Laravel dev server for local development.
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
+
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${path}`;
+}
 
 export class ApiError extends Error {
   status: number;
