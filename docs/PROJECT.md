@@ -105,7 +105,7 @@ LLM (openai/gpt-oss-120b)
 - `StrengthService` — Epley formula helper, best 1RM per session for an exercise.
 - `PersonalRecordService` — PR detection on session finish (weight, 1RM, volume). Idempotent — never lowers an existing PR.
 - `PatternDetectionService` — progress / plateau / regression / volume_change / consistency / milestone detectors. Linear regression on e1rm points.
-- `AIInsightService` + `GroqProvider` + `InsightContextBuilder` + `GenerateInsight` job — LLM interpretasi with deterministic fallback if Groq unavailable.
+- `AIInsightService` + `OpenAICompatibleProvider` + `InsightContextBuilder` + `GenerateInsight` job — LLM interpretasi with deterministic fallback if the provider chain is unavailable. Providers are config-driven (`services.{key}`: xkiro, groq, bai) with primary/fallback/vision routing (`services.ai`).
 
 ---
 
@@ -152,7 +152,7 @@ LLM (openai/gpt-oss-120b)
 9. **Finish** → POST `/workout-sessions/{id}/finish` → backend returns `{session, summary:{exercises, sets, volume_kg}, prs_detected}`
 10. Frontend clears sessionStorage, shows summary view with real metrics
 11. Async: `PersonalRecordService->detectForSession` updates PRs (idempotent, never lowers)
-12. Async: `GenerateInsight` job dispatched → `PatternDetectionService` + `GroqProvider` → AiInsight rows persisted
+12. Async: `GenerateInsight` job dispatched → `PatternDetectionService` + provider chain (`OpenAICompatibleProvider`) → AiInsight rows persisted
 
 ### 4.5 Browse progress
 - `/dashboard` — fetched once on mount via `GET /analytics/dashboard`. Stats: workouts/sets/volume last 30d, strength trend %, recent PRs, weekly volume chart (last 8 weeks).

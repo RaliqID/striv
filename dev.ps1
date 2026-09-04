@@ -13,21 +13,27 @@ function Get-PortPid($port) {
 }
 
 function Stop-Port($port) {
-    $pid = Get-PortPid $port
-    if ($pid) {
-        Write-Host "[dev] killing PID $pid on port $port" -ForegroundColor Yellow
-        taskkill /PID $pid /F | Out-Null
+    # NOTE: use $procId — $pid is a read-only automatic variable in PowerShell;
+    # assigning it fails silently and taskkill would target the script itself.
+    $procId = Get-PortPid $port
+    if ($procId -and $procId -ne $PID) {
+        Write-Host "[dev] killing PID $procId on port $port" -ForegroundColor Yellow
+        taskkill /PID $procId /F | Out-Null
         Start-Sleep -Milliseconds 500
     }
 }
 
 function Start-Backend {
     Stop-Port $BackendPort
-    Start-Process -FilePath "php" -ArgumentList "artisan","serve","--host=127.0.0.1","--port=$BackendPort" -WorkingDirectory $Root -WindowStyle Hidden
+    # PHP_CLI_SERVER_WORKERS + --no-reload: php artisan serve is single-worker
+    # by default; parallel API requests (dashboard fires 4+) crash a lone worker.
+    # Env var inherits to the child process; --no-reload is required for workers.
+    $env:PHP_CLI_SERVER_WORKERS = "8"
+    Start-Process -FilePath "php" -ArgumentList "artisan","serve","--host=127.0.0.1","--port=$BackendPort","--no-reload" -WorkingDirectory $Root -WindowStyle Hidden
     Start-Sleep -Seconds 3
-    $pid = Get-PortPid $BackendPort
-    if ($pid) {
-        Write-Host "[dev] backend  OK  http://localhost:$BackendPort (PID $pid)" -ForegroundColor Green
+    $procId = Get-PortPid $BackendPort
+    if ($procId) {
+        Write-Host "[dev] backend  OK  http://localhost:$BackendPort (PID $procId, workers=8)" -ForegroundColor Green
     } else {
         Write-Host "[dev] backend  FAIL (check logs: storage/logs/laravel.log)" -ForegroundColor Red
     }
@@ -40,9 +46,9 @@ function Start-Frontend {
     $feDir = Join-Path $Root "frontend"
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c","cd /d `"$feDir`" && npm run dev > dev.log 2>&1" -WindowStyle Hidden
     Start-Sleep -Seconds 8
-    $pid = Get-PortPid $FrontendPort
-    if ($pid) {
-        Write-Host "[dev] frontend OK  http://localhost:$FrontendPort (PID $pid)" -ForegroundColor Green
+    $procId = Get-PortPid $FrontendPort
+    if ($procId) {
+        Write-Host "[dev] frontend OK  http://localhost:$FrontendPort (PID $procId)" -ForegroundColor Green
     } else {
         Write-Host "[dev] frontend FAIL (check frontend/dev.log)" -ForegroundColor Red
     }
