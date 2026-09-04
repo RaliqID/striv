@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // Specific origins only (comma-separated CORS_ALLOWED_ORIGINS env).
+    // Local dev: http://localhost:3000. Production: the deployed frontend URL.
+    // Falls back to '*' only when the env var is unset (first-run DX); set the
+    // var in every real deployment so origins are locked down.
+    'allowed_origins' => array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', '*'))),
 
     'allowed_origins_patterns' => [],
 
