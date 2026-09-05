@@ -21,10 +21,10 @@ class ProgressSnapshot extends Model
 
     protected $casts = [
         'date' => 'date',
-        'volume_total' => 'decimal:2',
-        'volume_weekly' => 'decimal:2',
+        'volume_total' => 'float',
+        'volume_weekly' => 'float',
         'frequency_weekly' => 'integer',
-        'consistency_score' => 'decimal:2',
+        'consistency_score' => 'float',
     ];
 
     public function user(): BelongsTo

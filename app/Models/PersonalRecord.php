@@ -20,7 +20,7 @@ class PersonalRecord extends Model
     ];
 
     protected $casts = [
-        'value' => 'decimal:2',
+        'value' => 'float',
         'achieved_at' => 'datetime',
     ];
 

@@ -19,7 +19,7 @@ class WorkoutSet extends Model
     ];
 
     protected $casts = [
-        'weight_kg' => 'decimal:2',
+        'weight_kg' => 'float',
         'reps' => 'integer',
         'rpe' => 'integer',
     ];

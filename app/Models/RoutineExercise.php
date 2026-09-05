@@ -23,7 +23,7 @@ class RoutineExercise extends Model
         'order' => 'integer',
         'target_sets' => 'integer',
         'target_reps' => 'integer',
-        'target_weight_kg' => 'decimal:2',
+        'target_weight_kg' => 'float',
     ];
 
     public function routine(): BelongsTo

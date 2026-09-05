@@ -17,7 +17,7 @@ class GoalProgress extends Model
     ];
 
     protected $casts = [
-        'current_value' => 'decimal:2',
+        'current_value' => 'float',
         'recorded_at' => 'datetime',
     ];
 
