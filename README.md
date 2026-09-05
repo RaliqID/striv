@@ -2,119 +2,109 @@
 
 **Train. Track. Understand.**
 
-AI-powered personal training intelligence platform. Striv turns raw workout data into actionable insights: progress detection, plateau alerts, volume trends, personal records, and AI-interpreted weekly reviews.
+AI-powered personal training intelligence platform. Striv turns raw workout data into actionable insights: progress detection, plateau alerts, volume trends, personal records, and an AI coach chat with image understanding (form checks, equipment, progress photos).
+
+Author: Raliq Hidayat BM3
 
 ## Stack
 
-- **Backend**: Laravel 11 (PHP 8.3), Sanctum auth, Eloquent
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
-- **Database**: PostgreSQL (production) / SQLite (dev)
-- **Cache/Queue**: Redis
-- **AI**: Groq `openai/gpt-oss-120b` (free tier, OpenAI-compatible) with deterministic fallback
+- **Backend**: Laravel 12 (PHP 8.3), Sanctum token auth, Eloquent
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS (Material 3-inspired tokens)
+- **Database**: MySQL / SQLite (dev & tests)
+- **AI**: OpenAI-compatible provider chain — text: xkiro `minimax/minimax-m3` (primary) → groq fallback; images: b.ai `glm-5.3-flash` (vision). Deterministic offline fallback when no provider is reachable.
+- **Mail**: Gmail SMTP (app password) for landing-page contact form
 
-## Quick Start (Development)
+## Requirements
 
-### Backend
+- PHP 8.3+ with `pdo_mysql`/`pdo_sqlite`, Composer
+- Node.js 18+ (20+ recommended), npm
+- MySQL 8 (or use SQLite for zero-setup dev)
+
+## How to Run (Development)
+
+The dev servers listen on **backend port 8001** and **frontend port 3000**.
+
+### 1. Backend
+
 ```bash
 composer install
 cp .env.example .env
 php artisan key:generate
-php artisan migrate --seed   # seeds 128 exercises
-php artisan serve             # http://localhost:8000
 ```
 
-### Frontend
+Create the dev database (MySQL) or switch `DB_CONNECTION=sqlite` in `.env` for zero-setup:
+
+```bash
+php artisan migrate --seed   # seeds 128 exercises
+php artisan storage:link      # chat image uploads
+php artisan serve --host=127.0.0.1 --port=8001 --no-reload
+```
+
+> On Windows, set `PHP_CLI_SERVER_WORKERS=8` before `artisan serve` (parallel
+> API requests crash a lone single worker; `--no-reload` is required for the
+> workers env var to take effect). The provided scripts do this for you.
+
+### 2. Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev                   # http://localhost:3000
 ```
 
-### Dev helper scripts
+The API base URL falls back to `http://localhost:8001/api/v1` in dev — no
+extra config needed. For a deployed frontend, set `NEXT_PUBLIC_API_URL`.
+
+### 3. One-command helpers (Windows)
+
 ```powershell
-.\dev.ps1 start     # start backend + frontend clean (kills duplicates first)
-.\dev.ps1 stop      # stop all
-.\dev.ps1 restart   # restart both
-.\dev.ps1 status    # check ports + processes
+.\dev.ps1 start     # backend (workers=8) + frontend, health-checked
+.\dev.ps1 status    # show running state
+.\dev.ps1 restart   # clean restart both
+
+.\start.ps1 watch   # watchdog: auto-revive any server that dies (10s poll)
 ```
 
-## Production Deployment (Docker)
+## Environment
 
-### Prerequisites
-- Docker + Docker Compose
-- Groq API key (free at console.groq.com)
-- Google OAuth credentials (for Google sign-in)
+Key variables (see `.env.example` / `.env.production` template):
 
-### Steps
-
-1. **Configure environment**
-   ```bash
-   cp .env.production .env
-   # edit: DB_PASSWORD, GROQ_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APP_URL
-   ```
-
-2. **Start the stack**
-   ```bash
-   ./start.ps1 up          # or: docker-compose up -d
-   ```
-
-   This starts:
-   - `db` — PostgreSQL 17 (persistent volume `pgdata`)
-   - `redis` — Redis 7
-   - `app` — Laravel PHP-FPM (with config/route/view caches)
-   - `nginx` — reverse proxy on port 80
-
-3. **Run migrations**
-   ```bash
-   docker-compose exec app php artisan migrate --force
-   docker-compose exec app php artisan db:seed --class=ExerciseSeeder --force
-   ```
-
-4. **Frontend**
-   ```bash
-   cd frontend
-   docker build -t striv-frontend .
-   docker run -d -p 3000:3000 striv-frontend
-   ```
-   Point nginx (or your reverse proxy / Vercel) at port 3000.
-
-5. **Verify**
-   ```bash
-   curl http://localhost/api/v1/exercises       # 200 + JSON
-   curl http://localhost:3000/                   # landing page
-   ```
-
-### Useful commands
-```bash
-./start.ps1 logs      # tail all container logs
-./start.ps1 restart   # restart containers
-./start.ps1 down      # stop everything
-docker-compose exec app php artisan queue:work   # run AI/insight jobs
-```
-
-## API Overview
-
-Base: `/api/v1` — full reference in `docs/PROJECT.md` §3.
-
-| Area | Endpoints |
+| Variable | Purpose |
 |---|---|
-| Auth | register, login, logout, Google OAuth |
-| Workouts | sessions CRUD, exercises-in-session, sets, finish (PR detect + AI dispatch) |
-| Analytics | dashboard, progress (7D–1Y), per-exercise |
-| Records | list, per-exercise (weight/1RM/volume PRs) |
-| Insights | feed, generate |
-| Goals | CRUD + progress % |
-| Routines | CRUD + start (prefilled session) |
-| Reviews | weekly list/show/generate |
-| Profile | show/update (biodata + training profile) |
+| `AI_PROVIDER` / `AI_FALLBACK` | text LLM chain (default `xkiro` → `groq`) |
+| `AI_VISION_PROVIDER` | vision LLM for image messages (default `bai`) |
+| `XKIRO_API_KEY` / `XKIRO_MODEL` | primary text provider |
+| `BAI_API_KEY` / `BAI_MODEL` | vision provider (image chat) |
+| `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI` | Google OAuth login |
+| `FRONTEND_URL` | where OAuth callback redirects (default localhost:3000) |
+| `CORS_ALLOWED_ORIGINS` | comma-separated allowed frontend origins |
+| `CONTACT_NOTIFY_EMAIL` + SMTP vars | landing-page contact form delivery |
 
-## Documentation
+## Testing
 
-- `docs/PROJECT.md` — full project documentation (architecture, flows, data model, AI methodology)
-- `docs/FIGMA_IMPLEMENTATION_STATUS.md` — screen-by-screen implementation tracker
-- `docs/deployment/DEPLOYMENT.md` — detailed deployment guide
+```bash
+php artisan test        # 39 tests / 160 assertions (sqlite :memory:)
+```
 
-## Notes
+Covers: ChatService sessions (title resolution, isolation, cascade delete),
+chat API (validation, rate limit, image storage), chat sessions CRUD, and
+auth flows (register/login/token).
 
-- All analytics are deterministic (Epley 1RM, volume, consistency). The LLM only interprets pre-computed patterns — never invents numbers.
-- AI failure never blocks data: workout finishes and PRs persist even when Groq is down.
+## Project Layout
+
+```
+app/Http/Controllers     API controllers (auth, chat, sessions, analytics…)
+app/Services/AI         provider chain, chat + insight services
+app/Services/Analytics   deterministic analytics (Epley 1RM, trends, patterns)
+database/migrations     schema (chat_sessions cascade delete, etc.)
+frontend/app             Next.js App Router pages
+frontend/components      AppLayout (sidebar/bottom-nav) etc.
+dev.ps1 / start.ps1      dev manager + watchdog
+```
+
+## Deploy Notes (frontend on Vercel)
+
+The frontend is deployable to Vercel as-is. Set `NEXT_PUBLIC_API_URL` to your
+public backend URL, and make sure the backend sets `CORS_ALLOWED_ORIGINS` and
+`FRONTEND_URL` to the Vercel origin. Google OAuth additionally needs the public
+backend callback registered in Google Cloud Console.
