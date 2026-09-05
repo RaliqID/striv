@@ -22,7 +22,9 @@ class Goal extends Model
     ];
 
     protected $casts = [
-        'target_value' => 'decimal:2',
+        // float, NOT decimal:2 — decimal serializes to string and crashes
+        // frontend .toFixed() calls (see Profile weight_kg bug).
+        'target_value' => 'float',
         'target_reps' => 'integer',
         'deadline' => 'date',
     ];

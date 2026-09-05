@@ -24,7 +24,8 @@ class AiInsight extends Model
 
     protected $casts = [
         'evidence' => 'array',
-        'confidence' => 'decimal:2',
+        // float, NOT decimal:2 — decimal serializes to string (frontend .toFixed)
+        'confidence' => 'float',
         'time_range_start' => 'datetime',
         'time_range_end' => 'datetime',
         'generated_at' => 'datetime',

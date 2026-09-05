@@ -34,10 +34,13 @@ const goalLabels: Record<string, string> = {
   endurance: "Conditioning",
 };
 
-const fmtNum = (n: number | null, unit: string) => {
-  if (n == null) return "—";
+const fmtNum = (n: number | string | null, unit: string) => {
+  if (n == null || n === "") return "—";
+  // Backend DECIMAL casts can arrive as strings ("53.00") — coerce first.
+  const num = typeof n === "string" ? parseFloat(n) : n;
+  if (Number.isNaN(num)) return "—";
   // Preserve 1 decimal for kg, integer for others
-  const display = Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
+  const display = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
   return `${display} ${unit}`;
 };
 

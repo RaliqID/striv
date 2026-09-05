@@ -28,9 +28,11 @@ class Profile extends Model
 
     protected $casts = [
         'age' => 'integer',
-        'weight_kg' => 'decimal:2',
-        'height_cm' => 'decimal:2',
-        'target_weight_kg' => 'decimal:2',
+        // float, NOT decimal:2 — the decimal cast serializes to a STRING
+        // ("53.00") which crashed ProfilePage's n.toFixed() on the frontend.
+        'weight_kg' => 'float',
+        'height_cm' => 'float',
+        'target_weight_kg' => 'float',
         'preferences' => 'array',
         'training_frequency' => 'integer',
         'onboarding_completed_at' => 'datetime',
