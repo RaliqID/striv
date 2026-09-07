@@ -39,10 +39,21 @@ function Start-Backend {
     }
 }
 
+function Stop-StrivFrontends {
+    # Kill every Striv frontend instance — booting `next dev` doesn't hold the
+    # port yet, so port-based kills miss it and leave orphans on :3001/:3002.
+    # NOTE: match CommandLine, not .Path (node.exe lives in Program Files).
+    Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" | Where-Object {
+        $_.CommandLine -like "*Striv*frontend*" -and $_.CommandLine -like "*next*"
+    } | ForEach-Object { taskkill /PID $_.ProcessId /F 2>&1 | Out-Null }
+    Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" | Where-Object {
+        $_.CommandLine -like "*Striv*frontend*" -and $_.CommandLine -like "*npm*dev*"
+    } | ForEach-Object { taskkill /PID $_.ProcessId /F 2>&1 | Out-Null }
+}
+
 function Start-Frontend {
     Stop-Port $FrontendPort
-    # kill leftover node processes from previous runs
-    Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*Striv*" } | Stop-Process -Force
+    Stop-StrivFrontends
     $feDir = Join-Path $Root "frontend"
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c","cd /d `"$feDir`" && npm run dev > dev.log 2>&1" -WindowStyle Hidden
     Start-Sleep -Seconds 8
@@ -65,7 +76,7 @@ switch ($Action) {
         Write-Host "[dev] stopping..." -ForegroundColor Cyan
         Stop-Port $BackendPort
         Stop-Port $FrontendPort
-        Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*Striv*" } | Stop-Process -Force
+        Stop-StrivFrontends
         Write-Host "[dev] stopped." -ForegroundColor Cyan
     }
     "restart" {
