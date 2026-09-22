@@ -77,6 +77,14 @@ Route::prefix('v1')->group(function () {
         Route::delete('/chat', [\App\Http\Controllers\ChatController::class, 'destroy']);
     });
 
+    Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::get('/stats', [\App\Http\Controllers\AdminStatsController::class, 'index']);
+        Route::get('/users', [\App\Http\Controllers\AdminUserController::class, 'index']);
+        Route::get('/users/{user}', [\App\Http\Controllers\AdminUserController::class, 'show'])->whereNumber('user');
+        Route::post('/users/{user}/suspend', [\App\Http\Controllers\AdminUserController::class, 'suspend'])->whereNumber('user');
+        Route::post('/users/{user}/unsuspend', [\App\Http\Controllers\AdminUserController::class, 'unsuspend'])->whereNumber('user');
+    });
+
     // Public contact form (landing page) — rate limited
     Route::post('/contact', [\App\Http\Controllers\ContactController::class, 'store'])
         ->middleware('throttle:3,60');

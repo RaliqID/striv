@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // to a Laravel "login" route (does not exist) — API auth failures
         // must render JSON 401.
         $middleware->redirectGuestsTo(null);
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request, $e) {

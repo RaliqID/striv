@@ -52,6 +52,10 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->is_suspended) {
+            return response()->json(['message' => 'Account suspended. Contact support.'], 403);
+        }
+
         $user->load('profile');
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -101,6 +105,7 @@ class AuthController extends Controller
         }
 
         $user->load('profile');
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $needsOnboarding = $user->profile === null
