@@ -28,6 +28,8 @@ const bottomNavItems = [
   { label: "Settings", href: "/settings", icon: "settings" },
 ];
 
+const adminNavItem = { label: "Admin", href: "/admin", icon: "admin_panel_settings" };
+
 const SIDEBAR_EXPANDED = 256;
 const SIDEBAR_COLLAPSED = 72;
 
@@ -109,7 +111,7 @@ export default function AppLayout({
 
         {/* Nav items */}
         <nav className="flex-1 flex flex-col gap-1 px-3 mt-2 overflow-y-auto overflow-x-hidden">
-          {navItems.map((item) => {
+          {(user?.is_admin ? [...navItems, adminNavItem] : navItems).map((item) => {
             const active = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
             return (
               <Link
