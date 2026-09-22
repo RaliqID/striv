@@ -49,3 +49,7 @@ Homestead.json
 Homestead.yaml
 .phpactor.json
 .playwright-mcp/
+
+frontend/.env.local
+.env.local
+*.local
