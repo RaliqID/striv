@@ -1,3 +1,16 @@
+/*
+ * Toolchain resolver. Must be declared before anything else: Gradle requires
+ * the `plugins {}` block to appear first in a settings script.
+ *
+ * Android Studio ships a very new bundled JDK (25 at the time of writing), but
+ * Gradle 8.14 will not *run* on Java 24 or newer. Rather than asking everyone to
+ * install a second JDK by hand, this resolver lets Gradle download a matching
+ * one; the build then picks it up automatically via the java toolchain.
+ */
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
