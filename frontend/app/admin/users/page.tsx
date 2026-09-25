@@ -1,19 +1,297 @@
 "use client";
 
-import AppLayout from "@/components/AppLayout";
-import { apiClient, ApiError } from "@/lib/api";
+import AdminLayout from "@/components/admin/AdminLayout";
+import Badge from "@/components/admin/Badge";
+import Button from "@/components/admin/Button";
+import type { Column } from "@/components/admin/DataTable";
+import DataTable from "@/components/admin/DataTable";
+import Pagination from "@/components/admin/Pagination";
+import Panel from "@/components/admin/Panel";
+import { EmptyState, ErrorBanner, LoadingRows } from "@/components/admin/States";
+import { apiClient, apiUrl } from "@/lib/api";
+import {
+  classifyError,
+  formatNumber,
+  formatRelative,
+  redirectToLogin,
+} from "@/lib/admin";
 import type { AdminUser, AdminUsersResponse } from "@/types/admin";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-const formatDate = (value: string | null) => value ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Never";
-const badge = "inline-flex rounded-full px-2 py-1 font-label-caps text-label-caps";
-
-function UserBadges({ user }: { user: AdminUser }) { return <div className="flex flex-wrap gap-1">{user.is_admin && <span className={`${badge} bg-secondary-container text-on-secondary-container`}>Admin</span>}{user.is_suspended && <span className={`${badge} bg-error-container text-on-error-container`}>Suspended</span>}{!user.is_suspended && new Date(user.created_at).getTime() > Date.now() - 7 * 86400000 && <span className={`${badge} bg-tertiary-fixed text-on-tertiary-fixed-variant`}>New</span>}</div>; }
+const STATUS_OPTIONS = [
+  { value: "all", label: "All users" },
+  { value: "active", label: "Active (30d)" },
+  { value: "new", label: "New (7d)" },
+  { value: "suspended", label: "Suspended" },
+  { value: "admin", label: "Administrators" },
+];
 
 export default function AdminUsersPage() {
-  const [result, setResult] = useState<AdminUsersResponse | null>(null); const [search, setSearch] = useState(""); const [status, setStatus] = useState("all"); const [page, setPage] = useState(1); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [denied, setDenied] = useState(false);
-  const load = async (nextPage = page, nextStatus = status, nextSearch = search) => { setLoading(true); setError(""); try { const params = new URLSearchParams({ search: nextSearch, status: nextStatus, page: String(nextPage), per_page: "20", sort: "created_at", order: "desc" }); setResult(await apiClient.get<AdminUsersResponse>(`/admin/users?${params.toString()}`)); setPage(nextPage); } catch (e) { const err = e as ApiError; if (err.status === 401) window.location.href = "/login"; else if (err.status === 403) setDenied(true); else setError(err.message || "Could not load users."); } finally { setLoading(false); } };
-  useEffect(() => { void load(1); }, []);
-return <AppLayout><div className="mx-auto w-full max-w-6xl min-w-0 space-y-6"><div><p className="font-label-caps text-label-caps text-on-surface-variant">Administration</p><h1 className="mt-1 font-headline-lg text-headline-lg text-primary">Users</h1><p className="mt-1 font-body-md text-body-md text-on-surface-variant">Review accounts and access status.</p></div>{denied ? <div className="rounded-xl bg-error-container p-6 text-on-error-container"><h2 className="font-headline-lg text-headline-lg">Access denied</h2><p className="mt-2 font-body-md text-body-md">This area is available to administrators only.</p></div> : <><form onSubmit={(event) => { event.preventDefault(); void load(1, status, search); }} className="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 sm:flex-row"><label className="min-w-0 flex-1"><span className="sr-only">Search users</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name or email" className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none" /></label><select value={status} onChange={(event) => { const next = event.target.value; setStatus(next); void load(1, next, search); }} className="rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"><option value="all">All users</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="admin">Admins</option><option value="new">New users</option></select><button className="min-h-11 rounded-lg bg-primary px-5 py-3 font-metric-sm text-metric-sm text-on-primary hover:bg-primary/90">Search</button></form>{error && <div role="alert" className="rounded-xl bg-error-container p-4 font-body-md text-body-md text-on-error-container">{error}</div>}<div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">{loading ? <div className="space-y-3 p-5">{[1,2,3,4].map((item) => <div key={item} className="h-14 animate-pulse rounded bg-surface-container" />)}</div> : result?.data.length ? <><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="border-b border-outline-variant bg-surface-container-low"><tr><th className="px-5 py-3 font-label-caps text-label-caps text-on-surface-variant">User</th><th className="px-5 py-3 font-label-caps text-label-caps text-on-surface-variant">Status</th><th className="px-5 py-3 font-label-caps text-label-caps text-on-surface-variant">Last active</th><th className="px-5 py-3 font-label-caps text-label-caps text-on-surface-variant">30d activity</th><th className="px-5 py-3" /></tr></thead><tbody className="divide-y divide-outline-variant">{result.data.map((user) => <tr key={user.id} className="align-top"><td className="px-5 py-4"><p className="font-metric-sm text-metric-sm text-primary">{user.name}</p><p className="mt-1 font-body-md text-body-md text-on-surface-variant">{user.email}</p></td><td className="px-5 py-4"><UserBadges user={user} /></td><td className="px-5 py-4 font-body-md text-body-md text-on-surface-variant">{formatDate(user.last_active_at)}</td><td className="px-5 py-4 font-body-md text-body-md text-on-surface-variant"><span className="text-primary">{user.workouts_30d} workouts</span><br />{user.chat_messages_30d} chats</td><td className="px-5 py-4 text-right"><Link href={`/admin/users/${user.id}`} className="font-metric-sm text-metric-sm text-primary underline underline-offset-4">View</Link></td></tr>)}</tbody></table></div><div className="flex flex-col gap-3 border-t border-outline-variant p-4 sm:flex-row sm:items-center sm:justify-between"><p className="font-body-md text-body-md text-on-surface-variant">{result.meta.total} users</p><div className="flex items-center gap-2"><button disabled={page <= 1} onClick={() => void load(page - 1, status, search)} className="min-h-11 rounded-lg border border-outline-variant px-4 font-metric-sm text-metric-sm disabled:opacity-40">Previous</button><span className="font-metric-sm text-metric-sm text-primary">{page} / {result.meta.last_page}</span><button disabled={page >= result.meta.last_page} onClick={() => void load(page + 1, status, search)} className="min-h-11 rounded-lg border border-outline-variant px-4 font-metric-sm text-metric-sm disabled:opacity-40">Next</button></div></div></> : <div className="p-8 text-center font-body-md text-body-md text-on-surface-variant">No users match these filters.</div>}</div></>}</div></AppLayout>;
+  const [result, setResult] = useState<AdminUsersResponse | null>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [sort, setSort] = useState("created_at");
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [denied, setDenied] = useState(false);
+
+  const load = useCallback(
+    async (
+      next: { page?: number; status?: string; search?: string; sort?: string; order?: "asc" | "desc" } = {}
+    ) => {
+      const query = {
+        page: next.page ?? page,
+        status: next.status ?? status,
+        search: next.search ?? search,
+        sort: next.sort ?? sort,
+        order: next.order ?? order,
+      };
+
+      setLoading(true);
+      setError("");
+      try {
+        const params = new URLSearchParams({
+          search: query.search,
+          status: query.status,
+          sort: query.sort,
+          order: query.order,
+          page: String(query.page),
+          per_page: "20",
+        });
+        setResult(await apiClient.get<AdminUsersResponse>(`/admin/users?${params}`));
+        setPage(query.page);
+        setDenied(false);
+      } catch (caught) {
+        const { kind, message } = classifyError(caught);
+        if (kind === "unauthorized") return redirectToLogin();
+        if (kind === "forbidden") setDenied(true);
+        else setError(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, status, search, sort, order]
+  );
+
+  useEffect(() => {
+    void load({ page: 1 });
+    // Initial load only; later loads are driven by the controls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleSort = (key: string) => {
+    const nextOrder = sort === key && order === "desc" ? "asc" : "desc";
+    setSort(key);
+    setOrder(nextOrder);
+    void load({ sort: key, order: nextOrder, page: 1 });
+  };
+
+  /**
+   * Export reuses the current filters, so the file matches what is on screen.
+   * The download is authorised by the bearer token, which a plain link cannot
+   * send — hence fetching the blob and opening it locally.
+   */
+  const exportCsv = async () => {
+    try {
+      const params = new URLSearchParams({ search, status });
+      const token = window.localStorage.getItem("token");
+      const response = await fetch(apiUrl(`/admin/users/export?${params}`), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        setError("Could not export users.");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `striv-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not export users.");
+    }
+  };
+
+  const columns: Column<AdminUser>[] = [
+    {
+      key: "name",
+      header: "User",
+      sortKey: "name",
+      render: (user) => (
+        <div className="min-w-0">
+          <Link
+            href={`/admin/users/${user.id}`}
+            className="font-metric-sm text-metric-sm text-primary hover:underline"
+          >
+            {user.name}
+          </Link>
+          <p className="truncate font-body-md text-body-md text-on-surface-variant">{user.email}</p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (user) => (
+        <div className="flex flex-wrap gap-1">
+          {user.is_admin && <Badge tone="primary">Admin</Badge>}
+          {user.is_suspended ? (
+            <Badge tone="danger">Suspended</Badge>
+          ) : (
+            <Badge tone="success">Active</Badge>
+          )}
+          {user.must_change_password && <Badge tone="warning">Reset pending</Badge>}
+        </div>
+      ),
+    },
+    {
+      key: "workouts_30d",
+      header: "Workouts",
+      sortKey: "workouts_30d",
+      align: "right",
+      render: (user) => formatNumber(user.workouts_30d),
+    },
+    {
+      key: "chat_messages_30d",
+      header: "Chat msgs",
+      align: "right",
+      render: (user) => formatNumber(user.chat_messages_30d),
+    },
+    {
+      key: "last_active_at",
+      header: "Last active",
+      sortKey: "last_active",
+      render: (user) => (
+        <span className="text-on-surface-variant">{formatRelative(user.last_active_at)}</span>
+      ),
+    },
+  ];
+
+  const filtersActive = search.trim() !== "" || status !== "all";
+
+  return (
+    <AdminLayout
+      title="Users"
+      description="Search, inspect and manage member accounts."
+      actions={
+        <Button variant="secondary" icon="download" onClick={exportCsv}>
+          Export CSV
+        </Button>
+      }
+    >
+      {denied ? (
+        <ErrorBanner message="This area is available to administrators only." />
+      ) : (
+        <>
+          <Panel bodyClassName="p-4">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void load({ page: 1 });
+              }}
+              className="flex flex-col gap-3 sm:flex-row"
+            >
+              <label className="min-w-0 flex-1">
+                <span className="sr-only">Search users by name or email</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search name or email"
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
+                />
+              </label>
+              <label>
+                <span className="sr-only">Filter by status</span>
+                <select
+                  value={status}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setStatus(value);
+                    void load({ status: value, page: 1 });
+                  }}
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none sm:w-auto"
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" icon="search" disabled={loading}>
+                Search
+              </Button>
+              {filtersActive && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch("");
+                    setStatus("all");
+                    void load({ search: "", status: "all", page: 1 });
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+            </form>
+          </Panel>
+
+          {error && <ErrorBanner message={error} onRetry={() => void load()} />}
+
+          <Panel bodyClassName="p-0">
+            {loading && !result ? (
+              <div className="p-5">
+                <LoadingRows rows={6} />
+              </div>
+            ) : (
+              <>
+                <DataTable
+                  columns={columns}
+                  rows={result?.data ?? []}
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                  empty={
+                    <EmptyState
+                      icon="person_search"
+                      title={filtersActive ? "No users match these filters." : "No users yet."}
+                      description={
+                        filtersActive
+                          ? "Try a different search term or clear the filters."
+                          : "Accounts will appear here once people sign up."
+                      }
+                      action={
+                        filtersActive ? (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setSearch("");
+                              setStatus("all");
+                              void load({ search: "", status: "all", page: 1 });
+                            }}
+                          >
+                            Clear filters
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  }
+                />
+                {result && result.meta.total > 0 && (
+                  <Pagination meta={result.meta} onPage={(next) => void load({ page: next })} busy={loading} />
+                )}
+              </>
+            )}
+          </Panel>
+        </>
+      )}
+    </AdminLayout>
+  );
 }
