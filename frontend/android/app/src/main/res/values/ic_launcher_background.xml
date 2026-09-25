@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Adaptive icon background. Must match the INK tile colour the mark is drawn
+      on, otherwise the white bars sit on a white field and the logo vanishes.
+      Capacitor's template ships #FFFFFF here; the var name is kept so the
+      generated mipmap-anydpi-v26/ic_launcher.xml keeps resolving.
+    -->
+    <color name="ic_launcher_background">#1C1B1B</color>
+</resources>

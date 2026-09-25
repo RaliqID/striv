@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,20 @@ const ICON_VERSION = "2";
 export const metadata: Metadata = {
   title: "Striv",
   description: "Striv — Train. Track. Understand.",
+  applicationName: "Striv",
+  // Standalone so an installed copy (PWA or the Capacitor shell) runs without
+  // browser chrome.
+  manifest: "/manifest.webmanifest",
+  // iOS ignores the manifest for these; state them explicitly.
+  appleWebApp: {
+    capable: true,
+    title: "Striv",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    // A phone-number-looking string in a workout note should not become a link.
+    telephone: false,
+  },
   /*
    * Icons are declared in priority order (SVG first, .ico as the universal
    * fallback). The ?v= query is a cache-buster: browsers cache favicons
@@ -31,6 +45,24 @@ export const metadata: Metadata = {
     shortcut: [{ url: `/favicon.ico?v=${ICON_VERSION}` }],
     apple: [{ url: `/apple-icon.png?v=${ICON_VERSION}`, sizes: "180x180" }],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Locked zoom: a workout tracker is a tap-and-enter app, and pinch-zoom on
+  // form steps is more likely to be an accidental gesture than intent.
+  maximumScale: 1,
+  userScalable: false,
+  // Extend the canvas under the notch/home indicator so the layout can paint
+  // into those areas and pad itself with the safe-area insets instead of
+  // leaving letterboxed bars.
+  viewportFit: "cover",
+  // Tints the Android status bar and the PWA title bar to match the app.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FDF8F8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1C1B1B" },
+  ],
 };
 
 export default function RootLayout({
