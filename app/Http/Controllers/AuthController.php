@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\Security\LoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -11,6 +12,10 @@ use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly LoginThrottle $throttle)
+    {
+    }
+
     public function register(Request $request)
     {
         $validated = $request->validate([
@@ -44,17 +49,35 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        // Throttle before touching the database so a flood of attempts is
+        // rejected cheaply, and so no credential check work is done for a
+        // caller that is already over the limit.
+        if (($retryAfter = $this->throttle->retryAfter($request)) !== null) {
+            $this->throttle->record($request, false);
+
+            return response()->json([
+                'message' => 'Too many login attempts. Please try again in '
+                    .ceil($retryAfter / 60).' minute(s).',
+            ], 429, ['Retry-After' => (string) $retryAfter]);
+        }
+
         $user = User::where('email', $request->email)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
+            $this->throttle->record($request, false);
+
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
         if ($user->is_suspended) {
+            $this->throttle->record($request, false);
+
             return response()->json(['message' => 'Account suspended. Contact support.'], 403);
         }
+
+        $this->throttle->record($request, true);
 
         $user->load('profile');
 
