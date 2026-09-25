@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Striv</title>
+<style>
+  /*
+   * Self-contained on purpose: this page is bundled into the APK and is the
+   * first thing that runs, so it must not depend on a network, a build step, or
+   * any asset that lives on the server it is trying to reach.
+   */
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+    background: #FDF8F8;
+    color: #1C1B1B;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .card { width: 100%; max-width: 420px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+  .brand svg { display: block; }
+  .brand strong { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
+  h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
+  p.sub { margin: 0 0 24px; color: #49454F; line-height: 1.5; font-size: 15px; }
+  label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+          text-transform: uppercase; color: #49454F; margin-bottom: 8px; }
+  input {
+    width: 100%; padding: 15px 16px; font-size: 15px;
+    border: 1px solid #CAC4D0; border-radius: 12px; background: #fff; color: #1C1B1B;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  input:focus { outline: 2px solid #6063EE; outline-offset: 1px; border-color: #6063EE; }
+  button {
+    width: 100%; margin-top: 14px; padding: 16px; font-size: 15px; font-weight: 700;
+    border: 0; border-radius: 12px; background: #1C1B1B; color: #fff; cursor: pointer;
+  }
+  button:active { transform: scale(0.985); }
+  button.secondary { background: transparent; color: #49454F; border: 1px solid #CAC4D0; }
+  .note { margin-top: 22px; font-size: 13px; line-height: 1.55; color: #49454F; }
+  .note code { background: #EEEAEA; padding: 2px 6px; border-radius: 5px;
+               font-family: ui-monospace, monospace; font-size: 12px; }
+  .err { margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+         background: #F9DEDC; color: #410E0B; font-size: 14px; display: none; }
+  .err.show { display: block; }
+  .spinner { width: 34px; height: 34px; border: 3px solid #E6E1E5; border-top-color: #1C1B1B;
+             border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 18px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+<div class="card" id="card"></div>
+
+<script>
+/*
+ * Striv launcher.
+ *
+ * Why this exists: a Cloudflare quick tunnel hands out a NEW random hostname
+ * every time it starts, so baking the server URL into the APK meant rebuilding
+ * the APK after every restart. This page lives inside the app instead, so the
+ * URL is chosen at runtime and one APK works against any server.
+ *
+ * Flow:
+ *   - a URL is already saved  -> redirect straight to it
+ *   - no URL saved            -> show the setup form
+ *   - the saved URL fails     -> Capacitor loads the error page, which shows
+ *                                this same form, so a wrong URL is always
+ *                                recoverable rather than a blank screen
+ *
+ * BUILD_DEFAULT_URL is substituted at build time by build.ps1. When set, the
+ * app skips the prompt entirely and behaves like a normal consumer app; a dev
+ * build leaves it empty so the form appears.
+ */
+const BUILD_DEFAULT_URL = "__STRIV_DEFAULT_URL__";
+const STORAGE_KEY = "striv.server.url";
+
+const isPlaceholder = BUILD_DEFAULT_URL.indexOf("__STRIV_") === 0;
+const defaultUrl = isPlaceholder ? "" : BUILD_DEFAULT_URL;
+
+const card = document.getElementById("card");
+
+function normalize(value) {
+  let url = (value || "").trim();
+  if (!url) return "";
+  // Accept what people actually paste: "host.com", "http://host", trailing slash.
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  return url.replace(/\/+$/, "");
+}
+
+function saveAndGo(url) {
+  try { localStorage.setItem(STORAGE_KEY, url); } catch (e) { /* private mode */ }
+  renderConnecting(url);
+  window.location.replace(url);
+}
+
+function logo() {
+  return '<svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">' +
+    '<rect width="40" height="40" rx="11" fill="#1C1B1B"/>' +
+    '<rect x="10" y="22" width="4.5" height="8" rx="2.25" fill="#fff" opacity=".55"/>' +
+    '<rect x="17.75" y="17" width="4.5" height="13" rx="2.25" fill="#fff" opacity=".8"/>' +
+    '<rect x="25.5" y="11" width="4.5" height="19" rx="2.25" fill="#fff"/>' +
+    '<path d="M14.5 14.5L20 9.5L25.5 14.5" stroke="#6063EE" stroke-width="2.6" ' +
+    'stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+}
+
+function brand() {
+  return '<div class="brand">' + logo() + '<strong>Striv</strong></div>';
+}
+
+function renderConnecting(url) {
+  card.innerHTML = brand() +
+    '<div class="center"><div class="spinner"></div>' +
+    '<p class="sub" style="margin:0">Connecting to<br><code style="font-size:12px">' +
+    url.replace(/^https?:\/\//, "") + "</code></p></div>";
+}
+
+function renderForm(prefill, message) {
+  card.innerHTML = brand() +
+    '<h1>Connect to your server</h1>' +
+    '<p class="sub">Enter the address of the Striv server this app should use. ' +
+    'You only need to do this once.</p>' +
+    '<div class="err' + (message ? " show" : "") + '">' + (message || "") + "</div>" +
+    '<label for="url">Server address</label>' +
+    '<input id="url" type="url" inputmode="url" autocapitalize="off" ' +
+      'autocorrect="off" spellcheck="false" placeholder="https://example.com" ' +
+      'value="' + (prefill || "") + '" />' +
+    '<button id="connect">Connect</button>' +
+    '<div class="note">Ask whoever runs the server for this address. ' +
+    'It looks like <code>https://something.trycloudflare.com</code> ' +
+    'while the server is running in development.</div>';
+
+  const input = document.getElementById("url");
+  const go = () => {
+    const url = normalize(input.value);
+    if (!url || !/^https?:\/\/[^\s.]+\./.test(url)) {
+      renderForm(input.value, "That does not look like a valid address.");
+      return;
+    }
+    saveAndGo(url);
+  };
+
+  document.getElementById("connect").addEventListener("click", go);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") go();
+  });
+  input.focus();
+}
+
+function start() {
+  let saved = "";
+  try { saved = localStorage.getItem(STORAGE_KEY) || ""; } catch (e) { /* ignore */ }
+
+  // setServer=1 means we arrived from the error page: always show the form so
+  // the user can correct an address that stopped working.
+  const forced = new URLSearchParams(window.location.search).get("setServer") === "1";
+
+  if (forced) {
+    renderForm(saved || defaultUrl, "The previous address could not be reached.");
+    return;
+  }
+
+  const target = saved || defaultUrl;
+  if (target) {
+    saveAndGo(target);
+    return;
+  }
+
+  renderForm("", "");
+}
+
+start();
+</script>
+</body>
+</html>

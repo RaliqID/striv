@@ -3,62 +3,64 @@ import type { CapacitorConfig } from "@capacitor/cli";
 /**
  * Capacitor configuration for the Android build.
  *
- * The app is a native shell around a deployed Next.js frontend rather than a
- * bundle of static files: Striv is server-rendered and talks to a live API, so
- * shipping a frozen copy of the HTML would break the moment anything changed.
- * `server.url` therefore points at a running frontend.
+ * The app does NOT hard-code a server URL, and that is the important part.
+ * A development tunnel (Cloudflare quick tunnel) is handed a new random
+ * hostname every time it starts, so a URL baked into the APK goes stale within
+ * minutes and the APK has to be rebuilt. Instead the bundled shell
+ * (capacitor-shell/index.html) asks for the address once, stores it on the
+ * device, and redirects. One APK therefore works against any server.
  *
- * Override per build without editing this file:
+ * Two ways to build:
  *
- *   $env:CAPACITOR_SERVER_URL = "https://your-frontend.example.com"
- *   .\build.ps1
+ *   1. Normal / dev — leave CAPACITOR_SERVER_URL unset. The app prompts for an
+ *      address on first launch and remembers it. This is what .\build.ps1 does.
+ *
+ *   2. Branded release — set CAPACITOR_SERVER_URL to the production origin. The
+ *      shell then skips the prompt entirely and end users never see it:
+ *
+ *        $env:CAPACITOR_SERVER_URL = "https://striv.app"
+ *        .\build.ps1 release
  */
-const serverUrl =
-  process.env.CAPACITOR_SERVER_URL ||
-  // Production default. Replace with your deployed frontend origin.
-  "https://striv.vercel.app";
-
-/**
- * Hosts the WebView stays inside.
- *
- * Derived from serverUrl rather than hard-coded: if the two disagree, every
- * same-origin API call gets handed to the system browser and the app appears to
- * do nothing. Deriving it makes that class of bug impossible.
- */
-const serverHost = new URL(serverUrl).hostname;
+const configuredUrl = (process.env.CAPACITOR_SERVER_URL || "").trim();
 
 const allowNavigation = [
-  serverHost,
   // Google's sign-in flow navigates off-origin and must return into the app.
   "accounts.google.com",
 ];
 
-// Keep the Vercel preview pattern working alongside whatever host is active.
-if (serverHost.endsWith("vercel.app")) {
-  allowNavigation.push("*.vercel.app");
+if (configuredUrl) {
+  const host = new URL(configuredUrl).hostname;
+  allowNavigation.unshift(host);
+  // Cover preview deployments on the same platform.
+  if (host.endsWith("vercel.app")) allowNavigation.push("*.vercel.app");
 }
 
 const config: CapacitorConfig = {
   appId: "com.raliq.striv",
   appName: "Striv",
-  webDir: "public",
+
+  // The bundled launcher, not the Next.js public folder. The app's first screen
+  // must work offline, because it exists to let you point the app at a server.
+  webDir: "capacitor-shell",
 
   server: {
-    url: serverUrl,
-    // HTTPS only, so a misconfigured URL fails loudly instead of shipping a
-    // build that silently talks to a dev server over cleartext.
+    // Deliberately NOT set: the shell decides the URL at runtime. When a
+    // release build passes CAPACITOR_SERVER_URL it is injected into the shell
+    // as its default rather than pinned here — see build.ps1.
     cleartext: false,
     allowNavigation,
+
+    /*
+     * Shown when the remote URL cannot be loaded. Without this a stale address
+     * leaves a blank WebView with no way out; with it the user lands on a page
+     * offering to change the address.
+     */
+    errorPath: "error.html",
   },
 
   android: {
-    // Background-match the app surface during load, avoiding a white flash
-    // before the first paint.
     backgroundColor: "#FDF8F8",
-
-    // The app is HTTPS-only; mixed content would be a downgrade.
     allowMixedContent: false,
-
     webContentsDebuggingEnabled: false,
   },
 

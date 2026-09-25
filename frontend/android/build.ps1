@@ -96,34 +96,70 @@ $env:ANDROID_HOME = $sdk
 Write-Host "[android] JAVA_HOME    = $jdk" -ForegroundColor DarkGray
 Write-Host "[android] ANDROID_HOME = $sdk" -ForegroundColor DarkGray
 
-# Sync web assets first: without this the APK keeps whatever frontend build was
-# current the last time it was synced, which reads as "my change did nothing".
-Write-Host "[android] syncing web assets..." -ForegroundColor Cyan
-Push-Location (Join-Path $AndroidDir "..")
-& npx cap sync android
-$syncExit = $LASTEXITCODE
-Pop-Location
-if ($syncExit -ne 0) {
-    Write-Host "[android] cap sync failed" -ForegroundColor Red
-    exit $syncExit
+$frontendDir = Join-Path $AndroidDir ".."
+
+# Inject the default server address into the bundled launcher.
+#
+# capacitor-shell/index.html starts with a __STRIV_DEFAULT_URL__ placeholder.
+# Substituting it here is what keeps a baked-in address out of the source: a dev
+# build leaves it blank so the app prompts (and therefore never goes stale when
+# a tunnel restarts), while a release build with CAPACITOR_SERVER_URL set goes
+# straight to production with no prompt.
+#
+# The edit is reverted after the build so the repo file keeps its placeholder.
+$shellFile = Join-Path $frontendDir "capacitor-shell\index.html"
+$shellOriginal = Get-Content -LiteralPath $shellFile -Raw
+
+# $env:X is $null when unset, so coerce before trimming — calling .Trim() on
+# $null is a terminating error under $ErrorActionPreference = 'Stop'.
+$defaultUrl = if ($env:CAPACITOR_SERVER_URL) { $env:CAPACITOR_SERVER_URL.Trim() } else { "" }
+if ($defaultUrl) {
+    Write-Host "[android] default server = $defaultUrl" -ForegroundColor Cyan
+    $patched = $shellOriginal.Replace("__STRIV_DEFAULT_URL__", $defaultUrl)
+    Set-Content -LiteralPath $shellFile -Value $patched -NoNewline -Encoding utf8
+} else {
+    Write-Host "[android] default server = (none - app will prompt)" -ForegroundColor Cyan
 }
 
+# Resolve the Gradle task before entering try/finally: `exit` inside try skips
+# the finally block in some PowerShell versions, which would leave the
+# placeholder substituted in the source tree.
 $gradleTask = switch ($Task) {
     "debug"   { "assembleDebug" }
     "apk"     { "assembleRelease" }
     "release" { "bundleRelease" }
     "clean"   { "clean" }
-    default {
-        Write-Host "Usage: .\build.ps1 [debug|apk|release|clean]" -ForegroundColor Yellow
-        exit 1
-    }
+    default   { $null }
 }
 
-Write-Host "[android] running :$gradleTask" -ForegroundColor Cyan
-Push-Location $AndroidDir
-& .\gradlew.bat $gradleTask --console=plain
-$exit = $LASTEXITCODE
-Pop-Location
+if (-not $gradleTask) {
+    Set-Content -LiteralPath $shellFile -Value $shellOriginal -NoNewline -Encoding utf8
+    Write-Host "Usage: .\build.ps1 [debug|apk|release|clean]" -ForegroundColor Yellow
+    exit 1
+}
+
+$exit = 0
+try {
+    # Sync web assets: without this the APK keeps whatever was current the last
+    # time it was synced, which reads as "my change did nothing".
+    Write-Host "[android] syncing web assets..." -ForegroundColor Cyan
+    Push-Location $frontendDir
+    & npx cap sync android
+    $exit = $LASTEXITCODE
+    Pop-Location
+
+    if ($exit -eq 0) {
+        Write-Host "[android] running :$gradleTask" -ForegroundColor Cyan
+        Push-Location $AndroidDir
+        & .\gradlew.bat $gradleTask --console=plain
+        $exit = $LASTEXITCODE
+        Pop-Location
+    }
+}
+finally {
+    # Always restore the placeholder, even if the build failed mid-way.
+    Set-Content -LiteralPath $shellFile -Value $shellOriginal -NoNewline -Encoding utf8
+}
 
 if ($exit -ne 0) {
     Write-Host "[android] build failed (exit $exit)" -ForegroundColor Red
