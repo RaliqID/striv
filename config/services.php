@@ -59,11 +59,26 @@ return [
         'model' => env('BAI_MODEL', 'glm-5.3-flash'),
     ],
 
+    /*
+    | DevStack (9router) — self-hosted, OpenAI-compatible routing gateway.
+    |
+    | 9router runs locally and fans requests out to upstream providers, so
+    | `base_uri` points at YOUR gateway (default port 20128), not a vendor
+    | host, and `model` is whichever alias/combo you enabled in its dashboard.
+    | It exposes the standard POST /chat/completions route the generic
+    | provider already speaks.
+    */
+    'devstack' => [
+        'key' => env('DEVSTACK_API_KEY', 'local'),
+        'base_uri' => env('DEVSTACK_BASE_URI', 'http://localhost:20128/v1'),
+        'model' => env('DEVSTACK_MODEL', 'gpt-4o-mini'),
+    ],
+
     // Primary AI provider + fallback chain (tried in order)
     'ai' => [
-        'provider' => env('AI_PROVIDER', 'xkiro'),
+        'provider' => env('AI_PROVIDER', 'devstack'),
         'fallback' => env('AI_FALLBACK', 'groq'),
-        'vision' => env('AI_VISION_PROVIDER', 'bai'),
+        'vision' => env('AI_VISION_PROVIDER', 'devstack'),
     ],
 
 ];
