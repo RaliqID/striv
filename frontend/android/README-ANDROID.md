@@ -1,127 +1,108 @@
 # Android build (Capacitor)
 
-The Android app is a native shell around the **deployed** Striv frontend. It is
-not a bundled copy of the web app: Striv is server-rendered and talks to a live
-API, so `capacitor.config.ts` points the WebView at a URL.
+The Android app is a native shell around a **running** Striv frontend. It is not
+a bundled copy of the web app: Striv is server-rendered and talks to a live API.
 
-**Deploy the frontend first** (see `../../DEPLOY.md`), then point the app at it.
+**One APK works against any server.** The app does not hard-code an address.
+On first launch it shows a small setup screen asking where the server is, stores
+the answer on the device, and connects. That is deliberate: a development tunnel
+gets a *new random hostname every time it starts*, so a baked-in address would
+go stale within minutes and force a rebuild.
 
 ---
 
 ## 1. Prerequisites
 
-The scaffold is already committed, but compiling needs tooling that is **not**
-part of this repo. Install:
+The scaffold is committed, but compiling needs tooling that is **not** in this
+repo:
 
 | Tool | Why | Notes |
 |---|---|---|
-| **JDK 17** | Gradle runs on the JVM | Capacitor 8 targets Java 17. JDK 21 also works. Do **not** use JDK 8/11. |
-| **Android Studio** | Provides the Android SDK + platform tools | Includes its own JDK; use its bundled one or a standalone JDK 17. |
-| **Android SDK** | Platform 36 + build-tools | Android Studio installs these via the SDK Manager. |
-
-After installing, set `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) and put the
-platform-tools directory on `PATH`:
+| **JDK 21** (or 17) | Gradle runs on the JVM | **Not** the JDK 25 that Android Studio bundles — see the warning below. |
+| **Android Studio** | Provides the Android SDK | Also gives you the SDK Manager and an emulator. |
+| **Android SDK** | Platform 36 + build-tools | Installed by Android Studio's setup wizard. |
 
 ```powershell
-# Typical Windows locations
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
-$env:Path += ";$env:ANDROID_HOME\platform-tools"
+winget install Microsoft.OpenJDK.21
 ```
 
-Verify before going further — every later step depends on these:
+> **Why not JDK 25?** Android Studio ships JDK 25, and Gradle 8.14.3 cannot
+> compile build scripts on it. The failure is reported as
+> `Unsupported class file major version 69` — which names neither the tool nor
+> the cause, and costs an hour if you have not seen it before. `build.ps1`
+> selects a suitable JDK automatically; if you build from Android Studio, set
+> **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK**
+> to 21.
 
-```powershell
-java -version          # must print 17 or higher
-adb --version          # must print a version
-```
-
-> You can also just open the `android/` folder in Android Studio, which uses its
-> own JDK and SDK and skips most of the above.
+`build.ps1` finds the JDK and SDK itself, so no environment variables are needed.
 
 ---
 
-## 2. Point the app at your deployment
-
-Edit `capacitor.config.ts` if your production URL is not `https://striv.vercel.app`,
-or override it per build without editing the file:
+## 2. Build
 
 ```powershell
-$env:CAPACITOR_SERVER_URL = "https://your-frontend-domain.com"
-npx cap sync android
+cd frontend\android
+.\build.ps1              # debug APK
+.\build.ps1 release      # .aab bundle for Play Store
+.\build.ps1 apk          # release-signed APK (sideload)
+.\build.ps1 clean
 ```
 
-`allowNavigation` in that file must list your API domain too, or the WebView
-will open API calls in the system browser instead of keeping them in-app.
+It resolves a JDK, resolves the SDK, runs `cap sync` (forgetting that step is
+the usual reason a change silently does not appear), and builds.
+
+Output:
+- debug APK — `app/build/outputs/apk/debug/app-debug.apk`
+- release bundle — `app/build/outputs/bundle/release/app-release.aab`
 
 ---
 
-## 3. Sync web changes into the native project
+## 3. Pointing the app at a server
 
-Run this after **any** change to the frontend, icons, or config. Skipping it is
-the most common cause of "my change is not in the app":
+### Development (default)
 
-```powershell
-npm run android:sync      # = cap sync android
+Build without setting anything, install, and the app asks for an address:
+
+```
+https://your-tunnel.trycloudflare.com
 ```
 
-Regenerating icons (if you changed the logo mark):
+Paste it, tap Connect. It is remembered, so you do this once per device — and
+when the tunnel restarts with a new hostname, you just paste the new one.
+**No rebuild.**
+
+To change it later: force-stop the app and reopen, or use the "Change server
+address" button that appears if the saved address stops responding.
+
+### Branded release (no prompt for end users)
+
+Set the production origin and the app skips the prompt entirely:
 
 ```powershell
-npm run icons             # rewrites web + android launcher/splash art
-npm run android:sync
+$env:CAPACITOR_SERVER_URL = "https://your-domain.com"
+.\build.ps1 release
 ```
+
+The value is substituted into the bundled launcher at build time and reverted
+afterwards, so the repo never carries a hard-coded environment.
 
 ---
 
-## 4. Run on a device or emulator
+## 4. Signing
 
-```powershell
-npm run android:run       # = cap run android
-```
-
-Or open the project and press Run in the IDE:
-
-```powershell
-npm run android:open      # = cap open android
-```
-
-Debug builds work without a keystore.
-
-### Local development against your dev server
-
-Inside the emulator, `localhost` is the *emulator*, not your PC. Use your LAN IP:
-
-```powershell
-# Find it
-ipconfig | findstr IPv4
-
-$env:CAPACITOR_SERVER_URL = "http://192.168.1.50:3000"
-npx cap sync android
-```
-
-This requires `cleartext: true` temporarily in `capacitor.config.ts`, and the
-backend's `CORS_ALLOWED_ORIGINS` must include that origin. Revert both before
-shipping — the committed config is HTTPS-only on purpose.
-
----
-
-## 5. Build for Play Store
-
-### 5a. Create an upload keystore (once)
+### Create an upload keystore (once)
 
 ```powershell
 keytool -genkey -v -keystore striv-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias striv
 ```
 
-- Store the file **outside** the repo. `*.jks` is git-ignored as a safety net,
-  not as permission to keep it here.
-- **Back it up.** If you lose it, you cannot update this app under the same Play
+- Store it **outside** the repo. `*.jks` is git-ignored as a safety net, not as
+  permission to keep it here.
+- **Back it up.** Lose it and you cannot update this app under the same Play
   listing — you would have to publish a new app.
-- Put the real key in Play Console → App integrity → **Play App Signing**, and
-  keep this keystore as the *upload* key.
+- Keep this as your *upload* key and enable **Play App Signing**.
 
-### 5b. Configure signing
+### Configure
 
 Create `frontend/android/keystore.properties` (git-ignored):
 
@@ -132,79 +113,82 @@ keyAlias=striv
 keyPassword=yourpassword
 ```
 
-The release build **fails with a clear message** if this file is missing, rather
-than producing an unsigned bundle that Play rejects after a long upload.
-
-### 5c. Build
-
-```powershell
-cd frontend
-npm run android:sync
-cd android
-
-# App Bundle (.aab) — this is what you upload to Play
-gradlew.bat bundleRelease
-
-# Or an APK for sideload testing
-gradlew.bat assembleRelease
-```
-
-Output: `android/app/build/outputs/bundle/release/app-release.aab`
-
-> `gradlew.bat` on Windows, `./gradlew` on macOS/Linux.
+The release build **fails with a clear message** if this file is missing,
+rather than emitting an unsigned bundle that Play rejects after a long upload.
 
 ---
 
-## 6. Versioning
+## 5. Versioning
 
 In `android/app/build.gradle`:
 
 ```gradle
 versionCode 1        // integer, MUST increase for every upload
-versionName "1.0"    // user-visible string, free-form
+versionName "1.0"    // user-visible string
 ```
 
-Play rejects an upload whose `versionCode` has already been used. Bump it every
-time, including for test-track uploads.
+Play rejects an upload whose `versionCode` was already used — including on test
+tracks. `targetSdkVersion` lives in `android/variables.gradle`; Google raises
+the required level yearly, so check before each release.
 
-`targetSdkVersion` lives in `android/variables.gradle`. Google requires new
-submissions to target a recent API level and raises that floor yearly — check
-the current requirement before each release.
+---
+
+## 6. Local development against a dev server
+
+Inside the emulator or on a device, `localhost` is the **device**, not your PC.
+Use your machine's LAN address:
+
+```powershell
+ipconfig | findstr IPv4
+# then enter http://192.168.1.50:3000 in the app's setup screen
+```
+
+Over plain HTTP the app needs `cleartext` temporarily, and the backend's
+`CORS_ALLOWED_ORIGINS` must include that origin. The committed config is
+HTTPS-only on purpose.
+
+The simpler path is the share tunnel, which is already HTTPS:
+
+```powershell
+cd ..\..
+.\dev.ps1 share        # prints a public https URL
+```
 
 ---
 
 ## 7. Play Console checklist
 
-- [ ] `applicationId` is final (`com.raliq.striv`). It is the app's permanent
-      identity and **cannot** be changed after the first upload.
+- [ ] `applicationId` is final (`com.raliq.striv`) — it cannot change after the
+      first upload
 - [ ] `versionCode` bumped
-- [ ] Signed release bundle built (not debug)
-- [ ] App icon 512×512 and feature graphic 1024×500 for the store listing
+- [ ] Signed release bundle (not debug)
+- [ ] App icon 512×512 and feature graphic 1024×500
 - [ ] At least 2 phone screenshots
-- [ ] Privacy policy URL — **required**, because the app collects an email
-      address and stores workout and body-measurement data
-- [ ] Data Safety form completed accurately. Declare:
-      - Email address (account management)
-      - Health & fitness data (workouts, body weight)
-      - Photos (only if the AI coach image upload is used)
-      Mismatches between this form and actual behaviour are a common rejection.
-- [ ] Content rating questionnaire completed
+- [ ] Privacy policy URL — **required**: the app collects an email address and
+      stores workout and body-measurement data
+- [ ] Data Safety form completed accurately: email address, health & fitness
+      data (workouts, body weight), photos (only if the AI coach upload is used)
+- [ ] Content rating questionnaire
 - [ ] Target audience declared (not primarily children)
-- [ ] Closed testing track run before production — new personal accounts must
-      run a test track first, and testers must be opted in for a minimum period
-      before production access is granted.
+- [ ] A closed testing track run first — new personal accounts must run one, and
+      testers must stay opted in for a minimum period before production access
 
 ---
 
-## 8. Things that differ in the app vs the browser
+## 8. Architecture notes
 
-| Area | Behaviour |
+| File | Role |
 |---|---|
-| Auth | Bearer token in `localStorage`. Persists across launches, so the login screen is skipped until it 401s. |
-| Google OAuth | Opens a web flow; `accounts.google.com` is in `allowNavigation` so it returns into the app rather than the system browser. If it misbehaves, that list is the first thing to check. |
-| Safe areas | `viewportFit: "cover"` plus the `--safe-*` CSS vars in `globals.css` keep content clear of the notch and gesture bar. |
-| Back button | Android hardware back navigates WebView history. On `/dashboard` it exits the app, which is expected. |
-| Offline | No offline support yet — the app needs a connection. A service worker would be the next step if that matters. |
+| `capacitor-shell/index.html` | Bundled launcher. Asks for the server address once, stores it, redirects. This is `webDir`. |
+| `capacitor-shell/error.html` | Loaded when the saved address fails (`server.errorPath`). Prevents an unreachable server from leaving a blank screen with no way out. |
+| `capacitor.config.ts` | `server.url` is intentionally **not** set, so the shell decides at runtime. |
+
+| Behaviour | Why |
+|---|---|
+| Auth token in `localStorage` | Keyed to the origin, so it survives app restarts but not a server change. Changing servers signs you out, which is correct. |
+| Google OAuth | `accounts.google.com` is in `allowNavigation` so the flow returns into the app. If sign-in opens the system browser, check that list first. |
+| Safe areas | `viewportFit: "cover"` plus the `--safe-*` CSS vars keep content clear of the notch. |
+| Offline | No support yet — the setup screen is the only offline-capable page. |
 
 ---
 
@@ -212,10 +196,13 @@ the current requirement before each release.
 
 | Symptom | Cause |
 |---|---|
-| `JAVA_HOME is not set` | Install JDK 17 and set the variable. |
+| `JAVA_HOME is not set` | Install JDK 21: `winget install Microsoft.OpenJDK.21` |
+| `Unsupported class file major version 69` | Building with JDK 25. Use JDK 21. |
 | `SDK location not found` | Set `ANDROID_HOME`, or add `sdk.dir` to `android/local.properties`. |
-| Blank screen on launch | `server.url` is unreachable from the device. Check the URL and that the device has network. |
-| Changes not appearing | Forgot `npm run android:sync`. |
-| `App not installed` | A previous build with a different signing key is installed — uninstall it first. |
-| API calls open in the browser | Your API domain is missing from `allowNavigation`. |
+| Gradle hangs before any output | Corrupt wrapper cache. Delete `%USERPROFILE%\.gradle\wrapper\dists`. |
+| App shows the setup screen on every launch | The address did not save — the WebView may be in private mode, or `webDir` is misconfigured. |
+| "Cannot reach the server" | The address is wrong or the server stopped. Tap **Change server address**. |
+| Changes not appearing | `build.ps1` runs `cap sync` for you; a manual `gradlew` build does not. |
+| API calls open in the system browser | The host is missing from `allowNavigation` (only affects branded builds — the shell derives it automatically). |
 | Upload rejected: version code used | Bump `versionCode`. |
+
