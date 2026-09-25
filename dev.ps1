@@ -70,10 +70,13 @@ switch ($Action) {
         Write-Host "[dev] starting Striv..." -ForegroundColor Cyan
         Start-Backend
         Start-Frontend
-        Write-Host "[dev] done." -ForegroundColor Cyan
+        Write-Host "[dev] done. Local: http://localhost:$FrontendPort" -ForegroundColor Cyan
     }
     "stop" {
         Write-Host "[dev] stopping..." -ForegroundColor Cyan
+        # Close the tunnel first: it holds a public URL that would dangle if the
+        # app behind it stopped serving.
+        & (Join-Path $Root "share.ps1") stop
         Stop-Port $BackendPort
         Stop-Port $FrontendPort
         Stop-StrivFrontends
@@ -84,13 +87,39 @@ switch ($Action) {
         Start-Sleep -Seconds 1
         & "$PSCommandPath" start
     }
+    "share" {
+        <#
+          Start the app AND the public tunnel, then restart the frontend so it
+          boots with the same-origin API setting the tunnel needs (Next only
+          reads NEXT_PUBLIC_* at startup, so the order matters).
+        #>
+        Write-Host "[dev] starting Striv for sharing..." -ForegroundColor Cyan
+        Start-Backend
+        Start-Frontend
+
+        & (Join-Path $Root "share.ps1") start
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[dev] tunnel failed to start." -ForegroundColor Red
+            exit 1
+        }
+
+        # Reboot the frontend so it picks up NEXT_PUBLIC_API_URL=/api/v1.
+        Write-Host "[dev] restarting frontend to apply share mode..." -ForegroundColor DarkGray
+        Stop-Port $FrontendPort
+        Stop-StrivFrontends
+        Start-Sleep -Seconds 1
+        Start-Frontend
+    }
     "status" {
         $bp = Get-PortPid $BackendPort
         $fp = Get-PortPid $FrontendPort
         Write-Host "backend  :$(if ($bp) { " RUNNING (PID $bp)" } else { " stopped" })"
         Write-Host "frontend :$(if ($fp) { " RUNNING (PID $fp)" } else { " stopped" })"
+        & (Join-Path $Root "share.ps1") status
     }
     default {
-        Write-Host "Usage: .\dev.ps1 start|stop|restart|status"
+        Write-Host "Usage: .\dev.ps1 start | stop | restart | status | share"
+        Write-Host "  start    run backend + frontend locally"
+        Write-Host "  share    run everything and expose a public HTTPS URL"
     }
 }
