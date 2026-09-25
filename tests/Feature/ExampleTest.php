@@ -2,18 +2,30 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class ExampleTest extends TestCase
+class RootRouteTest extends TestCase
 {
     /**
-     * A basic test example.
+     * Striv is a headless API behind a Next.js client, so the API host's root
+     * exists only to send visitors somewhere useful. With a frontend URL
+     * configured that is a redirect; without one it reports API status rather
+     * than rendering a framework placeholder page.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_root_redirects_to_the_configured_frontend(): void
     {
-        $response = $this->get('/');
+        config(['app.frontend_url' => 'https://app.example.com']);
 
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect('https://app.example.com');
+    }
+
+    public function test_root_reports_api_status_when_no_frontend_is_configured(): void
+    {
+        config(['app.frontend_url' => null]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertJsonPath('status', 'ok')
+            ->assertJsonPath('name', 'Striv API');
     }
 }
