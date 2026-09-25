@@ -32,10 +32,30 @@ function Get-TunnelPid {
         Select-Object -First 1 -ExpandProperty ProcessId
 }
 
+function Test-ShareMode {
+    # True when .env.local already points at the relative tunnel path.
+    $line = Get-Content -LiteralPath $EnvFile -ErrorAction SilentlyContinue |
+        Where-Object { $_ -match '^NEXT_PUBLIC_API_URL=' } |
+        Select-Object -First 1
+    return $line -match '=/api/v1\s*$'
+}
+
 function Set-SameOriginApi {
     # Point the app at the tunnel origin (relative path) so API calls follow the
     # public host. Backs up the original so stop/restart is lossless.
+    #
+    # The backup is only taken from a file that is NOT already in share mode.
+    # Otherwise a previous run that was interrupted before 'stop' would cause
+    # the share-mode value to be backed up as if it were the original, and the
+    # local setting would be lost permanently.
     if (-not (Test-Path $EnvBackup)) {
+        if (Test-ShareMode) {
+            Write-Host "[share] .env.local is already in share mode with no backup;" -ForegroundColor Yellow
+            Write-Host "        writing the local API URL back before proceeding." -ForegroundColor Yellow
+            $lines = Get-Content -LiteralPath $EnvFile | Where-Object { $_ -notmatch '^NEXT_PUBLIC_API_URL=' }
+            $restored = @("NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1") + $lines
+            Set-Content -LiteralPath $EnvFile -Value $restored -Encoding utf8
+        }
         Copy-Item -LiteralPath $EnvFile -Destination $EnvBackup -Force
         Write-Host "[share] backed up .env.local" -ForegroundColor DarkGray
     }
