@@ -70,7 +70,7 @@ module.exports = {
       },
       fontFamily: {
         display: ["Inter", "system-ui", "sans-serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
         "label-caps": ["Geist", "system-ui", "sans-serif"],
       },
       fontSize: {

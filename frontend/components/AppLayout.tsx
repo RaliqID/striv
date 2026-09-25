@@ -1,5 +1,6 @@
 "use client";
 
+import StrivLogo from "@/components/StrivLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -46,7 +47,11 @@ export default function AppLayout({
     if (!propUser) {
       const stored = localStorage.getItem("user");
       if (stored) {
-        try { setUser(JSON.parse(stored)); } catch {}
+        try {
+          setUser(JSON.parse(stored));
+        } catch {
+          // Corrupt cache — fall back to the prop/no user rather than crashing.
+        }
       }
     } else {
       setUser(propUser);
@@ -68,27 +73,43 @@ export default function AppLayout({
       <header className="md:hidden sticky top-0 z-50 flex items-center justify-between px-margin-mobile py-3 bg-surface/80 backdrop-blur-md border-b border-outline-variant">
         <h1 className="font-headline-lg-mobile text-headline-lg-mobile font-black text-primary">Striv</h1>
         <div className="flex items-center gap-3">
-          <button className="text-primary hover:bg-surface-container-low transition-colors p-2 rounded-full">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
-          <button className="text-primary hover:bg-surface-container-low transition-colors p-2 rounded-full">
-            <span className="material-symbols-outlined">account_circle</span>
-          </button>
+          {/* Both controls lead somewhere real: a decorative bell that does
+              nothing is worse than no bell, because it implies a feature. */}
+          <Link
+            href="/insights"
+            aria-label="Insights and alerts"
+            className="text-primary hover:bg-surface-container-low transition-colors p-2 rounded-full"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">notifications</span>
+          </Link>
+          <Link
+            href="/profile"
+            aria-label={user?.name ? `Profile for ${user.name}` : "Your profile"}
+            className="text-primary hover:bg-surface-container-low transition-colors p-2 rounded-full"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">account_circle</span>
+          </Link>
         </div>
       </header>
 
-      {/* Desktop sidebar — collapsible */}
+      {/*
+        Desktop sidebar. `overflow-hidden` is deliberately NOT used here: it
+        clipped the nav's own scroll container and produced a nested scrollbar
+        inside the rail. Each section manages its own overflow instead.
+      */}
       <aside
-        className={`hidden md:flex flex-col fixed inset-y-0 left-0 z-40 bg-surface-container-low border-r border-outline-variant overflow-hidden transition-all duration-200 ease-in-out`}
+        className="hidden md:flex flex-col fixed inset-y-0 left-0 z-40 bg-surface-container-low border-r border-outline-variant transition-all duration-200 ease-in-out"
         style={{ width: collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Logo area */}
-        <div className="flex items-center gap-3 p-4 mt-2 min-h-[48px]">
-          <div className="w-10 h-10 flex items-center justify-center rounded-full bg-primary shrink-0">
-            <span className="font-metric-sm text-metric-sm text-on-primary font-bold">S</span>
-          </div>
+        {/* Logo area — centred as a square when collapsed so it is not clipped */}
+        <div
+          className={`flex items-center shrink-0 h-16 ${
+            collapsed ? "justify-center px-0" : "gap-3 px-4"
+          }`}
+        >
+          <StrivLogo size={40} className="shrink-0" />
           {!collapsed && (
             <span className="font-headline-lg text-headline-lg font-black text-primary whitespace-nowrap overflow-hidden">
               Striv
@@ -104,25 +125,34 @@ export default function AppLayout({
             </div>
             <div className="min-w-0">
               <p className="font-metric-sm text-metric-sm text-on-surface truncate">{user.name}</p>
-              <p className="font-label-caps text-label-caps text-on-surface-variant">Premium Tier</p>
+              <p className="font-label-caps text-label-caps text-on-surface-variant">
+                {user.is_admin ? "Administrator" : "Member"}
+              </p>
             </div>
           </div>
         )}
 
-        {/* Nav items */}
-        <nav className="flex-1 flex flex-col gap-1 px-3 mt-2 overflow-y-auto overflow-x-hidden">
+        {/* Nav items. Collapsed uses a centred square target (no horizontal
+            padding) so a 20px icon sits inside the 72px rail without clipping. */}
+        <nav className="flex-1 flex flex-col gap-1 mt-2 overflow-y-auto overflow-x-hidden">
           {(user?.is_admin ? [...navItems, adminNavItem] : navItems).map((item) => {
             const active = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                title={collapsed ? item.label : undefined}
+                aria-label={collapsed ? item.label : undefined}
+                aria-current={active ? "page" : undefined}
+                className={`flex items-center rounded-lg transition-all duration-150 ${
+                  collapsed
+                    ? "mx-3 h-11 w-11 shrink-0 justify-center"
+                    : "mx-3 gap-3 px-3 py-2.5"
+                } ${
                   active
                     ? "bg-secondary-container text-on-secondary-container font-semibold"
                     : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
                 }`}
-                title={collapsed ? item.label : undefined}
               >
                 <span
                   className="material-symbols-outlined text-[20px] shrink-0"
