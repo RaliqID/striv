@@ -1,8 +1,9 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { apiClient } from "@/lib/api";
-import { getUserUnit, type Unit } from "@/lib/units";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { apiClient, apiUrl } from "@/lib/api";
+import type { Unit } from "@/lib/units";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -50,6 +51,12 @@ export default function SettingsPage() {
   const [trainingSaving, setTrainingSaving] = useState(false);
   const [trainingMsg, setTrainingMsg] = useState("");
   const [unit, setUnit] = useState<Unit>("kg");
+  const [unitSaving, setUnitSaving] = useState(false);
+  const [unitMsg, setUnitMsg] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -83,6 +90,109 @@ export default function SettingsPage() {
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Persist the display unit.
+   *
+   * Stored under profile.preferences so it travels with the account rather
+   * than living only in the browser.
+   */
+  const changeUnit = async (next: Unit) => {
+    if (next === unit || unitSaving) return;
+
+    const previous = unit;
+    setUnit(next); // optimistic — the toggle should feel instant
+    setUnitSaving(true);
+    setUnitMsg("");
+    try {
+      await apiClient.put("/profile", {
+        preferences: { ...(user?.profile?.preferences ?? {}), unit: next },
+      });
+      // Keep the cached user in sync so other pages read the new unit.
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          parsed.profile = {
+            ...(parsed.profile ?? {}),
+            preferences: { ...(parsed.profile?.preferences ?? {}), unit: next },
+          };
+          localStorage.setItem("user", JSON.stringify(parsed));
+        } catch {
+          /* ignore malformed cache */
+        }
+      }
+      setUnitMsg(`Weights now display in ${next}.`);
+    } catch (caught) {
+      setUnit(previous); // roll back on failure
+      setUnitMsg(caught instanceof Error ? caught.message : "Could not save the unit.");
+    } finally {
+      setUnitSaving(false);
+    }
+  };
+
+  /** Download every workout the member has logged as CSV. */
+  const exportData = async () => {
+    setExporting(true);
+    setUnitMsg("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(apiUrl("/profile/export"), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Export failed.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `striv-data-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not export your data.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!deletePassword) {
+      setError("Enter your password to confirm account deletion.");
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      // apiClient.delete sends no body; this endpoint needs the password as
+      // proof of intent, so the raw helper is used with an explicit body.
+      const token = localStorage.getItem("token");
+      const response = await fetch(apiUrl("/profile"), {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.errors?.password?.[0] ?? payload?.message ?? "Could not delete your account."
+        );
+      }
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/";
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete your account.");
+      setDeleteBusy(false);
+      setDeleteOpen(false);
+    }
+  };
 
   const saveBiodata = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -338,27 +448,102 @@ export default function SettingsPage() {
             {/* Units */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
               <h2 className="font-metric-sm text-metric-sm text-primary mb-2">Units</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">
+                Choose how weights are displayed throughout the app. Your data is always stored in
+                kilograms.
+              </p>
               <div className="flex items-center gap-4">
-                <span className="font-body-md text-on-surface-variant">kg</span>
-                <button disabled className="w-12 h-6 bg-surface-container-high rounded-full relative opacity-50 cursor-not-allowed">
-                  <span className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full" />
+                <span className={`font-body-md ${unit === "kg" ? "text-primary font-semibold" : "text-on-surface-variant"}`}>
+                  kg
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={unit === "lbs"}
+                  aria-label="Display weights in pounds"
+                  disabled={unitSaving}
+                  onClick={() => changeUnit(unit === "kg" ? "lbs" : "kg")}
+                  className={`relative h-6 w-12 rounded-full transition-colors disabled:opacity-60 ${
+                    unit === "lbs" ? "bg-primary" : "bg-surface-container-high"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${
+                      unit === "lbs" ? "left-7" : "left-1"
+                    }`}
+                  />
                 </button>
-                <span className="font-body-md text-on-surface-variant opacity-50">lbs</span>
-                <span className="text-xs text-on-surface-variant ml-2">Coming soon</span>
+                <span className={`font-body-md ${unit === "lbs" ? "text-primary font-semibold" : "text-on-surface-variant"}`}>
+                  lbs
+                </span>
               </div>
+              {unitMsg && (
+                <p role="status" className="mt-3 font-body-md text-body-md text-on-surface-variant">
+                  {unitMsg}
+                </p>
+              )}
             </div>
 
             {/* Data */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
               <h2 className="font-metric-sm text-metric-sm text-primary mb-2">Data</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">
+                Download everything you have logged, or permanently remove your account.
+              </p>
               <div className="flex gap-4 flex-wrap">
-                <button disabled className="border border-outline-variant rounded-lg px-4 py-2 opacity-50 cursor-not-allowed hover:bg-surface-container-low" title="Coming soon">Export Data</button>
-                <button disabled className="border border-error/30 text-error rounded-lg px-4 py-2 opacity-50 cursor-not-allowed hover:bg-error/5" title="Coming soon">Delete Account</button>
+                <button
+                  type="button"
+                  onClick={exportData}
+                  disabled={exporting}
+                  className="border border-outline-variant rounded-lg px-4 py-2 hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                >
+                  {exporting ? "Preparing…" : "Export my data"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(true)}
+                  className="border border-error/30 text-error rounded-lg px-4 py-2 hover:bg-error/5 transition-colors"
+                >
+                  Delete account
+                </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete your account?"
+        description={
+          <>
+            This permanently deletes your profile, every workout, goal and conversation. It cannot be
+            undone.
+          </>
+        }
+        confirmLabel="Delete permanently"
+        busy={deleteBusy}
+        onConfirm={deleteAccount}
+        onCancel={() => {
+          setDeleteOpen(false);
+          setDeletePassword("");
+        }}
+        extra={
+          <label className="mt-4 block">
+            <span className="font-label-caps text-label-caps text-on-surface-variant">
+              Confirm your password
+            </span>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+              disabled={deleteBusy}
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"
+            />
+          </label>
+        }
+      />
     </AppLayout>
   );
 }

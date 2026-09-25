@@ -3,7 +3,7 @@
 import AppLayout from "@/components/AppLayout";
 import { apiClient, ApiError } from "@/lib/api";
 import { captureTokenFromUrl, readStoredUser, storeUser } from "@/lib/auth";
-import type { DashboardStats, RecentPR, WeeklyVolume } from "@/types/dashboard";
+import type { DashboardStats } from "@/types/dashboard";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -78,10 +78,14 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<
     {
       id: number;
-      exercise: { name: string };
+      exercise: { name: string } | null;
       target_type: string;
       target_value: number;
+      starting_value: number;
+      current_value: number;
       target_reps: number | null;
+      unit: string;
+      progress_percentage: number;
     }[]
   >([]);
   const [progressByGoal, setProgressByGoal] = useState<Record<number, number>>({});
@@ -99,6 +103,12 @@ export default function DashboardPage() {
       const parsed = readStoredUser();
       if (parsed) {
         setUser(parsed);
+        // Admins are exempt from the onboarding gate: their account exists to
+        // administer the platform, and forcing them through the member
+        // onboarding flow would block that for no reason.
+        if (parsed?.is_admin) {
+          return;
+        }
         // Guard: incomplete onboarding → /onboarding
         const profile = parsed?.profile;
         if (profile && !profile.onboarding_completed_at) {
@@ -154,7 +164,8 @@ export default function DashboardPage() {
     fetchDashboard();
   }, [fetchDashboard, reloadKey]);
 
-  // Fetch active goals + progress for first 3
+  // Fetch active goals. Progress is embedded in the list response, so this is
+  // a single request rather than one per goal.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -164,36 +175,26 @@ export default function DashboardPage() {
         const res = await apiClient.get<{
           data: {
             id: number;
-            exercise: { name: string };
+            exercise: { name: string } | null;
             target_type: string;
             target_value: number;
+            starting_value: number;
+            current_value: number;
             target_reps: number | null;
+            unit: string;
+            progress_percentage: number;
           }[];
         }>("/goals?status=active");
         if (cancelled) return;
-        const active = res.data ?? [];
-        const top = active.slice(0, 3);
+
+        const top = (res.data ?? []).slice(0, 3);
         setGoals(top);
-        if (top.length > 0) {
-          const results = await Promise.all(
-            top.map((g) =>
-              apiClient
-                .get<{ goal: unknown; current_value: number; progress_percentage: number }>(
-                  `/goals/${g.id}/progress`
-                )
-                .catch(() => null)
-            )
-          );
-          if (cancelled) return;
-          const next: Record<number, number> = {};
-          top.forEach((g, i) => {
-            const r = results[i];
-            if (r && typeof r.progress_percentage === "number") {
-              next[g.id] = r.progress_percentage;
-            }
-          });
-          setProgressByGoal(next);
+
+        const next: Record<number, number> = {};
+        for (const goal of top) {
+          next[goal.id] = goal.progress_percentage ?? 0;
         }
+        setProgressByGoal(next);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) {
@@ -312,11 +313,7 @@ export default function DashboardPage() {
                     <path className="stroke-primary fill-none" d={pathD} strokeWidth="2" />
                   )}
                   {chartPoints.length > 0 && (
-                    <>
-                      {/* Current point (last) */}
-                      <circle cx={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).x} cy={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).y} fill="#000" r="4" />
-                      {/* Projected (dashed line to future) - not implemented */}
-                    </>
+                    <circle cx={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).x} cy={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).y} fill="#000" r="4" />
                   )}
                 </svg>
               </div>
@@ -456,30 +453,48 @@ export default function DashboardPage() {
               <div className="space-y-6">
                 {goals.map((g) => {
                   const pct = progressByGoal[g.id];
+                  const isWorkouts = g.target_type === "workouts";
+                  const unit = isWorkouts ? "" : ` ${g.unit}`;
+
+                  // Show the journey, not just a ratio: a bare percentage hides
+                  // where the member started and what is actually left to do.
                   const targetLabel =
-                    g.target_type === "weight"
-                      ? `${g.target_value} kg${g.target_reps ? ` × ${g.target_reps} reps` : ""}`
-                      : g.target_type === "reps"
-                      ? `${g.target_value} reps`
-                      : g.target_type === "one_rm"
-                      ? `${g.target_value} kg 1RM`
-                      : `${g.target_value} workouts`;
-                  const displayPct = typeof pct === "number" ? `${pct}%` : "—";
+                    g.target_type === "weight" && g.target_reps
+                      ? `${g.target_value}${unit} × ${g.target_reps}`
+                      : `${g.target_value}${unit}`;
+
+                  const fmt = (value: number) =>
+                    Number.isInteger(value) ? String(value) : value.toFixed(1);
+
+                  const displayPct = typeof pct === "number" ? `${Math.round(pct)}%` : "—";
                   const widthPct =
                     typeof pct === "number" ? Math.max(0, Math.min(100, pct)) : 0;
+
                   return (
                     <div key={g.id}>
-                      <div className="flex justify-between items-end mb-2">
-                        <span className="font-metric-sm text-metric-sm text-primary">
-                          {g.exercise.name} {targetLabel}
+                      <div className="flex justify-between items-end mb-2 gap-3">
+                        <span className="min-w-0 truncate font-metric-sm text-metric-sm text-primary">
+                          {g.exercise?.name ?? "All workouts"}
+                          <span className="text-on-surface-variant">
+                            {" · "}
+                            {fmt(g.starting_value)}
+                            {unit} → {targetLabel}
+                          </span>
                         </span>
-                        <span className="font-label-caps text-label-caps text-on-surface-variant">
+                        <span className="shrink-0 font-label-caps text-label-caps text-on-surface-variant">
                           {displayPct}
                         </span>
                       </div>
-                      <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+                      <div
+                        className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={widthPct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${g.exercise?.name ?? "Workouts"} progress`}
+                      >
                         <div
-                          className="bg-primary h-full rounded-full"
+                          className="bg-primary h-full rounded-full transition-all"
                           style={{ width: `${widthPct}%` }}
                         ></div>
                       </div>

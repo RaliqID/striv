@@ -1,9 +1,8 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { apiClient, ApiError } from "@/lib/api";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { apiClient } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
 
 interface WeeklyReport {
   id: number;
@@ -49,7 +48,6 @@ function formatVol(v: number): string {
 }
 
 export default function ReviewsPage() {
-  const router = useRouter();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -91,9 +89,14 @@ export default function ReviewsPage() {
     } finally { setGenerating(false); }
   };
 
+  // "Recent" is the last four weeks. Derived once per render from a single
+  // timestamp so every row is compared against the same instant rather than
+  // calling Date.now() inside the filter.
+  const fourWeeksAgo = Date.now() - 4 * 7 * 86400000;
+
   const filtered = filter === "all" ? reports
     : filter === "year" ? reports.filter(r => new Date(r.week_start).getFullYear() === new Date().getFullYear())
-    : reports.filter(r => (Date.now() - new Date(r.week_start).getTime()) <= 4 * 7 * 86400000);
+    : reports.filter(r => new Date(r.week_start).getTime() >= fourWeeksAgo);
 
   return (
     <AppLayout>

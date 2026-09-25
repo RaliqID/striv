@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import StrivLogo from "@/components/StrivLogo";
 import { apiUrl } from "@/lib/api";
 
 /* Scroll-triggered reveal — IntersectionObserver, no library, respects prefers-reduced-motion */
@@ -60,10 +61,8 @@ function Reveal({
 /* Smooth-scroll navbar that hides on scroll-down, shows on scroll-up */
 function SmartNav({
   children,
-  onNavClick,
 }: {
   children: React.ReactNode;
-  onNavClick: (path: string) => (e: React.MouseEvent) => void;
 }) {
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -144,16 +143,57 @@ export default function LandingPage() {
     }
   };
 
+  /*
+   * Hero grid glow follows the pointer.
+   *
+   * Position is written straight to the element as CSS custom properties via a
+   * ref instead of React state: a state update on every mousemove would
+   * re-render the whole page. The DOM write is cheap and the CSS mask does the
+   * rest. rAF-throttled so multiple moves in one frame collapse into one write.
+   */
+  const heroRef = useRef<HTMLElement | null>(null);
+  const heroFrame = useRef<number | null>(null);
+  const [heroPoint, setHeroPoint] = useState({ x: "50%", y: "40%" });
+
+  const handleHeroMove = (event: React.MouseEvent<HTMLElement>) => {
+    const el = heroRef.current;
+    if (!el) return;
+
+    // Respect reduced-motion: leave the glow parked at its resting position.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const rect = el.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    if (heroFrame.current !== null) cancelAnimationFrame(heroFrame.current);
+    heroFrame.current = requestAnimationFrame(() => {
+      setHeroPoint({ x: `${x}px`, y: `${y}px` });
+    });
+  };
+
+  const resetHeroGlow = () => {
+    if (heroFrame.current !== null) cancelAnimationFrame(heroFrame.current);
+    setHeroPoint({ x: "50%", y: "40%" });
+  };
+
+  // Cancel any in-flight frame when the page unmounts.
+  useEffect(() => {
+    return () => {
+      if (heroFrame.current !== null) cancelAnimationFrame(heroFrame.current);
+    };
+  }, []);
+
   const handleNavClick = (path: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    e.preventDefault();    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     router.push(token ? path : "/login");
   };
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <SmartNav onNavClick={handleNavClick}>
-        <div className="flex items-center gap-gutter py-4">
+          <SmartNav>
+        <div className="flex items-center gap-2 py-4">
+          <StrivLogo size={32} />
           <span className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-black text-primary tracking-tighter">Striv</span>
         </div>
         <nav className="hidden md:flex items-center gap-6 py-4">
@@ -174,21 +214,45 @@ export default function LandingPage() {
 
       <main className="flex-grow flex flex-col items-center pt-16 md:pt-24 pb-32 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto gap-16 md:gap-24">
         {/* Hero — animate on load */}
-        <Reveal>
-          <section className="w-full flex flex-col items-center text-center gap-8 max-w-3xl">
-            <h1 className="font-metric-display text-metric-display md:text-[72px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-              Your training has a story.
-            </h1>
-            <p className="font-body-md text-body-md md:text-xl text-on-surface-variant max-w-2xl text-balance">
-              Track your workouts, discover your progress, and understand what your training data is telling you with precision analytics designed for serious athletes.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto">
-              <Link href="/register" className="bg-primary text-on-primary font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95 duration-200">
-                Start Tracking
-              </Link>
-              <Link href="#how-it-works" className="bg-surface text-primary border border-outline font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-surface-container-low transition-all active:scale-95 duration-200">
-                See How It Works
-              </Link>
+        <Reveal className="w-full">
+          <section
+            aria-labelledby="hero-heading"
+            onMouseMove={handleHeroMove}
+            onMouseLeave={resetHeroGlow}
+            ref={heroRef}
+            style={{ ["--hero-x" as string]: heroPoint.x, ["--hero-y" as string]: heroPoint.y }}
+            className="group/hero relative isolate w-full overflow-hidden rounded-2xl border border-outline-variant px-margin-mobile py-16 md:py-24"
+          >
+            {/*
+              Grid backdrop. Two layers so the hover effect reads as a
+              spotlight rather than a flat wash: a static grid, plus a soft
+              radial highlight that follows the pointer and fades in on hover.
+              Both are pointer-events-none and aria-hidden so they never
+              intercept clicks or reach assistive tech.
+            */}
+            <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+              <div className="hero-grid absolute inset-0 opacity-[0.55]" />
+              <div className="hero-grid-highlight absolute inset-0 opacity-0 transition-opacity duration-500 group-hover/hero:opacity-100" />
+            </div>
+
+            <div className="flex flex-col items-center gap-8 text-center mx-auto max-w-3xl">
+              <h1
+                id="hero-heading"
+                className="font-metric-display text-metric-display md:text-[72px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance"
+              >
+                Your training has a story.
+              </h1>
+              <p className="font-body-md text-body-md md:text-xl text-on-surface-variant max-w-2xl text-balance">
+                Track your workouts, discover your progress, and understand what your training data is telling you with precision analytics designed for serious athletes.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto">
+                <Link href="/register" className="bg-primary text-on-primary font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95 duration-200">
+                  Start Tracking
+                </Link>
+                <Link href="#how-it-works" className="bg-surface text-primary border border-outline font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-surface-container-low transition-all active:scale-95 duration-200">
+                  See How It Works
+                </Link>
+              </div>
             </div>
           </section>
         </Reveal>
@@ -559,7 +623,10 @@ export default function LandingPage() {
       <footer className="w-full py-12 border-t border-outline-variant bg-surface">
         <div className="flex flex-col md:flex-row justify-between gap-12 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <div className="flex flex-col gap-4">
-            <span className="font-headline-lg-mobile font-black text-primary tracking-tighter">Striv</span>
+            <div className="flex items-center gap-2">
+              <StrivLogo size={28} />
+              <span className="font-headline-lg-mobile font-black text-primary tracking-tighter">Striv</span>
+            </div>
             <p className="font-body-md text-on-surface-variant">Your training has a story.</p>
           </div>
           <div className="flex flex-wrap gap-12 md:gap-16 font-body-md text-on-surface-variant">
