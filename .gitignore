@@ -32,6 +32,9 @@ auth.json
 frontend/node_modules
 frontend/.next
 frontend/out
+# Incremental TypeScript build cache — machine-specific, no value in history.
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # OS
 .DS_Store
