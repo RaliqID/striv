@@ -22,22 +22,42 @@ return Application::configure(basePath: dirname(__DIR__))
             'not_suspended' => \App\Http\Middleware\EnsureUserIsNotSuspended::class,
         ]);
 
+        // Send hardening headers on every response, including auth failures
+        // (a 401 without them is just as exploitable as a 200).
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         /*
-         * Trust the local reverse proxies that sit in front of this app.
+         * Trusted reverse proxies.
          *
-         * Requests reach Laravel through the Next.js dev server (and, when
-         * sharing, through the tunnel in front of it), so without this every
-         * request appears to come from 127.0.0.1. That would collapse all
-         * callers into a single login-throttle bucket — one attacker could lock
-         * out every user — and would make the admin security log useless.
+         * Required so the real client IP survives the proxy hop: without it
+         * every request looks like 127.0.0.1, which collapses all callers into
+         * one login-throttle bucket (an attacker could then lock out every
+         * user) and makes the admin security log useless.
          *
-         * Everything is trusted only because this app is never exposed directly:
-         * it listens on loopback and is always reached through a local proxy.
+         * Anything sent outside the trusted set is ignored, so this is safe
+         * only while a trusted proxy is genuinely in front of the app. In
+         * production, TRUSTED_PROXIES defaults to the private ranges that a
+         * load balancer sits in rather than '*': with '*' anyone who can reach
+         * the app directly could forge X-Forwarded-For and bypass IP-based
+         * throttling entirely by claiming a new address per request.
          */
-        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
-            | Request::HEADER_X_FORWARDED_HOST
-            | Request::HEADER_X_FORWARDED_PORT
-            | Request::HEADER_X_FORWARDED_PROTO);
+        $trustedProxies = env('TRUSTED_PROXIES');
+        if ($trustedProxies === null || $trustedProxies === '') {
+            // env() rather than app()->environment(): this closure runs while
+            // the application is still being configured, before the container
+            // can resolve 'env'.
+            $trustedProxies = env('APP_ENV') === 'production'
+                ? '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1'
+                : '*';
+        }
+
+        $middleware->trustProxies(
+            at: $trustedProxies === '*' ? '*' : array_map('trim', explode(',', $trustedProxies)),
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request, $e) {

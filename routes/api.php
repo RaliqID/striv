@@ -9,11 +9,25 @@ use App\Http\Controllers\GoalController;
 
 Route::prefix('v1')->group(function () {
 
-    Route::post('/auth/register', [AuthController::class, 'register']);
+    /*
+     * Public auth endpoints.
+     *
+     * Login is throttled inside the controller (two dimensions: IP and
+     * IP+account) so an attacker cannot walk the user list or brute-force one
+     * account. Register and the OAuth redirect are guarded here because they
+     * have no credential to check against — the only useful control is a
+     * request-rate ceiling.
+     */
+    Route::post('/auth/register', [AuthController::class, 'register'])
+        ->middleware('throttle:5,60');              // 5 signups/hour per IP
+
     Route::post('/auth/login', [AuthController::class, 'login']);
 
-    Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
-    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
+    // OAuth entry points: capped to stop redirect-loop / enumeration abuse.
+    Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
+        ->middleware('throttle:10,60');
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])
+        ->middleware('throttle:10,60');
 
     Route::middleware(['auth:sanctum', 'not_suspended'])->group(function () {
         Route::get('/auth/user', [AuthController::class, 'user']);
