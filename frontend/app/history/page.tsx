@@ -88,7 +88,13 @@ export default function HistoryPage() {
 
   const fetchPage = useCallback(async (targetPage: number, append: boolean) => {
     const id = ++requestId.current;
-    append ? setLoadingMore(true) : setLoading(true);
+    // Explicit branch rather than a ternary used for side effects, which reads
+    // as a discarded expression and hides the intent.
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const response = await apiClient.get<Paginated<WorkoutSession>>(

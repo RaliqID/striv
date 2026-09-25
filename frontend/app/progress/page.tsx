@@ -61,12 +61,6 @@ function formatVolume(vol: number): string {
   return vol.toString();
 }
 
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 export default function ProgressPage() {
   const router = useRouter();
   const [periodDays, setPeriodDays] = useState(90);
@@ -106,7 +100,6 @@ export default function ProgressPage() {
   const latestE1rm = e1rmPoints.length > 0 ? e1rmPoints[e1rmPoints.length - 1].e1rm : null;
   const firstE1rm = e1rmPoints.length > 0 ? e1rmPoints[0].e1rm : null;
   const delta = firstE1rm && latestE1rm ? ((latestE1rm - firstE1rm) / firstE1rm) * 100 : null;
-  const e1rmName = e1rmSeries?.name ?? "No exercise";
 
   // Build SVG path and projection
   const chartWidth = 600;
@@ -126,7 +119,6 @@ export default function ProgressPage() {
   let projectedPathD = "";
   if (e1rmPoints.length >= 2) {
     const pts = e1rmPoints.map((p) => p.e1rm);
-    const maxVal = Math.max(...pts, 1);
     const points = pts.map((v, i) => getPoint(i, v, pts.length));
     pathD = points.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join(" ");
 
@@ -171,7 +163,6 @@ export default function ProgressPage() {
   // Build 12 columns x 7 rows, pad leading with zeros
   const numWeeks = 12;
   const daysPerWeek = 7;
-  const totalCells = numWeeks * daysPerWeek;
   // Assume frequency entries are in order, one per week. Use workouts count per week.
   // We'll map each week's workouts to 7 cells, but we need to map each day? Simpler: we have weekly data, so each week gets a column, and we repeat that column 7 times.
   // Or we could use volume_by_day if available for daily granularity. But spec says use frequency_weekly.

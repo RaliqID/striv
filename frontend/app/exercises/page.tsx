@@ -48,7 +48,12 @@ export default function ExercisesPage() {
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
       const id = ++requestId.current;
-      append ? setLoadingMore(true) : setLoading(true);
+      // Explicit branch rather than a ternary used for side effects.
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         const params = new URLSearchParams();
@@ -254,7 +259,7 @@ export default function ExercisesPage() {
                         —
                       </p>
                     </div>
-                    {/* Decorative sparkline placeholder */}
+                    {/* Decorative accent, hidden from assistive tech. */}
                     <div
                       className="flex items-end gap-1"
                       aria-hidden="true"

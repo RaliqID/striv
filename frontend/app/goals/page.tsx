@@ -1,35 +1,84 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { apiClient } from "@/lib/api";
-import { useState, useEffect } from "react";
+import Badge from "@/components/admin/Badge";
+import Button from "@/components/admin/Button";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { EmptyState, ErrorBanner, LoadingRows } from "@/components/admin/States";
+import { apiClient, ApiError } from "@/lib/api";
+import { formatDate } from "@/lib/admin";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Exercise = { id: number; name: string; slug: string };
-type GoalProgress = { current_value: number; progress_percentage: number };
+
 type Goal = {
   id: number;
-  exercise_id: number;
-  exercise: Exercise;
+  exercise_id: number | null;
+  exercise: Exercise | null;
   target_type: string;
   target_value: number;
+  starting_value: number;
   target_reps: number | null;
   deadline: string | null;
+  completed_at: string | null;
   status: string;
+  unit: string;
+  current_value: number;
+  progress_percentage: number;
+  required_delta: number;
+  remaining: number;
 };
+
+/** Goal kinds, with the framing each one needs in the form. */
+const GOAL_TYPES = [
+  {
+    value: "weight",
+    label: "Lift a heavier weight",
+    hint: "Pick the weight and the reps you want to hit it for.",
+    icon: "fitness_center",
+  },
+  {
+    value: "one_rm",
+    label: "Improve estimated 1RM",
+    hint: "Based on your best set converted to a one-rep max.",
+    icon: "trending_up",
+  },
+  {
+    value: "reps",
+    label: "Do more reps",
+    hint: "The most reps you can perform in a single set.",
+    icon: "repeat",
+  },
+  {
+    value: "workouts",
+    label: "Complete more workouts",
+    hint: "Counts sessions you finish after setting this goal.",
+    icon: "calendar_month",
+  },
+];
+
+/** Consistent number rendering: no trailing ".00" on whole numbers. */
+function num(value: number | null | undefined): string {
+  if (value == null) return "—";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
 
 export default function GoalsPage() {
   const router = useRouter();
+
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [progressByGoal, setProgressByGoal] = useState<Record<number, GoalProgress>>({});
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [updating, setUpdating] = useState(false);
 
+  const [showModal, setShowModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null);
+
+  // Form state
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [exerciseResults, setExerciseResults] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
@@ -38,97 +87,88 @@ export default function GoalsPage() {
   const [targetReps, setTargetReps] = useState("");
   const [deadline, setDeadline] = useState("");
   const [statusValue, setStatusValue] = useState("active");
-  const [formError, setFormError] = useState("");
 
-  const fetchGoals = async () => {
+  // Current best for the selected exercise, so the member sees the baseline
+  // they are improving on instead of guessing a number and being rejected.
+  const [baseline, setBaseline] = useState<number | null>(null);
+  const [baselineLoading, setBaselineLoading] = useState(false);
+
+  const fetchGoals = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (filter !== "all") params.set("status", filter);
-      const res = await apiClient.get<{ data: Goal[] }>(`/goals?${params.toString()}`);
-      setGoals(res.data);
+      const res = await apiClient.get<{ data: Goal[] }>(`/goals?${params}`);
+      setGoals(res.data ?? []);
       setError("");
-      // Fetch progress for each goal in parallel (best-effort)
-      const list = res.data ?? [];
-      if (list.length > 0) {
-        Promise.all(
-          list.map((g) =>
-            apiClient
-              .get<GoalProgress>(`/goals/${g.id}/progress`)
-              .catch(() => null)
-          )
-        ).then((results) => {
-          setProgressByGoal((prev) => {
-            const next = { ...prev };
-            list.forEach((g, i) => {
-              const r = results[i];
-              if (r && typeof r.progress_percentage === "number") {
-                next[g.id] = r;
-              }
-            });
-            return next;
-          });
-        });
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 401) {
+        router.push("/login");
+        return;
       }
-    } catch (e: any) {
-      if (e.status === 401) router.push("/login");
-      setError(e.message || "Could not load goals");
+      setError(caught instanceof Error ? caught.message : "Could not load goals.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, router]);
 
   useEffect(() => {
-    fetchGoals();
-  }, [filter]);
+    void fetchGoals();
+  }, [fetchGoals]);
 
-  const searchExercises = async (q: string) => {
-    if (!q.trim()) { setExerciseResults([]); return; }
-    try {
-      const res = await apiClient.get<{ data: Exercise[] }>(`/exercises?search=${encodeURIComponent(q)}`);
-      setExerciseResults(res.data);
-    } catch { /* ignore */ }
-  };
-
+  /** Debounced exercise search. */
   useEffect(() => {
-    const timer = setTimeout(() => searchExercises(exerciseSearch), 300);
+    if (!exerciseSearch.trim()) {
+      setExerciseResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiClient.get<{ data: Exercise[] }>(
+          `/exercises?search=${encodeURIComponent(exerciseSearch)}`
+        );
+        setExerciseResults(res.data ?? []);
+      } catch {
+        setExerciseResults([]);
+      }
+    }, 300);
     return () => clearTimeout(timer);
   }, [exerciseSearch]);
 
-  const createGoal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError("");
-    if (!selectedExercise) { setFormError("Select an exercise"); return; }
-    if (!targetValue || parseFloat(targetValue) <= 0) { setFormError("Target value must be >0"); return; }
-    setSubmitting(true);
-    try {
-      await apiClient.post("/goals", {
-        exercise_id: selectedExercise.id,
-        target_type: targetType,
-        target_value: parseFloat(targetValue),
-        target_reps: targetReps ? parseInt(targetReps) : null,
-        deadline: deadline || null,
-        status: "active",
-      });
-      setShowModal(false);
-      resetForm();
-      fetchGoals();
-    } catch (e: any) {
-      setFormError(e.message || "Failed to create goal");
-    } finally {
-      setSubmitting(false);
+  /**
+   * Fetch the member's current best for the chosen exercise + standard.
+   *
+   * This is what makes goal setting honest: the form can say "you are at 60kg
+   * for 5 reps" and refuse to let them set a target that is not an improvement.
+   */
+  useEffect(() => {
+    if (!selectedExercise || !GOAL_TYPES.some((t) => t.value === targetType) || targetType === "workouts") {
+      setBaseline(null);
+      return;
     }
-  };
-
-  const deleteGoal = async (id: number) => {
-    if (!confirm("Delete this goal?")) return;
-    try {
-      await apiClient.delete(`/goals/${id}`);
-      fetchGoals();
-    } catch (e: any) {
-      alert(e.message || "Delete failed");
-    }
-  };
+    let cancelled = false;
+    setBaselineLoading(true);
+    (async () => {
+      try {
+        const params = new URLSearchParams({
+          exercise_id: String(selectedExercise.id),
+          target_type: targetType,
+        });
+        if (targetReps) params.set("target_reps", targetReps);
+        const res = await apiClient.get<{ current_value: number }>(
+          `/goals/baseline?${params}`
+        );
+        if (!cancelled) setBaseline(res.current_value ?? 0);
+      } catch {
+        if (!cancelled) setBaseline(null);
+      } finally {
+        if (!cancelled) setBaselineLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedExercise, targetType, targetReps]);
 
   const resetForm = () => {
     setExerciseSearch("");
@@ -140,376 +180,519 @@ export default function GoalsPage() {
     setDeadline("");
     setStatusValue("active");
     setFormError("");
+    setBaseline(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setEditingGoal(null);
+    setShowModal(true);
   };
 
   const openEdit = (goal: Goal) => {
     setEditingGoal(goal);
     setSelectedExercise(goal.exercise);
-    setExerciseSearch(goal.exercise.name);
+    setExerciseSearch(goal.exercise?.name ?? "");
     setTargetType(goal.target_type);
     setTargetValue(String(goal.target_value));
     setTargetReps(goal.target_reps ? String(goal.target_reps) : "");
     setDeadline(goal.deadline ? goal.deadline.substring(0, 10) : "");
     setStatusValue(goal.status);
     setFormError("");
+    setShowModal(true);
   };
 
-  const closeEdit = () => {
-    setEditingGoal(null);
+  const closeModal = () => {
+    setShowModal(false);
     resetForm();
+    setEditingGoal(null);
   };
 
-  const updateGoal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingGoal) return;
+  const submitGoal = async (event: React.FormEvent) => {
+    event.preventDefault();
     setFormError("");
-    if (!targetValue || parseFloat(targetValue) <= 0) {
-      setFormError("Target value must be >0");
+
+    const parsedTarget = parseFloat(targetValue);
+    if (targetType !== "workouts" && !selectedExercise) {
+      setFormError("Choose an exercise first.");
       return;
     }
-    setUpdating(true);
+    if (!targetValue || Number.isNaN(parsedTarget) || parsedTarget <= 0) {
+      setFormError("Enter a target above zero.");
+      return;
+    }
+    // Mirror the server rule so the member is told before the round trip.
+    if (baseline !== null && parsedTarget <= baseline) {
+      setFormError(
+        `Your current best is ${num(baseline)}. Set a target above that to make this a goal.`
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    const payload = {
+      target_type: targetType,
+      target_value: parsedTarget,
+      target_reps: targetReps ? parseInt(targetReps, 10) : null,
+      deadline: deadline || null,
+      ...(targetType === "workouts" ? {} : { exercise_id: selectedExercise?.id }),
+    };
+
     try {
-      await apiClient.put(`/goals/${editingGoal.id}`, {
-        target_type: targetType,
-        target_value: parseFloat(targetValue),
-        target_reps: targetReps ? parseInt(targetReps) : null,
-        deadline: deadline || null,
-        status: statusValue,
-      });
-      closeEdit();
-      fetchGoals();
-    } catch (e: any) {
-      setFormError(e.message || "Failed to update goal");
+      if (editingGoal) {
+        await apiClient.put(`/goals/${editingGoal.id}`, {
+          ...payload,
+          status: statusValue,
+        });
+      } else {
+        await apiClient.post("/goals", payload);
+      }
+      closeModal();
+      void fetchGoals();
+    } catch (caught) {
+      setFormError(caught instanceof Error ? caught.message : "Could not save the goal.");
     } finally {
-      setUpdating(false);
+      setSubmitting(false);
     }
   };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setSubmitting(true);
+    try {
+      await apiClient.delete(`/goals/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      void fetchGoals();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete the goal.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const counts = useMemo(
+    () => ({
+      all: goals.length,
+      active: goals.filter((goal) => goal.status === "active").length,
+      completed: goals.filter((goal) => goal.status === "completed").length,
+    }),
+    [goals]
+  );
+
+  const selectedType = GOAL_TYPES.find((type) => type.value === targetType);
+  const unitLabel = targetType === "workouts" ? "workouts" : targetType === "reps" ? "reps" : "kg";
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-headline-lg font-headline-lg text-primary">Goals</h1>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-primary text-on-primary rounded-lg px-4 py-2 font-metric-sm hover:bg-primary/90 transition-colors"
-          >
-            New Goal
-          </button>
-        </div>
+        <div className="mx-auto w-full max-w-container-max min-w-0 space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="font-headline-lg text-headline-lg text-primary">Goals</h1>
+              <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                Targets measured from where you started, so progress is real.
+              </p>
+            </div>
+            <Button icon="add" onClick={openCreate}>
+              New goal
+            </Button>
+          </div>
 
-        <div className="flex flex-wrap gap-2">
-          {["all", "active", "completed", "abandoned"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-4 py-1.5 rounded-xl font-label-caps text-label-caps transition-colors ${
-                filter === s
-                  ? "bg-primary text-on-primary"
-                  : "bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low"
-              }`}
-            >
-              {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-48 rounded-xl bg-surface-container animate-pulse" />
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "all", label: `All (${counts.all})` },
+              { value: "active", label: `Active (${counts.active})` },
+              { value: "completed", label: `Completed (${counts.completed})` },
+              { value: "abandoned", label: "Abandoned" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setFilter(option.value)}
+                aria-pressed={filter === option.value}
+                className={`rounded-full px-4 py-2 font-label-caps text-label-caps transition-colors ${
+                  filter === option.value
+                    ? "bg-primary text-on-primary"
+                    : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+              >
+                {option.label}
+              </button>
             ))}
           </div>
-        ) : error ? (
-          <div className="p-6 bg-error-container rounded-xl text-on-error-container text-center">
-            <p>{error}</p>
-            <button onClick={fetchGoals} className="mt-2 text-primary font-semibold hover:underline">
-              Retry
-            </button>
-          </div>
-        ) : goals.length === 0 ? (
-          <div className="border border-dashed border-outline-variant rounded-xl p-12 text-center">
-            <span className="material-symbols-outlined text-4xl text-outline block mb-4">flag</span>
-            <p className="font-headline-lg-mobile text-primary">No goals yet.</p>
-            <p className="font-body-md text-on-surface-variant mt-1">Set a goal to track your progress.</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-6 bg-primary text-on-primary rounded-lg px-4 py-2 font-metric-sm hover:bg-primary/90 transition-colors"
-            >
-              New Goal
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {goals.map((goal) => {
-              const progress = progressByGoal[goal.id];
-              const pct = progress?.progress_percentage;
-              const widthPct = typeof pct === "number" ? Math.max(0, Math.min(100, pct)) : 0;
-              const showCurrent = typeof progress?.current_value === "number" && goal.target_type !== "workouts";
-              const unit =
-                goal.target_type === "weight" || goal.target_type === "one_rm"
-                  ? "kg"
-                  : goal.target_type === "reps"
-                  ? "reps"
-                  : "";
-              const currentValText =
-                typeof progress?.current_value === "number"
-                  ? progress.current_value % 1 === 0
-                    ? String(progress.current_value)
-                    : progress.current_value.toFixed(1)
-                  : null;
-              return (
-                <div key={goal.id} className="border border-outline-variant rounded-xl p-5 bg-surface-container-lowest">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-headline-lg-mobile text-primary">{goal.exercise.name}</h3>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => openEdit(goal)}
-                        className="text-on-surface-variant hover:text-primary transition-colors p-1"
-                        aria-label="Edit goal"
-                      >
-                        <span className="material-symbols-outlined">edit</span>
-                      </button>
-                      <button
-                        onClick={() => deleteGoal(goal.id)}
-                        className="text-on-surface-variant hover:text-error transition-colors p-1"
-                        aria-label="Delete goal"
-                      >
-                        <span className="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
-                  </div>
-                  <p className="font-body-md text-on-surface-variant mt-1">
-                    {goal.target_type === "weight" && `${goal.target_value} kg`}
-                    {goal.target_type === "reps" && `${goal.target_value} reps`}
-                    {goal.target_type === "one_rm" && `${goal.target_value} kg 1RM`}
-                    {goal.target_type === "workouts" && `${goal.target_value} workouts`}
-                    {goal.target_reps ? ` × ${goal.target_reps} reps` : ""}
-                  </p>
-                  <div className="mt-3">
-                    <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                      {typeof pct === "number" ? (
-                        <div
-                          className="bg-primary h-full rounded-full transition-all"
-                          style={{ width: `${widthPct}%` }}
-                        />
-                      ) : (
-                        <div className="bg-surface-container-high h-full rounded-full animate-pulse" style={{ width: "100%" }} />
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-xs text-on-surface-variant">
-                        {typeof pct === "number" ? `${pct}%` : "—"}
-                      </span>
-                      {showCurrent && currentValText !== null && (
-                        <span className="text-xs text-on-surface-variant">
-                          {currentValText} / {goal.target_value} {unit}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className={`mt-3 inline-block px-2 py-0.5 rounded text-xs font-label-caps ${
-                      goal.status === "active" ? "bg-secondary/10 text-secondary" :
-                      goal.status === "completed" ? "bg-primary/10 text-primary" :
-                      "bg-error/10 text-error"
-                    }`}
+
+          {error && <ErrorBanner message={error} onRetry={fetchGoals} />}
+
+          {loading ? (
+            <LoadingRows rows={3} />
+          ) : goals.length === 0 ? (
+            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest">
+              <EmptyState
+                icon="flag"
+                title={filter === "all" ? "No goals yet." : "Nothing here."}
+                description="Set a target and Striv will measure your progress from the day you started."
+                action={<Button onClick={openCreate}>Set your first goal</Button>}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {goals.map((goal) => {
+                const pct = Math.max(0, Math.min(100, goal.progress_percentage ?? 0));
+                // The "from → to" readout is the core of the redesign: it shows
+                // a journey, not a static ratio.
+                const isWorkouts = goal.target_type === "workouts";
+                const fromLabel = num(goal.starting_value);
+                const currentLabel = num(goal.current_value);
+                const targetLabel = num(goal.target_value);
+                const repSuffix = goal.target_reps ? ` × ${goal.target_reps}` : "";
+
+                return (
+                  <article
+                    key={goal.id}
+                    className="flex flex-col rounded-xl border border-outline-variant bg-surface-container-lowest p-5"
                   >
-                    {goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    <header className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="truncate font-headline-lg-mobile text-headline-lg-mobile text-primary">
+                          {goal.exercise?.name ?? "All workouts"}
+                        </h2>
+                        <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                          {selectedTypeLabel(goal.target_type)}
+                          {repSuffix}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          onClick={() => openEdit(goal)}
+                          className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"
+                          aria-label={`Edit goal for ${goal.exercise?.name ?? "workouts"}`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(goal)}
+                          className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+                          aria-label={`Delete goal for ${goal.exercise?.name ?? "workouts"}`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
+                    </header>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { setShowModal(false); setEditingGoal(null); }}>
-          <div className="bg-surface rounded-xl border border-outline-variant p-6 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="font-headline-lg text-headline-lg text-primary mb-4">New Goal</h2>
-            <form onSubmit={createGoal} className="space-y-4">
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Exercise</label>
-                <input
-                  type="text"
-                  value={exerciseSearch}
-                  onChange={e => setExerciseSearch(e.target.value)}
-                  placeholder="Search exercise..."
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                />
-                {exerciseResults.length > 0 && (
-                  <ul className="mt-1 border border-outline-variant rounded-lg max-h-40 overflow-y-auto bg-surface">
-                    {exerciseResults.map(ex => (
-                      <li
-                        key={ex.id}
-                        className="px-4 py-2 hover:bg-surface-container-low cursor-pointer"
-                        onClick={() => {
-                          setSelectedExercise(ex);
-                          setExerciseSearch(ex.name);
-                          setExerciseResults([]);
-                        }}
+                    {/* Journey: baseline -> current -> target */}
+                    <div className="mt-4 flex items-end justify-between gap-2">
+                      <div>
+                        <p className="font-label-caps text-label-caps text-on-surface-variant">Started</p>
+                        <p className="font-metric-sm text-metric-sm text-on-surface">
+                          {fromLabel} {isWorkouts ? "" : goal.unit}
+                        </p>
+                      </div>
+                      <span
+                        className="material-symbols-outlined text-[18px] text-on-surface-variant"
+                        aria-hidden="true"
                       >
-                        {ex.name}
-                      </li>
-                    ))}
-                  </ul>
+                        trending_flat
+                      </span>
+                      <div className="text-right">
+                        <p className="font-label-caps text-label-caps text-on-surface-variant">Target</p>
+                        <p className="font-metric-sm text-metric-sm text-primary">
+                          {targetLabel} {isWorkouts ? "" : goal.unit}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div
+                        className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high"
+                        role="progressbar"
+                        aria-valuenow={Math.round(pct)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${goal.exercise?.name ?? "Workouts"} progress`}
+                      >
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            goal.status === "completed" ? "bg-emerald-500" : "bg-primary"
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="font-body-md text-body-md text-on-surface-variant">
+                          Now <strong className="text-on-surface">{currentLabel}</strong>
+                          {!isWorkouts && ` ${goal.unit}`}
+                        </span>
+                        <span className="font-metric-sm text-metric-sm text-primary">
+                          {Math.round(pct)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <footer className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant pt-4">
+                      {goal.status === "completed" ? (
+                        <Badge tone="success">Completed</Badge>
+                      ) : goal.status === "abandoned" ? (
+                        <Badge tone="neutral">Abandoned</Badge>
+                      ) : (
+                        <Badge tone="primary">
+                          {goal.remaining > 0
+                            ? `${num(goal.remaining)}${isWorkouts ? "" : " " + goal.unit} to go`
+                            : "Almost there"}
+                        </Badge>
+                      )}
+                      {goal.deadline && (
+                        <Badge tone="info">Due {formatDate(goal.deadline)}</Badge>
+                      )}
+                    </footer>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      {/* Create / edit */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeModal}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="goal-form-title"
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-outline-variant bg-surface p-6"
+          >
+            <h2 id="goal-form-title" className="font-headline-lg text-headline-lg text-primary">
+              {editingGoal ? "Edit goal" : "New goal"}
+            </h2>
+            <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+              {selectedType?.hint}
+            </p>
+
+            <form onSubmit={submitGoal} className="mt-5 space-y-5">
+              {/* Goal kind */}
+              <fieldset>
+                <legend className="font-label-caps text-label-caps text-on-surface-variant">
+                  What are you working towards?
+                </legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {GOAL_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setTargetType(type.value)}
+                      disabled={Boolean(editingGoal)}
+                      aria-pressed={targetType === type.value}
+                      className={`flex items-start gap-2 rounded-lg border p-3 text-left transition-colors disabled:opacity-60 ${
+                        targetType === type.value
+                          ? "border-primary bg-surface-container-high"
+                          : "border-outline-variant hover:bg-surface-container-low"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">
+                        {type.icon}
+                      </span>
+                      <span className="font-body-md text-body-md text-on-surface">{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {editingGoal && (
+                  <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
+                    The goal type is fixed once created, because changing it would reset your baseline.
+                  </p>
                 )}
-                {selectedExercise && <p className="text-sm text-on-surface-variant mt-1">Selected: {selectedExercise.name}</p>}
-              </div>
+              </fieldset>
+
+              {/* Exercise (not needed for workout-count goals) */}
+              {targetType !== "workouts" && (
+                <div>
+                  <label
+                    htmlFor="goal-exercise"
+                    className="font-label-caps text-label-caps text-on-surface-variant"
+                  >
+                    Exercise
+                  </label>
+                  <input
+                    id="goal-exercise"
+                    type="text"
+                    value={exerciseSearch}
+                    onChange={(event) => setExerciseSearch(event.target.value)}
+                    disabled={Boolean(editingGoal)}
+                    placeholder="Search exercises…"
+                    autoComplete="off"
+                    className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none disabled:opacity-60"
+                  />
+                  {exerciseResults.length > 0 && (
+                    <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-outline-variant bg-surface">
+                      {exerciseResults.map((exercise) => (
+                        <li key={exercise.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedExercise(exercise);
+                              setExerciseSearch(exercise.name);
+                              setExerciseResults([]);
+                            }}
+                            className="w-full px-4 py-2 text-left font-body-md text-body-md text-on-surface hover:bg-surface-container-low"
+                          >
+                            {exercise.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {editingGoal && (
+                    <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                      The exercise cannot be changed after a goal is created.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Rep standard — only meaningful for weighted lifts */}
+              {(targetType === "weight" || targetType === "one_rm") && (
+                <div>
+                  <label
+                    htmlFor="goal-reps"
+                    className="font-label-caps text-label-caps text-on-surface-variant"
+                  >
+                    Reps <span className="normal-case">(optional)</span>
+                  </label>
+                  <input
+                    id="goal-reps"
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={targetReps}
+                    onChange={(event) => setTargetReps(event.target.value)}
+                    placeholder="e.g. 5"
+                    className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
+                  />
+                  <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                    Set a rep count to make this exact — e.g. 100 kg for 5 reps. Only sets
+                    with at least that many reps count towards the goal.
+                  </p>
+                </div>
+              )}
+
+              {/* Target value, framed against the live baseline */}
               <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Type</label>
-                <select
-                  value={targetType}
-                  onChange={e => setTargetType(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
+                <label
+                  htmlFor="goal-target"
+                  className="font-label-caps text-label-caps text-on-surface-variant"
                 >
-                  <option value="weight">Weight (kg)</option>
-                  <option value="reps">Reps</option>
-                  <option value="one_rm">1RM (kg)</option>
-                  <option value="workouts">Workouts</option>
-                </select>
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Value</label>
+                  Target {unitLabel}
+                </label>
                 <input
+                  id="goal-target"
                   type="number"
+                  step={targetType === "reps" || targetType === "workouts" ? 1 : 0.5}
+                  min={0}
                   value={targetValue}
-                  onChange={e => setTargetValue(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
+                  onChange={(event) => setTargetValue(event.target.value)}
                   required
+                  className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"
                 />
+
+                {targetType !== "workouts" && selectedExercise && (
+                  <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
+                    {baselineLoading ? (
+                      "Checking your current best…"
+                    ) : baseline !== null ? (
+                      <>
+                        Your current best for this is{" "}
+                        <strong className="text-on-surface">
+                          {num(baseline)} {unitLabel}
+                        </strong>
+                        {targetReps ? ` at ${targetReps} reps` : ""}. Your target must be higher.
+                      </>
+                    ) : null}
+                  </p>
+                )}
               </div>
+
               <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Reps (optional)</label>
+                <label
+                  htmlFor="goal-deadline"
+                  className="font-label-caps text-label-caps text-on-surface-variant"
+                >
+                  Deadline <span className="normal-case">(optional)</span>
+                </label>
                 <input
-                  type="number"
-                  value={targetReps}
-                  onChange={e => setTargetReps(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Deadline (optional)</label>
-                <input
+                  id="goal-deadline"
                   type="date"
+                  min={new Date().toISOString().slice(0, 10)}
                   value={deadline}
-                  onChange={e => setDeadline(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
+                  onChange={(event) => setDeadline(event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"
                 />
               </div>
-              {formError && <p className="text-error text-sm">{formError}</p>}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowModal(false); resetForm(); }}
-                  className="px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
-                >
+
+              {editingGoal && (
+                <div>
+                  <label
+                    htmlFor="goal-status"
+                    className="font-label-caps text-label-caps text-on-surface-variant"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="goal-status"
+                    value={statusValue}
+                    onChange={(event) => setStatusValue(event.target.value)}
+                    className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"
+                  >
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="abandoned">Abandoned</option>
+                  </select>
+                </div>
+              )}
+
+              {formError && (
+                <p role="alert" className="rounded-lg bg-error-container p-3 font-body-md text-body-md text-on-error-container">
+                  {formError}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+                <Button variant="secondary" onClick={closeModal} disabled={submitting}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="bg-primary text-on-primary px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
-                  {submitting ? "Creating..." : "Create"}
-                </button>
+                </Button>
+                <Button type="submit" busy={submitting} disabled={submitting}>
+                  {editingGoal ? "Save changes" : "Create goal"}
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {editingGoal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={closeEdit}>
-          <div className="bg-surface rounded-xl border border-outline-variant p-6 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="font-headline-lg text-headline-lg text-primary mb-4">Edit Goal</h2>
-            <form onSubmit={updateGoal} className="space-y-4">
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Exercise</label>
-                <input
-                  type="text"
-                  value={exerciseSearch}
-                  readOnly
-                  aria-readonly="true"
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface-container-low text-on-surface-variant cursor-not-allowed focus:outline-none"
-                />
-                <p className="text-sm text-on-surface-variant mt-1">Exercise can&apos;t be changed</p>
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Type</label>
-                <select
-                  value={targetType}
-                  onChange={e => setTargetType(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                >
-                  <option value="weight">Weight (kg)</option>
-                  <option value="reps">Reps</option>
-                  <option value="one_rm">1RM (kg)</option>
-                  <option value="workouts">Workouts</option>
-                </select>
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Value</label>
-                <input
-                  type="number"
-                  value={targetValue}
-                  onChange={e => setTargetValue(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Reps (optional)</label>
-                <input
-                  type="number"
-                  value={targetReps}
-                  onChange={e => setTargetReps(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Deadline (optional)</label>
-                <input
-                  type="date"
-                  value={deadline}
-                  onChange={e => setDeadline(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Status</label>
-                <select
-                  value={statusValue}
-                  onChange={e => setStatusValue(e.target.value)}
-                  className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
-                >
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
-                  <option value="abandoned">Abandoned</option>
-                </select>
-              </div>
-              {formError && <p className="text-error text-sm">{formError}</p>}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={closeEdit}
-                  className="px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updating}
-                  className="bg-primary text-on-primary px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
-                  {updating ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete this goal?"
+        description={`${deleteTarget?.exercise?.name ?? "This workout goal"} and its progress will be removed. This cannot be undone.`}
+        confirmLabel="Delete goal"
+        busy={submitting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppLayout>
   );
 }
+
+/** Human label for a goal type, used on the cards. */
+function selectedTypeLabel(targetType: string): string {
+  switch (targetType) {
+    case "weight":
+      return "Weight target";
+    case "one_rm":
+      return "Estimated 1RM";
+    case "reps":
+      return "Rep target";
+    case "workouts":
+      return "Workout count";
+    default:
+      return targetType;
+  }
+}
+

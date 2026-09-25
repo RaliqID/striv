@@ -1,10 +1,9 @@
 "use client";
 
 import { apiClient, ApiError } from "@/lib/api";
-import { captureTokenFromUrl, readStoredUser, storeUser } from "@/lib/auth";
+import { captureTokenFromUrl, readStoredUser } from "@/lib/auth";
 import type { Exercise, Paginated } from "@/types/exercise";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const TOTAL_STEPS = 6;
 
@@ -27,7 +26,6 @@ const FREQUENCIES = [
 ];
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
 
   // Step 1: Personal info
@@ -108,6 +106,12 @@ export default function OnboardingPage() {
 
   const nextStep = () => {
     setError(null);
+    // Name is free text the member edits here, so it is validated before
+    // advancing rather than failing later at save time.
+    if (step === 1 && !name.trim()) {
+      setError("Please enter a name so we know what to call you.");
+      return;
+    }
     if (step < TOTAL_STEPS) setStep(step + 1);
   };
 
@@ -190,9 +194,19 @@ export default function OnboardingPage() {
       return;
     }
 
+    // Each baseline entry needs a target the member is actually working towards.
+    // The server refuses a target that is not above the current baseline, so
+    // catch it here where the message can point at the offending row.
+    const incomplete = valid.find((e) => !e.targetLoad || Number(e.targetLoad) <= 0);
+    if (incomplete) {
+      setError(`Enter a target weight for ${incomplete.exercise.name}.`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await apiClient.put("/profile", {
+        name: name.trim(),
         age: age ? Number(age) : null,
         location: location.trim() || null,
         weight_kg: weight ? Number(weight) : null,
@@ -204,14 +218,33 @@ export default function OnboardingPage() {
         complete_onboarding: true,
       });
 
+      // Create the baseline goals. A goal whose target is already met is
+      // refused by the API, so failures are collected and reported together
+      // rather than silently dropping goals the member thought they had set.
+      const failedGoals: string[] = [];
       for (const entry of valid) {
-        await apiClient.post("/goals", {
-          exercise_id: entry.exercise.id,
-          target_type: "weight",
-          target_value: entry.targetLoad ? Number(entry.targetLoad) : null,
-          target_reps: entry.targetReps ? Number(entry.targetReps) : null,
-          deadline: null,
-        });
+        try {
+          await apiClient.post("/goals", {
+            exercise_id: entry.exercise.id,
+            target_type: "weight",
+            target_value: entry.targetLoad ? Number(entry.targetLoad) : null,
+            target_reps: entry.targetReps ? Number(entry.targetReps) : null,
+            deadline: null,
+          });
+        } catch (goalError) {
+          const label = entry.exercise?.name ?? "goal";
+          failedGoals.push(
+            goalError instanceof ApiError ? `${label}: ${goalError.message}` : label
+          );
+        }
+      }
+
+      if (failedGoals.length > 0) {
+        setError(
+          `Profile saved, but these goals need a new target: ${failedGoals.join("; ")}`
+        );
+        setSubmitting(false);
+        return;
       }
 
       // Refresh localStorage with the new profile so dashboard guard sees
@@ -219,7 +252,10 @@ export default function OnboardingPage() {
       try {
         const me = await apiClient.get<any>("/auth/user");
         if (me) localStorage.setItem("user", JSON.stringify(me));
-      } catch {}
+      } catch {
+        // Profile save already succeeded; a stale cache only affects the next
+        // page read and is refreshed on the following load.
+      }
 
       // Hard navigation so the dashboard mounts with a fresh store and token.
       window.location.href = "/dashboard";
@@ -282,9 +318,13 @@ export default function OnboardingPage() {
                 <label htmlFor="ob-name" className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2 block">Name</label>
                 <input
                   id="ob-name"
-                  className={`${inputClass} opacity-60 cursor-not-allowed`}
+                  className={inputClass}
                   value={name}
-                  readOnly
+                  onChange={(e) => setName(e.target.value)}
+                  type="text"
+                  maxLength={255}
+                  placeholder="What should we call you?"
+                  autoComplete="name"
                 />
               </div>
               <div>
@@ -632,14 +672,16 @@ export default function OnboardingPage() {
                       htmlFor="ob-load"
                       className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2 block"
                     >
-                      Target Load (kg)
+                      Target Weight (kg)
                     </label>
                     <input
                       id="ob-load"
                       className={inputClass}
                       type="number"
                       inputMode="decimal"
-                      placeholder="e.g. 60"
+                      min={0}
+                      step={0.5}
+                      placeholder="e.g. 80"
                       value={activeTargetLoad}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -662,14 +704,16 @@ export default function OnboardingPage() {
                       htmlFor="ob-reps"
                       className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2 block"
                     >
-                      Target Reps
+                      For how many reps
                     </label>
                     <input
                       id="ob-reps"
                       className={inputClass}
                       type="number"
                       inputMode="numeric"
-                      placeholder="e.g. 10"
+                      min={1}
+                      max={500}
+                      placeholder="e.g. 5"
                       value={activeTargetReps}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -687,6 +731,12 @@ export default function OnboardingPage() {
                     />
                   </div>
                 </div>
+                {/* Explain what the pair means, since the rep count is the part
+                    that makes the target a real standard rather than a number. */}
+                <p className="mt-3 font-body-md text-body-md text-on-surface-variant">
+                  For example: <strong className="text-on-surface">80 kg for 5 reps</strong> means
+                  performing 5 reps at 80 kg. Only sets with at least 5 reps will count towards it.
+                </p>
                 <div className="mt-6 flex justify-between items-center">
                   <button
                     type="button"

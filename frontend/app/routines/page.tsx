@@ -218,7 +218,10 @@ export default function RoutinesPage() {
       if (session?.id) {
         try {
           sessionStorage.setItem("activeSessionId", String(session.id));
-        } catch {}
+        } catch {
+          // Private-mode storage can throw; the active page re-reads it from
+          // the API when the id is absent.
+        }
         window.location.href = "/workout/active";
       }
     } catch (e: any) {

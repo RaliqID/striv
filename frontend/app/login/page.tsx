@@ -31,9 +31,10 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Decide destination based on onboarding completion.
-      // Prefer profile from login response, fall back to /auth/user.
-      const profile = data.user?.profile;
+      // Decide destination based on role, then onboarding completion.
+      // Prefer the user object from the login response, fall back to /auth/user.
+      let account = data.user;
+      const profile = account?.profile;
       let completed = profile?.onboarding_completed_at;
       if (completed == null) {
         try {
@@ -46,9 +47,19 @@ export default function LoginPage() {
           if (meRes.ok) {
             const me = await meRes.json();
             localStorage.setItem("user", JSON.stringify(me));
+            account = me;
             completed = me?.profile?.onboarding_completed_at;
           }
-        } catch {}
+        } catch {
+          // Non-fatal: fall through with whatever the login response gave us.
+        }
+      }
+
+      // Admins land in the admin area: they sign in to manage the platform, and
+      // the member onboarding flow is not a prerequisite for that role.
+      if (account?.is_admin) {
+        window.location.href = "/admin";
+        return;
       }
 
       window.location.href = completed ? "/dashboard" : "/onboarding";

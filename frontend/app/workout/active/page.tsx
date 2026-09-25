@@ -7,12 +7,10 @@ import type {
   WorkoutExercise,
   WorkoutSet,
   UiExercise,
-  UiSet,
   FinishResponse,
   SessionSummary,
 } from "./types";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function formatTime(sec: number): string {
@@ -33,7 +31,6 @@ function parseNum(value: string): number | null {
 }
 
 export default function ActiveWorkoutPage() {
-  const router = useRouter();
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [exercises, setExercises] = useState<UiExercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +60,6 @@ export default function ActiveWorkoutPage() {
   const sessionStartedAtRef = useRef<string | null>(null);
   const startedLoadingRef = useRef(false);
 
-  const menusOpenFor = useRef<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
   // Read session id + bootstrap
