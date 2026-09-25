@@ -9,18 +9,27 @@ const inter = Inter({
   display: "swap",
 });
 
+/** Bump when the logo mark changes, to defeat favicon caching. */
+const ICON_VERSION = "2";
+
 export const metadata: Metadata = {
   title: "Striv",
   description: "Striv — Train. Track. Understand.",
-  // SVG first (crisp at any size, and modern browsers prefer it), with the
-  // generated .ico as the fallback for older clients and pinned tabs.
+  /*
+   * Icons are declared in priority order (SVG first, .ico as the universal
+   * fallback). The ?v= query is a cache-buster: browsers cache favicons
+   * aggressively — often ignoring a normal reload — so changing the URL is the
+   * only reliable way to make a new icon appear. Bump ICON_VERSION whenever the
+   * mark in scripts/make-icons.py changes.
+   */
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: `/icon.svg?v=${ICON_VERSION}`, type: "image/svg+xml" },
+      { url: `/favicon.ico?v=${ICON_VERSION}`, sizes: "any" },
+      { url: `/icon-192.png?v=${ICON_VERSION}`, type: "image/png", sizes: "192x192" },
     ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+    shortcut: [{ url: `/favicon.ico?v=${ICON_VERSION}` }],
+    apple: [{ url: `/apple-icon.png?v=${ICON_VERSION}`, sizes: "180x180" }],
   },
 };
 
