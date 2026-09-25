@@ -19,20 +19,35 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // Specific origins only (comma-separated CORS_ALLOWED_ORIGINS env).
-    // Local dev: http://localhost:3000. Production: the deployed frontend URL.
-    // Falls back to '*' only when the env var is unset (first-run DX); set the
-    // var in every real deployment so origins are locked down.
-    'allowed_origins' => array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', '*'))),
+    /*
+    | Origins allowed to call the API from a browser.
+    |
+    | Comma-separated CORS_ALLOWED_ORIGINS. Defaults to the local dev frontend
+    | rather than '*' so the permissive setting has to be chosen explicitly.
+    | A wildcard default is dangerous with token auth: any website could call
+    | the API using a signed-in user's credentials. ProductionSafetyProvider
+    | refuses to boot if a wildcard reaches production.
+    */
+    'allowed_origins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'))
+    ))),
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    /*
+    | Explicit header allowlist. '*' would permit any custom header, which
+    | widens the surface for no benefit — the API only ever reads these.
+    */
+    'allowed_headers' => ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With'],
 
+    // Let the browser cache preflights, halving the request count for mutating calls.
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
+    // Bearer tokens are sent in a header, not a cookie, so credentialed
+    // cross-origin requests are neither needed nor enabled.
     'supports_credentials' => false,
 
 ];
