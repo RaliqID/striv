@@ -15,7 +15,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
     Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'not_suspended'])->group(function () {
         Route::get('/auth/user', [AuthController::class, 'user']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
@@ -49,12 +49,19 @@ Route::prefix('v1')->group(function () {
         Route::post('/insights/generate', [\App\Http\Controllers\InsightController::class, 'generate']);
 
         // Goals
+        // `baseline` is declared before the resource so it is not captured as
+        // a goal id by the {goal} wildcard.
+        Route::get('/goals/baseline', [GoalController::class, 'baseline']);
         Route::apiResource('goals', GoalController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
         Route::get('/goals/{goal}/progress', [GoalController::class, 'progress']);
 
         // Profile
+        // `export` is declared before any wildcard-free siblings for clarity;
+        // it is a distinct path so ordering is not load-bearing here.
+        Route::get('/profile/export', [\App\Http\Controllers\ProfileController::class, 'export']);
         Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show']);
         Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
+        Route::delete('/profile', [\App\Http\Controllers\ProfileController::class, 'destroy']);
 
         // Routines (workout templates)
         Route::apiResource('routines', \App\Http\Controllers\RoutineController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
@@ -77,12 +84,25 @@ Route::prefix('v1')->group(function () {
         Route::delete('/chat', [\App\Http\Controllers\ChatController::class, 'destroy']);
     });
 
-    Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::prefix('admin')->middleware(['auth:sanctum', 'not_suspended', 'admin'])->group(function () {
         Route::get('/stats', [\App\Http\Controllers\AdminStatsController::class, 'index']);
+
+        // Audit trail + authentication security telemetry.
+        Route::get('/audit-logs', [\App\Http\Controllers\AdminAuditLogController::class, 'index']);
+        Route::get('/security', [\App\Http\Controllers\AdminSecurityController::class, 'index']);
+
+        // Users. `export` is declared before the `{user}` wildcard so it is
+        // not swallowed as a user id.
+        Route::get('/users/export', [\App\Http\Controllers\AdminUserController::class, 'export']);
         Route::get('/users', [\App\Http\Controllers\AdminUserController::class, 'index']);
         Route::get('/users/{user}', [\App\Http\Controllers\AdminUserController::class, 'show'])->whereNumber('user');
+        Route::put('/users/{user}', [\App\Http\Controllers\AdminUserController::class, 'update'])->whereNumber('user');
+        Route::delete('/users/{user}', [\App\Http\Controllers\AdminUserController::class, 'destroy'])->whereNumber('user');
         Route::post('/users/{user}/suspend', [\App\Http\Controllers\AdminUserController::class, 'suspend'])->whereNumber('user');
         Route::post('/users/{user}/unsuspend', [\App\Http\Controllers\AdminUserController::class, 'unsuspend'])->whereNumber('user');
+        Route::put('/users/{user}/role', [\App\Http\Controllers\AdminUserController::class, 'updateRole'])->whereNumber('user');
+        Route::post('/users/{user}/reset-password', [\App\Http\Controllers\AdminUserController::class, 'resetPassword'])->whereNumber('user');
+        Route::post('/users/{user}/revoke-sessions', [\App\Http\Controllers\AdminUserController::class, 'revokeSessions'])->whereNumber('user');
     });
 
     // Public contact form (landing page) — rate limited
