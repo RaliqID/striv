@@ -1,5 +1,20 @@
 apply plugin: 'com.android.application'
 
+/*
+ * Declare the JDK used to compile.
+ *
+ * Without this the build uses whatever JAVA_HOME points at, which on a machine
+ * with only Android Studio's bundled JDK is Java 25 — too new for AGP 8.13
+ * (which expects 17) and for Gradle 8.14 to run on. The toolchain makes Gradle
+ * resolve Java 21 explicitly, downloading it via the foojay resolver in
+ * settings.gradle when it is not already present.
+ */
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
 android {
     namespace = "com.raliq.striv"
     compileSdk = rootProject.ext.compileSdkVersion
