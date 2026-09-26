@@ -16,12 +16,20 @@ export type DashboardStats = {
   workouts_last_30d: number | null;
   /** Signed percentage change; null when there is no prior period to compare. */
   strength_trend_pct: number | null;
-  weekly_volume: Array<{ week_start: string; volume_kg: number | null }>;
+  /** Note the key is `volume`, not `volume_kg`. */
+  weekly_volume: Array<{ week_start: string; volume: number | null }>;
+  /**
+   * Recent personal records.
+   *
+   * These are raw rows: they carry `exercise_id` and a `pr_type`, but no
+   * exercise name, so a screen showing a name has to join it against the
+   * exercise list itself.
+   */
   recent_prs: Array<{
-    exercise_name: string;
-    exercise_slug: string;
-    weight_kg: number | null;
-    reps: number | null;
+    id: number;
+    exercise_id: number;
+    pr_type: string;
+    value: number;
     achieved_at: string | null;
   }>;
 };
@@ -56,6 +64,7 @@ export type Exercise = {
 
 export type WorkoutSet = {
   id: number;
+  workout_exercise_id?: number;
   set_number: number;
   weight_kg: number | null;
   reps: number | null;
@@ -64,11 +73,29 @@ export type WorkoutSet = {
 
 export type WorkoutExercise = {
   id: number;
+  workout_session_id?: number;
   exercise_id: number;
-  exercise: Exercise;
   order: number;
   notes: string | null;
+  exercise: Exercise;
   sets: WorkoutSet[];
+};
+
+/**
+ * A session as returned by the list endpoint.
+ *
+ * The list is a summary — it carries `workout_exercises_count` instead of the
+ * exercises themselves, so opening a session needs a second request for the
+ * detail. Modelled explicitly rather than reusing WorkoutSession so the two
+ * shapes cannot be confused at a call site.
+ */
+export type WorkoutSessionSummary = {
+  id: number;
+  started_at: string;
+  finished_at: string | null;
+  duration_minutes: number | null;
+  notes: string | null;
+  workout_exercises_count: number;
 };
 
 export type WorkoutSession = {
@@ -77,20 +104,23 @@ export type WorkoutSession = {
   finished_at: string | null;
   duration_minutes: number | null;
   notes: string | null;
-  exercises?: WorkoutExercise[];
+  workout_exercises?: WorkoutExercise[];
 };
 
 export type ChatSession = {
   id: number;
   title: string | null;
   last_message_at: string | null;
+  created_at?: string;
   messages_count?: number;
 };
 
 export type ChatMessage = {
   id: number;
+  session_id?: number;
   role: "user" | "assistant";
   content: string;
+  image_url?: string | null;
   image_path?: string | null;
   created_at: string;
 };
@@ -104,10 +134,23 @@ export type Paginated<T> = {
 };
 
 export type PersonalRecord = {
-  exercise_name: string;
-  exercise_slug: string;
+  id: number;
+  exercise_id: number;
+  pr_type: string;
+  value: number;
+  achieved_at: string;
+  exercise: { id: number; name: string; slug: string } | null;
+};
+
+export type Profile = {
+  age: number | null;
+  location: string | null;
   weight_kg: number | null;
-  reps: number | null;
-  estimated_1rm: number | null;
-  achieved_at: string | null;
+  height_cm: number | null;
+  target_weight_kg: number | null;
+  experience_level: string | null;
+  primary_goal: string | null;
+  training_frequency: number | null;
+  onboarding_completed_at: string | null;
+  preferences: Record<string, unknown> | null;
 };

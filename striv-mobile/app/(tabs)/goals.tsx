@@ -2,23 +2,23 @@
  * Goals list.
  *
  * Progress comes embedded in the list response, so this screen makes one
- * request rather than one per goal — the same N+1 the web app had before it was
+ * request rather than one per goal â€” the same N+1 the web app had before it was
  * fixed there.
  */
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { goals as goalsApi } from "../src/api/endpoints";
-import type { Goal } from "../src/api/types";
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from "../src/components/ui";
-import { colors, radius, spacing, typography } from "../src/theme";
+import { goals as goalsApi } from "../../src/api/endpoints";
+import type { Goal } from "../../src/api/types";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from "../../src/components/ui";
+import { colors, radius, spacing, typography } from "../../src/theme";
 
 const FILTERS = ["active", "completed", "all"] as const;
 type Filter = (typeof FILTERS)[number];
 
 function formatValue(value: number | null | undefined): string {
-  if (value == null) return "—";
+  if (value == null) return "â€”";
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
@@ -114,7 +114,7 @@ export default function GoalsScreen() {
             const pct = Math.max(0, Math.min(100, goal.progress_percentage ?? 0));
             const isWorkouts = goal.target_type === "workouts";
             const unit = isWorkouts ? "" : ` ${goal.unit}`;
-            const repSuffix = goal.target_reps ? ` × ${goal.target_reps}` : "";
+            const repSuffix = goal.target_reps ? ` Ã— ${goal.target_reps}` : "";
 
             return (
               <Card key={goal.id}>
@@ -142,7 +142,7 @@ export default function GoalsScreen() {
 
                 <Text style={styles.journey}>
                   {formatValue(goal.starting_value)}
-                  {unit} → <Text style={styles.journeyTarget}>{formatValue(goal.target_value)}{unit}</Text>
+                  {unit} â†’ <Text style={styles.journeyTarget}>{formatValue(goal.target_value)}{unit}</Text>
                 </Text>
 
                 <View
@@ -162,7 +162,7 @@ export default function GoalsScreen() {
                 <Text style={styles.meta}>
                   Now {formatValue(goal.current_value)}
                   {unit}
-                  {goal.remaining > 0 ? ` · ${formatValue(goal.remaining)}${unit} to go` : ""}
+                  {goal.remaining > 0 ? ` Â· ${formatValue(goal.remaining)}${unit} to go` : ""}
                 </Text>
               </Card>
             );
