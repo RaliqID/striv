@@ -1,30 +1,30 @@
 /**
- * Dashboard — the app's home screen.
+ * Dashboard â€” the app's home screen.
  *
  * Reads /analytics/dashboard and /goals in parallel rather than sequentially:
  * two independent requests, so issuing them together halves the wait.
  *
  * Every metric tolerates a null. The backend returns null for a user with no
  * history (a new account has no previous 30-day window to compare against), and
- * rendering "NaN%" or "0%" there would be a lie — "—" is the honest display.
+ * rendering "NaN%" or "0%" there would be a lie â€” "â€”" is the honest display.
  */
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { analytics, goals as goalsApi } from "../src/api/endpoints";
-import type { DashboardStats, Goal } from "../src/api/types";
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, SectionTitle } from "../src/components/ui";
-import { useAuth } from "../src/hooks/useAuth";
-import { colors, radius, spacing, typography } from "../src/theme";
+import { analytics, goals as goalsApi, records } from "../../src/api/endpoints";
+import type { DashboardStats, Goal, PersonalRecord } from "../../src/api/types";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, SectionTitle } from "../../src/components/ui";
+import { useAuth } from "../../src/hooks/useAuth";
+import { colors, radius, spacing, typography } from "../../src/theme";
 
 function formatNumber(value: number | null | undefined): string {
-  if (value == null) return "—";
+  if (value == null) return "â€”";
   return new Intl.NumberFormat().format(Math.round(value));
 }
 
 function formatVolume(value: number | null | undefined): string {
-  if (value == null) return "—";
+  if (value == null) return "â€”";
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k kg`;
   return `${Math.round(value)} kg`;
 }
@@ -44,6 +44,12 @@ export default function DashboardScreen() {
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activeGoals, setActiveGoals] = useState<Goal[]>([]);
+  /**
+   * Bests come from /records rather than stats.recent_prs: the dashboard's copy
+   * is a bare row with an exercise_id and no name, so rendering it would need a
+   * lookup anyway. The records endpoint returns the exercise inline.
+   */
+  const [topRecords, setTopRecords] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,13 +59,19 @@ export default function DashboardScreen() {
     setError(null);
 
     try {
-      // Two independent calls, issued together.
-      const [dashboard, goalPage] = await Promise.all([
+      // Three independent calls, issued together.
+      const [dashboard, goalPage, recordPage] = await Promise.all([
         analytics.dashboard(),
         goalsApi.list("active"),
+        records.list(),
       ]);
       setStats(dashboard);
       setActiveGoals((goalPage.data ?? []).slice(0, 3));
+      // Sorted by value: the endpoint does not guarantee order, and an unsorted
+      // "bests" list is misleading.
+      setTopRecords(
+        [...(recordPage.data ?? [])].sort((a, b) => b.value - a.value).slice(0, 5)
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load your dashboard.");
     } finally {
@@ -164,7 +176,7 @@ export default function DashboardScreen() {
                           where you are aiming, so the bar has meaning. */}
                       <Text style={styles.goalJourney}>
                         {formatNumber(goal.starting_value)}
-                        {unit} → <Text style={styles.goalTarget}>{formatNumber(goal.target_value)}{unit}</Text>
+                        {unit} â†’ <Text style={styles.goalTarget}>{formatNumber(goal.target_value)}{unit}</Text>
                       </Text>
 
                       <View
@@ -178,7 +190,7 @@ export default function DashboardScreen() {
                       <Text style={styles.goalMeta}>
                         Now {formatNumber(goal.current_value)}
                         {unit}
-                        {goal.remaining > 0 ? ` · ${formatNumber(goal.remaining)}${unit} to go` : ""}
+                        {goal.remaining > 0 ? ` Â· ${formatNumber(goal.remaining)}${unit} to go` : ""}
                       </Text>
                     </Card>
                   );
@@ -188,21 +200,21 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.section}>
-            <SectionTitle>Recent records</SectionTitle>
+            <SectionTitle>Personal bests</SectionTitle>
             <Card>
-              {stats?.recent_prs?.length ? (
-                stats.recent_prs.slice(0, 5).map((pr, index) => (
+              {topRecords.length ? (
+                topRecords.map((record, index) => (
                   <View
-                    key={`${pr.exercise_slug}-${pr.achieved_at}-${index}`}
+                    key={`${record.exercise_id}-${index}`}
                     style={[styles.prRow, index > 0 && styles.prRowBorder]}
                   >
-                    <Text style={styles.prName} numberOfLines={1}>
-                      {pr.exercise_name}
-                    </Text>
-                    <Text style={styles.prValue}>
-                      {formatNumber(pr.weight_kg)} kg
-                      {pr.reps ? ` × ${pr.reps}` : ""}
-                    </Text>
+                    <View style={styles.prText}>
+                      <Text style={styles.prName} numberOfLines={1}>
+                        {record.exercise?.name ?? "Unknown exercise"}
+                      </Text>
+                      <Text style={styles.prMeta}>{record.pr_type}</Text>
+                    </View>
+                    <Text style={styles.prValue}>{Math.round(record.value)} kg</Text>
                   </View>
                 ))
               ) : (
@@ -268,6 +280,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   prRowBorder: { borderTopWidth: 1, borderTopColor: colors.outlineVariant },
+  prText: { flex: 1 },
+  prMeta: { ...typography.caption, color: colors.textFaint, marginTop: 2 },
   prName: { ...typography.body, color: colors.text, flex: 1 },
   prValue: { ...typography.bodyStrong, color: colors.text },
 });

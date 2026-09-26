@@ -2,8 +2,8 @@
  * Root layout.
  *
  * Owns the providers and the sign-in gate. The gate is expressed as a redirect
- * rather than conditional rendering so that each screen stays a plain component
- * and the navigation stack stays consistent — a screen rendered outside the
+ * rather than conditional rendering so each screen stays a plain component and
+ * the navigation stack stays consistent — a screen rendered outside the
  * navigator loses its header and back behaviour.
  */
 import { useEffect } from "react";
@@ -41,9 +41,11 @@ function AuthGate() {
         animation: "slide_from_right",
       }}
     >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="goals" />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="login" options={{ animation: "fade" }} />
+      {/* Presented over the tab bar rather than inside it, so logging a set is
+          full-screen without the nav competing for space. */}
+      <Stack.Screen name="workout/[id]" options={{ animation: "slide_from_bottom" }} />
     </Stack>
   );
 }

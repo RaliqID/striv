@@ -14,14 +14,24 @@ import type {
   Goal,
   Paginated,
   PersonalRecord,
+  Profile,
+  WorkoutExercise,
   WorkoutSession,
+  WorkoutSessionSummary,
+  WorkoutSet,
 } from "./types";
 
 /* ---------------------------------------------------------------- analytics */
 
+export type ProgressResponse = {
+  e1rm_series: Array<{ date: string; e1rm: number; exercise_name?: string }>;
+  volume_series: Array<{ week_start: string; volume_kg: number }>;
+  workout_dates?: string[];
+};
+
 export const analytics = {
   dashboard: () => api.get<DashboardStats>("/analytics/dashboard"),
-  progress: () => api.get<unknown>("/analytics/progress"),
+  progress: () => api.get<ProgressResponse>("/analytics/progress"),
 };
 
 /* ------------------------------------------------------------------- goals */
@@ -67,7 +77,7 @@ export const exercises = {
 /* ---------------------------------------------------------------- workouts */
 
 export const workouts = {
-  list: () => api.get<Paginated<WorkoutSession>>("/workout-sessions"),
+  list: () => api.get<Paginated<WorkoutSessionSummary>>("/workout-sessions"),
 
   start: (payload?: { routine_id?: number; notes?: string }) =>
     api.post<WorkoutSession>("/workout-sessions", payload ?? {}),
@@ -75,13 +85,19 @@ export const workouts = {
   detail: (id: number) => api.get<WorkoutSession>(`/workout-sessions/${id}`),
 
   addExercise: (sessionId: number, exerciseId: number) =>
-    api.post<unknown>(`/workout-sessions/${sessionId}/exercises`, { exercise_id: exerciseId }),
+    api.post<WorkoutExercise>(`/workout-sessions/${sessionId}/exercises`, {
+      exercise_id: exerciseId,
+    }),
 
   addSet: (
     sessionId: number,
     workoutExerciseId: number,
     payload: { weight_kg: number | null; reps: number | null; rpe?: number | null }
-  ) => api.post<unknown>(`/workout-sessions/${sessionId}/exercises/${workoutExerciseId}/sets`, payload),
+  ) =>
+    api.post<WorkoutSet>(
+      `/workout-sessions/${sessionId}/exercises/${workoutExerciseId}/sets`,
+      payload
+    ),
 
   updateSet: (
     sessionId: number,
@@ -89,7 +105,7 @@ export const workouts = {
     setId: number,
     payload: { weight_kg?: number | null; reps?: number | null; rpe?: number | null }
   ) =>
-    api.put<unknown>(
+    api.put<WorkoutSet>(
       `/workout-sessions/${sessionId}/exercises/${workoutExerciseId}/sets/${setId}`,
       payload
     ),
@@ -97,8 +113,13 @@ export const workouts = {
   deleteSet: (sessionId: number, workoutExerciseId: number, setId: number) =>
     api.delete<void>(`/workout-sessions/${sessionId}/exercises/${workoutExerciseId}/sets/${setId}`),
 
+  removeExercise: (sessionId: number, workoutExerciseId: number) =>
+    api.delete<void>(`/workout-sessions/${sessionId}/exercises/${workoutExerciseId}`),
+
   finish: (sessionId: number, notes?: string) =>
     api.post<WorkoutSession>(`/workout-sessions/${sessionId}/finish`, { notes }),
+
+  remove: (sessionId: number) => api.delete<void>(`/workout-sessions/${sessionId}`),
 };
 
 /* ----------------------------------------------------------------- records */
@@ -109,22 +130,36 @@ export const records = {
 
 /* -------------------------------------------------------------------- chat */
 
+type ChatSessionsResponse = { sessions: ChatSession[] };
+type ChatHistoryResponse = { session: ChatSession; messages: ChatMessage[] };
+
+/**
+ * Both sides of an exchange come back from /chat.
+ *
+ * The field is `content`, not `message` — the validation error names it, and
+ * guessing costs a round trip. The assistant reply is returned inline rather
+ * than requiring a follow-up history fetch, so the UI can append it directly.
+ */
+export type ChatSendResponse = {
+  user_message: ChatMessage;
+  assistant_message: ChatMessage;
+  session: ChatSession;
+};
+
 export const chat = {
-  sessions: () => api.get<Paginated<ChatSession>>("/chat/sessions"),
-
-  history: (sessionId: number) =>
-    api.get<{ data: ChatMessage[] } | ChatMessage[]>(`/chat/sessions/${sessionId}`),
-
-  send: (message: string, sessionId?: number) =>
-    api.post<{ message: ChatMessage; session_id: number; title?: string }>("/chat", {
-      message,
-      session_id: sessionId,
+  sessions: () => api.get<ChatSessionsResponse>("/chat/sessions"),
+  history: (sessionId: number) => api.get<ChatHistoryResponse>(`/chat/sessions/${sessionId}`),
+  send: (content: string, sessionId?: number) =>
+    api.post<ChatSendResponse>("/chat", {
+      content,
+      ...(sessionId ? { session_id: sessionId } : {}),
     }),
+  remove: (sessionId: number) => api.delete<void>(`/chat/sessions/${sessionId}`),
 };
 
 /* ----------------------------------------------------------------- profile */
 
 export const profile = {
-  show: () => api.get<unknown>("/profile"),
+  show: () => api.get<{ user: unknown; profile: Profile | null }>("/profile"),
   update: (payload: Record<string, unknown>) => api.put<unknown>("/profile", payload),
 };
