@@ -1,0 +1,66 @@
+{
+  "app/admin/page.tsx": {
+    "component": "AdminOverviewPage",
+    "swaps": [
+      ["title=\"Overview\"", "title={t(\"admin.overview\")}"],
+      ["description=\"Platform activity and account health.\"", "description={t(\"admin.overviewDesc\")}"],
+      ["title=\"Signups\"", "title={t(\"admin.signups\")}"],
+      ["description=\"Last 30 days\"", "description={t(\"admin.last30\")}"],
+      ["title=\"No signup data available.\"", "title={t(\"admin.noSignupData\")}"],
+      ["title=\"Top exercises\"", "title={t(\"admin.topExercises\")}"],
+      ["description=\"Most logged movements\"", "description={t(\"admin.mostLogged\")}"],
+      ["title=\"No exercise data available.\"", "title={t(\"admin.noExerciseData\")}"],
+      ["title=\"Activity summary\"", "title={t(\"admin.activitySummary\")}"],
+      ["description=\"Engagement and account state\"", "description={t(\"admin.engagementState\")}"]
+    ]
+  },
+  "app/admin/users/page.tsx": {
+    "component": "AdminUsersPage",
+    "swaps": [
+      [">Admin</Badge>", ">{t(\"role.admin\")}</Badge>"],
+      [">Trainer</Badge>", ">{t(\"role.trainer\")}</Badge>"],
+      [">Suspended</Badge>", ">{t(\"admin.statusSuspended\")}</Badge>"],
+      [">Active</Badge>", ">{t(\"admin.statusActive\")}</Badge>"],
+      [">Reset pending</Badge>", ">{t(\"admin.resetPending\")}</Badge>"],
+      ["title=\"Users\"", "title={t(\"admin.users\")}"],
+      ["description=\"Search, inspect and manage member accounts.\"", "description={t(\"admin.usersDesc\")}"],
+      ["placeholder=\"Search name or email\"", "placeholder={t(\"admin.searchUsers\")}"]
+    ]
+  },
+  "app/admin/security/page.tsx": {
+    "component": "AdminSecurityPage",
+    "swaps": [
+      ["title=\"Security\"", "title={t(\"admin.security\")}"],
+      ["description=\"Sign-in attempts and rate-limit activity.\"", "description={t(\"admin.securityDesc\")}"],
+      ["title=\"Top offending IPs\"", "title={t(\"admin.topIps\")}"],
+      ["description=\"Addresses with the most failed sign-ins\"", "description={t(\"admin.topIpsDesc\")}"],
+      ["title=\"No failed sign-ins in this window.\"", "title={t(\"admin.noFailedSignins\")}"],
+      ["title=\"Top targeted accounts\"", "title={t(\"admin.topAccounts\")}"],
+      ["description=\"Accounts absorbing the most failures\"", "description={t(\"admin.topAccountsDesc\")}"],
+      ["title=\"No targeted accounts in this window.\"", "title={t(\"admin.noTargeted\")}"],
+      ["title=\"Recent attempts\"", "title={t(\"admin.recentAttempts\")}"],
+      ["description=\"Most recent 50 sign-in attempts, newest first\"", "description={t(\"admin.recentAttemptsDesc\")}"],
+      ["title=\"No sign-in attempts recorded.\"", "title={t(\"admin.noAttempts\")}"],
+      ["description=\"Attempts will appear here as members sign in.\"", "description={t(\"admin.noAttemptsDesc\")}"]
+    ]
+  },
+  "app/admin/audit/page.tsx": {
+    "component": "AdminAuditPage",
+    "swaps": [
+      ["title=\"Audit log\"", "title={t(\"admin.auditLog\")}"],
+      ["description=\"Every privileged action, who performed it, and on which account.\"", "description={t(\"admin.auditDesc\")}"],
+      ["placeholder=\"Search by admin, account or action\"", "placeholder={t(\"admin.searchAudit\")}"],
+      ["<option value=\"all\">All actions</option>", "<option value=\"all\">{t(\"admin.allActions\")}</option>"]
+    ]
+  },
+  "app/admin/training/page.tsx": {
+    "component": "AdminTrainingPage",
+    "swaps": [
+      ["title=\"Training\"", "title={t(\"admin.training\")}"],
+      ["description=\"Trainer roster, workload, and members waiting for a coach\"", "description={t(\"admin.trainingDesc\")}"],
+      [">Suspended</Badge>", ">{t(\"admin.statusSuspended\")}</Badge>"],
+      [">Not accepting</Badge>", ">{t(\"admin.statusNotAccepting\")}</Badge>"],
+      [">Full</Badge>", ">{t(\"admin.statusFull\")}</Badge>"]
+    ]
+  }
+}
