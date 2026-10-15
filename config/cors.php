@@ -38,8 +38,27 @@ return [
     /*
     | Explicit header allowlist. '*' would permit any custom header, which
     | widens the surface for no benefit — the API only ever reads these.
+    |
+    | X-Locale is how the client tells the API which language to answer in. It
+    | is read by the SetLocale middleware, which resolves the request language
+    | from this header first, then the user's stored preference, then
+    | Accept-Language.
+    |
+    | Both must appear here or the browser blocks the request outright: a custom
+    | header on a cross-origin call triggers a preflight, and a field absent from
+    | Access-Control-Allow-Headers makes the browser refuse to send the real
+    | request at all. The API then never receives it and every endpoint looks
+    | like it failed, which is exactly what happened when X-Locale was first
+    | added to the client without being added here.
     */
-    'allowed_headers' => ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With'],
+    'allowed_headers' => [
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'X-Requested-With',
+        'X-Locale',
+        'Accept-Language',
+    ],
 
     // Let the browser cache preflights, halving the request count for mutating calls.
     'exposed_headers' => [],

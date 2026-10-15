@@ -34,7 +34,7 @@ class AdminApiTest extends TestCase
 
     public function test_admin_can_read_stats_and_users(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         User::factory()->count(3)->create();
         $this->actingAs($admin, 'sanctum');
 
@@ -55,7 +55,7 @@ class AdminApiTest extends TestCase
 
     public function test_admin_can_show_missing_user_and_manage_suspension(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'email' => 'admin@example.com']);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'email' => 'admin@example.com']);
         $target = User::factory()->create(['email' => 'target@example.com', 'password' => 'Password123']);
         $this->actingAs($admin, 'sanctum');
 
@@ -86,7 +86,7 @@ class AdminApiTest extends TestCase
 
     public function test_admin_cannot_suspend_self(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin, 'sanctum');
 
         $this->postJson('/api/v1/admin/users/'.$admin->id.'/suspend')

@@ -106,7 +106,17 @@ class PersonalRecordService
             return;
         }
 
-        // Upsert: use updateOrCreate on the unique constraint (user_id, exercise_id, pr_type)
+        /*
+         * Capture the value being replaced BEFORE the upsert.
+         *
+         * updateOrCreate overwrites the row in place, so after this call the old
+         * value no longer exists anywhere. Storing it on the row is what lets
+         * the reward screen show "20kg, up from 10kg" — the delta is the part
+         * that reads as an achievement; the bare number does not.
+         *
+         * NULL for a first-ever record, which is accurate rather than a 0 that
+         * would render as a gain from nothing.
+         */
         PersonalRecord::updateOrCreate(
             [
                 'user_id' => $user->id,
@@ -115,6 +125,7 @@ class PersonalRecordService
             ],
             [
                 'value' => $value,
+                'previous_value' => $existing?->value,
                 'workout_session_id' => $session->id,
                 'achieved_at' => $session->started_at,
             ]

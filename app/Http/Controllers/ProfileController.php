@@ -11,8 +11,27 @@ class ProfileController extends Controller
     public function show(Request $request)
     {
         $user = $request->user()->load('profile');
+
+        /*
+         * Progression is included so the sidebar's level bar renders on this
+         * page too.
+         *
+         * This endpoint feeds the profile screen, and the sidebar is part of that
+         * screen — but the payload carried only the user, so `progression` was
+         * undefined and the rail showed its loading placeholder instead of the
+         * level. The same omission existed on /auth/login and was fixed there;
+         * this is the third place a user payload is returned, and it needed the
+         * same treatment.
+         *
+         * Delegated to AuthController so there is ONE implementation. Adding a
+         * field to the progression summary should not require remembering every
+         * endpoint that returns a user.
+         */
         return response()->json([
-            'user' => $user,
+            'user' => [
+                ...$user->toArray(),
+                ...app(AuthController::class)->progressionFor($user),
+            ],
         ]);
     }
 
@@ -55,6 +74,25 @@ class ProfileController extends Controller
             ['user_id' => $user->id],
             $data
         );
+
+        /*
+         * Onboarding complete: this is the first moment the member has a stated
+         * goal, so it is when automatic matching can actually pick a specialist
+         * rather than fall back to raw workload. Runs after the profile is
+         * saved so the matcher reads the goal we just wrote.
+         */
+        if ($completeOnboarding) {
+            app(\App\Services\Training\TrainerMatchingService::class)
+                ->requestAndMatch($user->refresh(), $profile->primary_goal);
+        } else {
+            // Keep an open request's goal in step if the member edits it later.
+            $user->trainingRequests()
+                ->whereIn('status', [
+                    \App\Models\TrainingRequest::STATUS_PENDING,
+                    \App\Models\TrainingRequest::STATUS_MATCHED,
+                ])
+                ->update(['goal_type' => $profile->primary_goal]);
+        }
 
         return $this->show($request);
     }

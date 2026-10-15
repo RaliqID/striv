@@ -19,8 +19,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(null);
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'panel' => \App\Http\Middleware\EnsureUserCanAccessPanel::class,
             'not_suspended' => \App\Http\Middleware\EnsureUserIsNotSuspended::class,
         ]);
+
+        /*
+         * Resolve the request language before anything renders a message.
+         * Appended to the global stack rather than applied per-route so that
+         * validation errors and auth failures — which happen before route
+         * middleware runs — are already localized.
+         */
+        $middleware->append(\App\Http\Middleware\SetLocale::class);
 
         // Send hardening headers on every response, including auth failures
         // (a 401 without them is just as exploitable as a 200).

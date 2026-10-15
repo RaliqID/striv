@@ -25,6 +25,7 @@ class InsightContextBuilder
 
         return [
             'role' => 'interpret_training_pattern',
+            'language' => $this->languageName($user->locale ?? null),
             'user_profile' => [
                 'experience_level' => $profile?->experience_level,
                 'primary_goal' => $profile?->primary_goal,
@@ -44,7 +45,21 @@ class InsightContextBuilder
                 'confidence' => isset($pattern['confidence']) ? (float) $pattern['confidence'] : null,
                 'window' => $window,
             ],
-            'instructions' => 'Generate a clear motivating title (max 80 chars), concise summary (max 280 chars), and one specific actionable recommendation (max 280 chars) tailored to the user\'s experience and goal. Use evidence numbers verbatim.',
+            'instructions' => 'Generate a clear motivating title (max 80 chars), concise summary (max 280 chars), and one specific actionable recommendation (max 280 chars) tailored to the user\'s experience and goal. Use evidence numbers verbatim. Write the title, summary, and recommendation in ' . $this->languageName($user->locale ?? null) . '.',
         ];
+    }
+
+    /**
+     * Human-readable name of the language the insight must be written in.
+     *
+     * The insight is stored copy, so it has to be generated in the member's
+     * language at write time — reading it back cannot re-translate it.
+     */
+    private function languageName(?string $locale): string
+    {
+        return match ($locale) {
+            'id' => 'Indonesian (Bahasa Indonesia)',
+            default => 'English',
+        };
     }
 }

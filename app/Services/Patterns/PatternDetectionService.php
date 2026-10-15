@@ -85,14 +85,34 @@ class PatternDetectionService
      */
     public function detect(User $user): array
     {
-        return array_merge(
-            $this->detectProgress($user),
-            $this->detectPlateau($user),
-            $this->detectRegression($user),
-            $this->detectVolumeChange($user),
-            $this->detectConsistencyChange($user),
-            $this->detectMilestones($user),
-        );
+        // Pattern titles/summaries are returned as rendered copy, so they must
+        // be built in the member's language. Resolve it from the user rather
+        // than relying on the ambient request locale: detection also runs off
+        // the request cycle (insight generation, chat context). Same approach
+        // as ProgramNotesRenderer.
+        $original = app()->getLocale();
+        app()->setLocale($this->localeFor($user));
+
+        try {
+            return array_merge(
+                $this->detectProgress($user),
+                $this->detectPlateau($user),
+                $this->detectRegression($user),
+                $this->detectVolumeChange($user),
+                $this->detectConsistencyChange($user),
+                $this->detectMilestones($user),
+            );
+        } finally {
+            app()->setLocale($original);
+        }
+    }
+
+    /** The locale to render this member's insight copy in. */
+    private function localeFor(User $user): string
+    {
+        $locale = $user->locale ?? null;
+
+        return in_array($locale, ['en', 'id'], true) ? $locale : 'en';
     }
 
     /**
@@ -110,9 +130,10 @@ class PatternDetectionService
                 continue;
             }
 
-            $patterns[] = $this->strengthPattern($data, 'progress', "{$data['name']} strength is trending upward", function () use ($data) {
-                return "Estimated 1RM increased {$data['pct_change']}% over {$data['weeks']} weeks.";
-            }, 0.1);
+            $patterns[] = $this->strengthPattern($data, 'progress',
+                __('messages.insight.progress.title', ['exercise' => $data['name']]),
+                fn () => __('messages.insight.progress.summary', ['pct' => $data['pct_change'], 'weeks' => $data['weeks']]),
+                0.1);
         }
 
         return $patterns;
@@ -139,9 +160,10 @@ class PatternDetectionService
                 continue;
             }
 
-            $patterns[] = $this->strengthPattern($data, 'plateau', "{$data['name']} performance has plateaued", function () use ($data, $pct) {
-                return "Estimated 1RM has stayed within {$pct}% over the last {$data['weeks']} weeks.";
-            }, 0.08, 0.85);
+            $patterns[] = $this->strengthPattern($data, 'plateau',
+                __('messages.insight.plateau.title', ['exercise' => $data['name']]),
+                fn () => __('messages.insight.plateau.summary', ['pct' => $pct, 'weeks' => $data['weeks']]),
+                0.08, 0.85);
         }
 
         return $patterns;
@@ -162,9 +184,10 @@ class PatternDetectionService
                 continue;
             }
 
-            $patterns[] = $this->strengthPattern($data, 'regression', "{$data['name']} strength is declining", function () use ($data) {
-                return "Estimated 1RM decreased " . abs($data['pct_change']) . "% over {$data['weeks']} weeks.";
-            }, 0.1);
+            $patterns[] = $this->strengthPattern($data, 'regression',
+                __('messages.insight.regression.title', ['exercise' => $data['name']]),
+                fn () => __('messages.insight.regression.summary', ['pct' => abs($data['pct_change']), 'weeks' => $data['weeks']]),
+                0.1);
         }
 
         return $patterns;
@@ -195,15 +218,15 @@ class PatternDetectionService
         $windowStart = $previous[0]['week_start'];
 
         if ($pct >= self::VOLUME_CHANGE_PCT) {
-            return [$this->pattern('volume_change', null, 'Training volume increased',
-                "Weekly volume up " . round($pct, 1) . "% compared with the previous period.",
+            return [$this->pattern('volume_change', null, __('messages.insight.volume_up.title'),
+                __('messages.insight.volume_up.summary', ['pct' => round($pct, 1)]),
                 ['recent_total' => round($recentTotal, 2), 'previous_total' => round($previousTotal, 2), 'pct' => round($pct, 1)],
                 0.6, $windowStart)];
         }
 
         if ($pct <= -self::VOLUME_CHANGE_PCT) {
-            return [$this->pattern('volume_change', null, 'Training volume decreased',
-                "Weekly volume down " . abs(round($pct, 1)) . "% compared with the previous period.",
+            return [$this->pattern('volume_change', null, __('messages.insight.volume_down.title'),
+                __('messages.insight.volume_down.summary', ['pct' => abs(round($pct, 1))]),
                 ['recent_total' => round($recentTotal, 2), 'previous_total' => round($previousTotal, 2), 'pct' => round($pct, 1)],
                 0.6, $windowStart)];
         }
@@ -238,15 +261,15 @@ class PatternDetectionService
         $windowStart = $previous[0]['week_start'];
 
         if ($delta >= self::CONSISTENCY_DELTA_PP) {
-            return [$this->pattern('consistency', null, 'Training consistency improved',
-                "Adherence rose from {$previousPct}% to {$recentPct}% of your weekly target.",
+            return [$this->pattern('consistency', null, __('messages.insight.consistency_up.title'),
+                __('messages.insight.consistency_up.summary', ['previous' => $previousPct, 'recent' => $recentPct]),
                 ['recent_adherence_pct' => $recentPct, 'previous_adherence_pct' => $previousPct, 'delta_pp' => round($delta, 1), 'target_per_week' => (int) $target],
                 0.65, $windowStart)];
         }
 
         if ($delta <= -self::CONSISTENCY_DELTA_PP) {
-            return [$this->pattern('consistency', null, 'Training consistency declined',
-                "Adherence dropped from {$previousPct}% to {$recentPct}% of your weekly target.",
+            return [$this->pattern('consistency', null, __('messages.insight.consistency_down.title'),
+                __('messages.insight.consistency_down.summary', ['previous' => $previousPct, 'recent' => $recentPct]),
                 ['recent_adherence_pct' => $recentPct, 'previous_adherence_pct' => $previousPct, 'delta_pp' => round($delta, 1), 'target_per_week' => (int) $target],
                 0.65, $windowStart)];
         }
@@ -287,8 +310,8 @@ class PatternDetectionService
                 continue;
             }
 
-            $patterns[] = $this->pattern('milestone', null, "{$threshold} workouts completed",
-                "You've logged {$threshold} total training sessions.",
+            $patterns[] = $this->pattern('milestone', null, __('messages.insight.milestone.title', ['count' => $threshold]),
+                __('messages.insight.milestone.summary', ['count' => $threshold]),
                 ['total_sessions' => $threshold],
                 0.95,
                 optional($firstSession)->toDateString() ?? now()->toDateString());
@@ -308,9 +331,22 @@ class PatternDetectionService
         $to = Carbon::now();
         $out = [];
 
+        /*
+         * Fetch every big lift in ONE query rather than one per slug.
+         *
+         * This loop previously ran `Exercise::where('slug', $slug)->first()`
+         * inside it. Since pattern detection runs on every insights page load
+         * AND on every finished workout, that was four redundant round trips
+         * each time for a fixed, known set of slugs.
+         *
+         * The measured cost was visible in the endpoint: 12 repeats of
+         * `select * from exercises where slug = ?` in a single /insights call.
+         */
+        $exercises = Exercise::whereIn('slug', self::BIG_LIFTS)->get()->keyBy('slug');
+
         foreach (self::BIG_LIFTS as $slug) {
-            $exercise = Exercise::where('slug', $slug)->first();
-            if (!$exercise) {
+            $exercise = $exercises->get($slug);
+            if (! $exercise) {
                 continue;
             }
 

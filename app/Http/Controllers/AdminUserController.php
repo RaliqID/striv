@@ -51,7 +51,8 @@ class AdminUserController extends Controller
                     ->orWhereIn('users.id', DB::table('chat_messages')->where('created_at', '>=', $cutoff30)->select('user_id'));
             }),
             'suspended' => $query->where('is_suspended', true),
-            'admin' => $query->where('is_admin', true),
+            'admin' => $query->where('role', User::ROLE_ADMIN),
+            'trainer' => $query->where('role', User::ROLE_TRAINER),
             'new' => $query->where('created_at', '>=', $cutoff7),
             default => null,
         };
@@ -240,42 +241,78 @@ class AdminUserController extends Controller
     }
 
     /**
-     * Grant or revoke administrator rights.
+     * Change a user's role.
+     *
+     * Accepts any of the three roles. Demoting an admin is guarded the same way
+     * deletion is — an admin can neither demote themselves nor remove the last
+     * administrator, because either would leave the panel unadministrable.
+     * Transferring a member to `trainer` also clears any role-specific state
+     * that would otherwise be stale (a trainer has no clients yet, so nothing
+     * else needs cleaning up here).
      */
     public function updateRole(Request $request, User $user)
     {
         $validated = $request->validate([
-            'is_admin' => ['required', 'boolean'],
+            'role' => ['required', 'string', Rule::in([
+                User::ROLE_USER,
+                User::ROLE_TRAINER,
+                User::ROLE_ADMIN,
+            ])],
+            // Optional trainer profile fields, applied when promoting.
+            'specialization' => ['nullable', 'string', 'max:120'],
+            'bio' => ['nullable', 'string', 'max:2000'],
+            'capacity' => ['nullable', 'integer', 'min:1', 'max:500'],
         ]);
 
-        $makeAdmin = (bool) $validated['is_admin'];
+        $role = $validated['role'];
 
-        if (! $makeAdmin) {
-            if ($reason = $this->guard->checkDestructive($request->user(), $user, 'remove admin rights from')) {
+        if ($role === $user->role) {
+            return response()->json([
+                'user' => $this->userRow($user->refresh()),
+                'message' => __('messages.role.unchanged'),
+            ]);
+        }
+
+        // Any move away from admin must not strand the system.
+        if ($user->isAdmin()) {
+            if ($reason = $this->guard->checkDestructive($request->user(), $user, 'change the role of')) {
                 return response()->json(['message' => $reason], 422);
             }
         }
 
-        if ($user->is_admin === $makeAdmin) {
-            return response()->json([
-                'user' => $this->userRow($user->refresh()),
-                'message' => 'Role unchanged.',
-            ]);
+        $previous = $user->role;
+
+        $attributes = ['role' => $role];
+        if ($role === User::ROLE_TRAINER) {
+            if (array_key_exists('specialization', $validated)) {
+                $attributes['specialization'] = $validated['specialization'];
+            }
+            if (array_key_exists('bio', $validated)) {
+                $attributes['bio'] = $validated['bio'];
+            }
+            if (! empty($validated['capacity'])) {
+                $attributes['capacity'] = (int) $validated['capacity'];
+            }
         }
 
-        $user->forceFill(['is_admin' => $makeAdmin])->save();
+        // Losing panel access must not leave the account signed in with the
+        // privileges it just lost.
+        $revoked = 0;
+        if ($user->canAccessPanel() && ! in_array($role, User::PANEL_ROLES, true)) {
+            $revoked = $user->tokens()->delete();
+        }
 
-        $this->audit->log(
-            $makeAdmin ? 'user.admin_granted' : 'user.admin_revoked',
-            $request->user(),
-            $user,
-            [],
-            $request,
-        );
+        $user->forceFill($attributes)->save();
+
+        $this->audit->log('user.role_changed', $request->user(), $user, [
+            'from' => $previous,
+            'to' => $role,
+            'tokens_revoked' => $revoked,
+        ], $request);
 
         return response()->json([
             'user' => $this->userRow($user->refresh()),
-            'message' => $makeAdmin ? 'Admin rights granted.' : 'Admin rights revoked.',
+            'message' => __('messages.role.changed', ['from' => $previous, 'to' => $role]),
         ]);
     }
 
@@ -383,7 +420,8 @@ class AdminUserController extends Controller
                     ->orWhereIn('users.id', DB::table('chat_messages')->where('created_at', '>=', $cutoff30)->select('user_id'));
             }),
             'suspended' => $query->where('is_suspended', true),
-            'admin' => $query->where('is_admin', true),
+            'admin' => $query->where('role', User::ROLE_ADMIN),
+            'trainer' => $query->where('role', User::ROLE_TRAINER),
             'new' => $query->where('created_at', '>=', $cutoff7),
             default => null,
         };
@@ -398,7 +436,7 @@ class AdminUserController extends Controller
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
             fputcsv($out, [
-                'id', 'name', 'email', 'is_admin', 'is_suspended',
+                'id', 'name', 'email', 'role', 'is_suspended',
                 'workouts_30d', 'chat_messages_30d', 'created_at',
             ]);
 
@@ -408,7 +446,7 @@ class AdminUserController extends Controller
                         $user->id,
                         $user->name,
                         $user->email,
-                        $user->is_admin ? 'yes' : 'no',
+                        $user->role,
                         $user->is_suspended ? 'yes' : 'no',
                         (int) ($user->workouts_30d ?? 0),
                         (int) ($user->chat_messages_30d ?? 0),
@@ -440,7 +478,7 @@ class AdminUserController extends Controller
             'suspend' => $isSelf
                 ? $blocked('You cannot suspend your own account.')
                 : ($lastAdmin ? $blocked('Only remaining administrator.') : $open),
-            'revoke_admin' => ! $target->is_admin
+            'revoke_admin' => ! $target->isAdmin()
                 ? $blocked('Not an administrator.')
                 : ($isSelf
                     ? $blocked('You cannot remove your own admin rights.')
@@ -492,7 +530,11 @@ class AdminUserController extends Controller
             'id' => (int) $user->id,
             'name' => (string) $user->name,
             'email' => (string) $user->email,
-            'is_admin' => (bool) $user->is_admin,
+            'role' => (string) $user->role,
+            'is_admin' => $user->isAdmin(),
+            'is_trainer' => $user->isTrainer(),
+            'specialization' => $user->specialization,
+            'capacity' => $user->capacity !== null ? (int) $user->capacity : null,
             'is_suspended' => (bool) $user->is_suspended,
             'must_change_password' => (bool) $user->must_change_password,
             'created_at' => $user->created_at?->toIso8601String(),

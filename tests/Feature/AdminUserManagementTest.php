@@ -13,7 +13,7 @@ class AdminUserManagementTest extends TestCase
 
     private function admin(array $attributes = []): User
     {
-        return User::factory()->create(array_merge(['is_admin' => true], $attributes));
+        return User::factory()->create(array_merge(['role' => User::ROLE_ADMIN], $attributes));
     }
 
     // ---------------------------------------------------------------- update
@@ -82,12 +82,14 @@ class AdminUserManagementTest extends TestCase
         $target = User::factory()->create();
         $this->actingAs($admin, 'sanctum');
 
-        $this->putJson('/api/v1/admin/users/'.$target->id.'/role', ['is_admin' => true])
+        $this->putJson('/api/v1/admin/users/'.$target->id.'/role', ['role' => User::ROLE_ADMIN])
             ->assertOk()
+            ->assertJsonPath('user.role', User::ROLE_ADMIN)
             ->assertJsonPath('user.is_admin', true);
 
-        $this->putJson('/api/v1/admin/users/'.$target->id.'/role', ['is_admin' => false])
+        $this->putJson('/api/v1/admin/users/'.$target->id.'/role', ['role' => User::ROLE_USER])
             ->assertOk()
+            ->assertJsonPath('user.role', User::ROLE_USER)
             ->assertJsonPath('user.is_admin', false);
     }
 
@@ -96,11 +98,12 @@ class AdminUserManagementTest extends TestCase
         $admin = $this->admin();
         $this->actingAs($admin, 'sanctum');
 
-        $this->putJson('/api/v1/admin/users/'.$admin->id.'/role', ['is_admin' => false])
+        $this->putJson('/api/v1/admin/users/'.$admin->id.'/role', ['role' => User::ROLE_USER])
             ->assertStatus(422)
-            ->assertJson(['message' => 'You cannot remove admin rights from your own account.']);
+            ->assertJson(['message' => 'You cannot change the role of your own account.']);
 
-        $this->assertTrue($admin->refresh()->is_admin);
+        $this->assertSame(User::ROLE_ADMIN, $admin->refresh()->role);
+        $this->assertTrue($admin->is_admin);
     }
 
     /**
@@ -112,8 +115,8 @@ class AdminUserManagementTest extends TestCase
      */
     public function test_cannot_demote_the_last_active_admin(): void
     {
-        $lastAdmin = User::factory()->create(['is_admin' => true]);
-        $suspendedAdmin = User::factory()->create(['is_admin' => true, 'is_suspended' => true]);
+        $lastAdmin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $suspendedAdmin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_suspended' => true]);
 
         $guard = $this->app[\App\Services\Security\AdminGuard::class];
 
@@ -122,31 +125,32 @@ class AdminUserManagementTest extends TestCase
 
         $this->actingAs($suspendedAdmin, 'sanctum')->putJson(
             '/api/v1/admin/users/'.$lastAdmin->id.'/role',
-            ['is_admin' => false],
+            ['role' => User::ROLE_USER],
         )->assertStatus(403); // suspended admins cannot act at all
 
-        $this->assertTrue($lastAdmin->refresh()->is_admin);
+        $this->assertSame(User::ROLE_ADMIN, $lastAdmin->refresh()->role);
     }
 
     public function test_demoting_is_allowed_once_another_active_admin_exists(): void
     {
-        $actor = User::factory()->create(['is_admin' => true]);
-        $target = User::factory()->create(['is_admin' => true]);
+        $actor = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $target = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $guard = $this->app[\App\Services\Security\AdminGuard::class];
         $this->assertFalse($guard->isLastAdmin($target));
 
         $this->actingAs($actor, 'sanctum');
-        $this->putJson('/api/v1/admin/users/'.$target->id.'/role', ['is_admin' => false])
+        $this->putJson('/api/v1/admin/users/'.$target->id.'/role', ['role' => User::ROLE_USER])
             ->assertOk();
 
-        $this->assertFalse($target->refresh()->is_admin);
+        $this->assertSame(User::ROLE_USER, $target->refresh()->role);
+        $this->assertFalse($target->is_admin);
     }
 
     public function test_guard_reports_last_admin_only_for_the_sole_active_admin(): void
     {
-        $a = User::factory()->create(['is_admin' => true]);
-        $b = User::factory()->create(['is_admin' => true]);
+        $a = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $b = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $guard = $this->app[\App\Services\Security\AdminGuard::class];
 
         // Two active admins: neither is "last".
@@ -163,7 +167,7 @@ class AdminUserManagementTest extends TestCase
 
     public function test_cannot_suspend_the_last_active_admin(): void
     {
-        $lastAdmin = User::factory()->create(['is_admin' => true]);
+        $lastAdmin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $guard = $this->app[\App\Services\Security\AdminGuard::class];
 
         $this->assertTrue($guard->wouldRemoveLastAdmin($lastAdmin));
@@ -307,7 +311,7 @@ class AdminUserManagementTest extends TestCase
 
         // A second, suspended admin does not count as cover, so removing the
         // actor would leave nobody — but the self-rule still fires first.
-        User::factory()->create(['is_admin' => true, 'is_suspended' => true]);
+        User::factory()->create(['role' => User::ROLE_ADMIN, 'is_suspended' => true]);
 
         $guard = $this->app[\App\Services\Security\AdminGuard::class];
         $this->assertTrue($guard->isLastAdmin($admin));

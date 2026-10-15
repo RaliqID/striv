@@ -16,11 +16,13 @@ class PersonalRecord extends Model
         'workout_session_id',
         'pr_type',
         'value',
+        'previous_value',
         'achieved_at',
     ];
 
     protected $casts = [
         'value' => 'float',
+        'previous_value' => 'float',
         'achieved_at' => 'datetime',
     ];
 

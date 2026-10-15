@@ -57,9 +57,19 @@ class ChatService
 
     public function createSession(User $user): ChatSession
     {
+        /*
+         * The title is saved in the member's current language.
+         *
+         * It is stored data rather than rendered copy — the chat title is never
+         * re-translated on read — so it must be localized at creation time,
+         * otherwise a member using Indonesian sees an English placeholder in
+         * their conversation list.
+         */
+        app()->setLocale($user->locale ?? 'en');
+
         return ChatSession::create([
             'user_id' => $user->id,
-            'title' => 'New chat',
+            'title' => __('messages.chat.new_session'),
         ]);
     }
 
@@ -87,9 +97,91 @@ class ChatService
             ->toArray();
     }
 
+    /**
+     * Delete a session and its images.
+     *
+     * -----------------------------------------------------------------------
+     * WHY THE FILES ARE COLLECTED FIRST
+     * -----------------------------------------------------------------------
+     * `chat_messages.chat_session_id` has `on delete cascade`, so `$session->delete()`
+     * removes the messages at the DATABASE level. A database cascade deletes rows
+     * directly — Eloquent never instantiates those models, so the `deleted` event
+     * on ChatMessage does not fire and its file-cleanup hook never runs.
+     *
+     * So the image paths are gathered BEFORE the delete, while the rows still
+     * exist, and the files removed AFTER it. Order matters for the same reason as
+     * in the model hook: a file removed before the row would leave a message
+     * pointing at nothing if the delete then failed.
+     *
+     * Measured before this fix: 15 image files on disk, 4 referenced, 11 orphans.
+     */
     public function deleteSession(ChatSession $session): void
     {
+        $imagePaths = $this->imagePathsFor($session);
+
         $session->delete();
+
+        $this->removeImages($imagePaths);
+    }
+
+    /**
+     * Remove every session and image for a member.
+     *
+     * Same cascade problem as deleteSession, and worse here: this is a MASS
+     * delete (`ChatSession::where(...)->delete()`), which bypasses model events
+     * entirely by design. The paths must therefore be read first.
+     */
+    public function clear(User $user): void
+    {
+        $paths = ChatMessage::where('user_id', $user->id)
+            ->whereNotNull('image_path')
+            ->pluck('image_path')
+            ->all();
+
+        ChatSession::where('user_id', $user->id)->delete();
+
+        $this->removeImages($paths);
+    }
+
+    /**
+     * The image paths attached to a session's messages.
+     *
+     * @return array<int, string>
+     */
+    private function imagePathsFor(ChatSession $session): array
+    {
+        return ChatMessage::where('chat_session_id', $session->id)
+            ->whereNotNull('image_path')
+            ->pluck('image_path')
+            ->all();
+    }
+
+    /**
+     * Delete image files, ignoring any that are already gone.
+     *
+     * Failures are logged rather than thrown: the rows are already deleted, so
+     * the member's action has succeeded. A leftover file is invisible and can be
+     * swept later; turning it into an error response would report a failure that
+     * did not happen.
+     *
+     * @param  array<int, string>  $paths
+     */
+    private function removeImages(array $paths): void
+    {
+        foreach ($paths as $path) {
+            try {
+                $clean = ltrim((string) $path, '/');
+
+                if ($clean !== '' && Storage::disk('public')->exists($clean)) {
+                    Storage::disk('public')->delete($clean);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Could not delete chat image', [
+                    'path' => $path,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function formatSession(ChatSession $s): array
@@ -127,11 +219,6 @@ class ChatService
             ->values()
             ->map(fn (ChatMessage $m) => $this->formatMessage($m))
             ->toArray();
-    }
-
-    public function clear(User $user): void
-    {
-        ChatSession::where('user_id', $user->id)->delete();
     }
 
     // ------------------------------------------------------------------
@@ -179,13 +266,31 @@ class ChatService
         ];
     }
 
+    /**
+     * Derive a conversation title from the member's first message.
+     *
+     * The "is this still the placeholder?" check deliberately compares against
+     * BOTH locales' placeholders. The title is set at creation in whatever
+     * language the member was using, so a member who later switches language
+     * would otherwise have their placeholder treated as a real title and never
+     * replaced.
+     */
     private function resolveTitle(ChatSession $session, string $content, bool $hasImage): string
     {
-        if ($session->title !== 'New chat' && $session->title !== '') {
+        $placeholders = [
+            __('messages.chat.new_session', locale: 'en'),
+            __('messages.chat.new_session', locale: 'id'),
+        ];
+
+        if ($session->title !== '' && ! in_array($session->title, $placeholders, true)) {
             return $session->title;
         }
 
-        $base = trim($content) !== '' ? $content : ($hasImage ? 'Photo check-in' : 'New chat');
+        $fallback = $hasImage
+            ? __('messages.chat.photo_checkin')
+            : __('messages.chat.new_session');
+
+        $base = trim($content) !== '' ? $content : $fallback;
 
         return mb_substr($base, 0, 60);
     }

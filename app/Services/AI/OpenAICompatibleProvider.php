@@ -18,6 +18,18 @@ class OpenAICompatibleProvider implements AIProviderInterface
     private const MAX_ATTEMPTS = 4;
     private const RETRY_BACKOFF_MS = 500;
 
+    /**
+     * Floor for the completion budget.
+     *
+     * Reasoning models (Groq's gpt-oss line, Gemini's thinking modes) spend
+     * part of the budget on internal reasoning BEFORE emitting any visible
+     * content. A small max_tokens such as 20 therefore returns HTTP 200 with
+     * an empty `content` string — which the caller reads as "AI unavailable",
+     * even though the request succeeded. Floor the value so a caller passing a
+     * token-cheap value still gets a usable answer.
+     */
+    private const MIN_OUTPUT_TOKENS = 1024;
+
     public function __construct(private readonly string $providerKey)
     {
     }
@@ -45,7 +57,35 @@ class OpenAICompatibleProvider implements AIProviderInterface
 
     private function isTransient(int $status): bool
     {
+        // 429 rate limit, 5xx server/overload, 408 timeout. 503 in particular is
+        // how Gemini reports a momentarily saturated model, and it clears within
+        // a second or two — retrying is far cheaper than surfacing a failure.
         return $status === 408 || $status === 429 || $status >= 500;
+    }
+
+    /**
+     * Extract a JSON object from a model reply.
+     *
+     * Not every OpenAI-compatible endpoint honours `response_format`, and some
+     * wrap the object in a ```json fence or add a sentence before it. Rather
+     * than fail the whole call on a stray fence, locate the outermost braces.
+     */
+    private function decodeJsonObject(string $raw): ?array
+    {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $start = strpos($raw, '{');
+        $end = strrpos($raw, '}');
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+
+        $decoded = json_decode(substr($raw, $start, $end - $start + 1), true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     /**
@@ -58,11 +98,12 @@ class OpenAICompatibleProvider implements AIProviderInterface
             return null;
         }
 
-        $systemPrompt = "You are Striv, a training intelligence system. You receive deterministic, pre-computed training patterns with evidence plus a user profile. Generate concise, motivating insights tailored to the athlete. Rules: 1) Never invent numbers not present in evidence. 2) Never make medical claims or prescribe training programs. 3) Keep summaries concise (max 2 sentences, max 280 chars). 4) Output valid JSON only with keys: title (max 80 chars), summary (max 280 chars), recommendation (max 280 chars — one concrete actionable suggestion based on evidence + profile). 5) Match tone to user experience level: beginner = encouraging, intermediate = analytical, advanced = peer-to-peer technical. 6) If primary_goal is strength, prioritize load progressions; if muscle, prioritize volume; if endurance, prioritize frequency/volume balance.";
+        $systemPrompt = "You are Striv, a training intelligence system. You receive deterministic, pre-computed training patterns with evidence plus a user profile. Generate concise, motivating insights tailored to the athlete. Rules: 1) Never invent numbers not present in evidence. 2) Never make medical claims or prescribe training programs. 3) Keep summaries concise (max 2 sentences, max 280 chars). 4) Output valid JSON only with keys: title (max 80 chars), summary (max 280 chars), recommendation (max 280 chars — one concrete actionable suggestion based on evidence + profile). 5) Match tone to user experience level: beginner = encouraging, intermediate = analytical, advanced = peer-to-peer technical. 6) If primary_goal is strength, prioritize load progressions; if muscle, prioritize volume; if endurance, prioritize frequency/volume balance. 7) Write the title, summary, and recommendation in the language named in the context's \"language\" field (default English) — the text is stored and shown to the member as-is, so it must match their language.";
 
         $payload = [
             'model' => $this->model(),
             'temperature' => 0.3,
+            'max_tokens' => self::MIN_OUTPUT_TOKENS,
             'response_format' => ['type' => 'json_object'],
             'messages' => [
                 ['role' => 'system', 'content' => $systemPrompt],
@@ -75,8 +116,8 @@ class OpenAICompatibleProvider implements AIProviderInterface
             return null;
         }
 
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
+        $decoded = $this->decodeJsonObject($raw);
+        if ($decoded === null) {
             Log::warning("[{$this->providerKey}] insight content not JSON", ['content' => substr($raw, 0, 120)]);
             return null;
         }
@@ -114,7 +155,9 @@ class OpenAICompatibleProvider implements AIProviderInterface
             'model' => $this->model(),
             'messages' => $messages,
             'temperature' => $options['temperature'] ?? 0.4,
-            'max_tokens' => $options['max_tokens'] ?? 600,
+            // max() with the floor: callers historically passed 600-800, which
+            // reasoning models exhaust before emitting content.
+            'max_tokens' => max($options['max_tokens'] ?? 0, self::MIN_OUTPUT_TOKENS),
         ];
 
         return $this->postChat($payload);

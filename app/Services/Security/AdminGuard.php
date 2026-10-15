@@ -47,11 +47,11 @@ class AdminGuard
      */
     public function wouldRemoveLastAdmin(User $target): bool
     {
-        if (! $target->is_admin) {
+        if (! $target->isAdmin()) {
             return false;
         }
 
-        return User::where('is_admin', true)
+        return User::where('role', User::ROLE_ADMIN)
             ->where('is_suspended', false)
             ->whereKeyNot($target->id)
             ->doesntExist();
@@ -60,6 +60,6 @@ class AdminGuard
     /** True when this account is the only active administrator. */
     public function isLastAdmin(User $target): bool
     {
-        return $target->is_admin && $this->wouldRemoveLastAdmin($target);
+        return $target->isAdmin() && $this->wouldRemoveLastAdmin($target);
     }
 }

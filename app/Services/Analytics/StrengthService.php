@@ -38,6 +38,21 @@ class StrengthService
      */
     public function bestSetPerSession(User $user, Exercise $exercise, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
+        /*
+         * The date window is applied IN SQL, not afterwards in PHP.
+         *
+         * It previously selected the member's entire history for this exercise
+         * and then discarded everything outside the window while looping (the
+         * `$startedAt->lt($from)` / `->gt($to)` checks further down). The result
+         * was correct but the cost grew forever: a member with two years of
+         * training transferred every one of those rows to keep the twenty inside
+         * a 90-day window.
+         *
+         * Pushing the bounds into the query means the database returns only the
+         * rows that can be used. The filter is on `ws.started_at`, which is also
+         * the ORDER BY column, so the index added for workout_sessions can serve
+         * both and the ordering is unchanged.
+         */
         $query = DB::table('workout_exercises as we')
             ->join('workout_sessions as ws', 'ws.id', '=', 'we.workout_session_id')
             ->join('workout_sets as s', 's.workout_exercise_id', '=', 'we.id')
@@ -45,7 +60,17 @@ class StrengthService
             ->where('we.exercise_id', $exercise->id)
             ->whereNotNull('ws.finished_at')
             ->whereNotNull('s.weight_kg')
-            ->whereNotNull('s.reps')
+            ->whereNotNull('s.reps');
+
+        if ($from !== null) {
+            $query->where('ws.started_at', '>=', $from);
+        }
+
+        if ($to !== null) {
+            $query->where('ws.started_at', '<=', $to);
+        }
+
+        $query = $query
             ->orderBy('ws.started_at')
             ->get([
                 'ws.id as session_id',
@@ -62,12 +87,6 @@ class StrengthService
             }
 
             $startedAt = Carbon::parse($row->started_at);
-            if ($from !== null && $startedAt->lt($from)) {
-                continue;
-            }
-            if ($to !== null && $startedAt->gt($to)) {
-                continue;
-            }
 
             $key = (int) $row->session_id;
             if (!isset($best[$key]) || $e1rm > $best[$key]['e1rm']) {
@@ -93,11 +112,28 @@ class StrengthService
      */
     public function bigLiftTrendPct(User $user, CarbonInterface $from, CarbonInterface $to, array $slugs): ?float
     {
+        if ($slugs === []) {
+            return null;
+        }
+
+        /*
+         * One query for every slug, not one per slug.
+         *
+         * This loop previously ran `Exercise::where('slug', $slug)->first()`
+         * inside it — four round trips for four big lifts, every time the
+         * dashboard loaded. The lookup is a fixed set of known slugs, so it can
+         * be fetched in a single `whereIn`.
+         *
+         * Keyed by slug afterwards so the loop below stays readable and the
+         * order of `$slugs` is still what drives the iteration.
+         */
+        $exercises = Exercise::whereIn('slug', $slugs)->get()->keyBy('slug');
+
         $changes = [];
 
         foreach ($slugs as $slug) {
-            $exercise = Exercise::where('slug', $slug)->first();
-            if (!$exercise) {
+            $exercise = $exercises->get($slug);
+            if (! $exercise) {
                 continue;
             }
 

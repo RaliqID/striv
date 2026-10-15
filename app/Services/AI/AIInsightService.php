@@ -134,6 +134,30 @@ class AIInsightService
 
     private function buildInsight(User $user, array $pattern, array $providers): ?AiInsight
     {
+        // The insight is stored copy, so the deterministic fallback (used when
+        // no AI provider is configured) must be built in the member's language.
+        // Resolve it from the user rather than relying on the ambient request
+        // locale: generation can run off the request cycle.
+        $original = app()->getLocale();
+        app()->setLocale($this->localeFor($user));
+
+        try {
+            return $this->persistInsight($user, $pattern, $providers);
+        } finally {
+            app()->setLocale($original);
+        }
+    }
+
+    /** The locale to persist this member's insight copy in. */
+    private function localeFor(User $user): string
+    {
+        $locale = $user->locale ?? null;
+
+        return in_array($locale, ['en', 'id'], true) ? $locale : 'en';
+    }
+
+    private function persistInsight(User $user, array $pattern, array $providers): ?AiInsight
+    {
         $context = $this->contextBuilder->build($user, $pattern);
 
         $aiResult = null;
@@ -192,13 +216,13 @@ class AIInsightService
         $evidence = is_array($pattern['evidence'] ?? null) ? $pattern['evidence'] : [];
 
         return match ($type) {
-            'progress' => 'Consider adding 2.5kg to your next session to extend the trend.',
-            'plateau' => 'Try a 5% intensity increase or a deload week, then test max.',
-            'regression' => 'Schedule a recovery week and reassess sleep + nutrition before deloading.',
+            'progress' => __('messages.insight.rec.progress'),
+            'plateau' => __('messages.insight.rec.plateau'),
+            'regression' => __('messages.insight.rec.regression'),
             'volume_change' => $this->volumeChangeDirection($evidence),
             'consistency' => $this->consistencyDirection($evidence),
-            'milestone' => 'Set a stretch goal for the next 100 sessions.',
-            default => 'Keep training consistently and reassess next week.',
+            'milestone' => __('messages.insight.rec.milestone'),
+            default => __('messages.insight.rec.default'),
         };
     }
 
@@ -206,23 +230,23 @@ class AIInsightService
     {
         $pct = isset($evidence['pct']) ? (float) $evidence['pct'] : 0.0;
         if ($pct > 0) {
-            return 'Maintain this volume; track RPE to avoid overreaching.';
+            return __('messages.insight.rec.volume_up');
         }
         if ($pct < 0) {
-            return 'Gradually reintroduce volume to baseline.';
+            return __('messages.insight.rec.volume_down');
         }
-        return 'Keep current volume and monitor recovery.';
+        return __('messages.insight.rec.volume_flat');
     }
 
     private function consistencyDirection(array $evidence): string
     {
         $delta = isset($evidence['delta_pp']) ? (float) $evidence['delta_pp'] : 0.0;
         if ($delta > 0) {
-            return 'Build on this — consider adding a 5th day if recovery allows.';
+            return __('messages.insight.rec.consistency_up');
         }
         if ($delta < 0) {
-            return 'Identify friction: time, energy, or recovery. Aim for minimum 2 sessions this week.';
+            return __('messages.insight.rec.consistency_down');
         }
-        return 'Maintain your current schedule and protect recovery.';
+        return __('messages.insight.rec.consistency_flat');
     }
 }

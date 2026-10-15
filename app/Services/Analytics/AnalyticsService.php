@@ -25,10 +25,28 @@ class AnalyticsService
     {
     }
 
-    /** Total volume of a session: Σ weight_kg × reps (sets missing either value are skipped). */
+    /**
+     * Total volume of a session: Σ weight_kg × reps (sets missing either value are skipped).
+     *
+     * -----------------------------------------------------------------------
+     * loadMissing, NOT load — this was a real N+1
+     * -----------------------------------------------------------------------
+     * `load()` unconditionally re-queries the relation even when it is already
+     * loaded, so calling this once per session in a loop issued two extra
+     * queries per session regardless of what the caller had eager-loaded.
+     *
+     * Measured on a member with 69 finished sessions, `dashboardOverview()`
+     * issued 154 queries: 69 for workout_exercises and 69 for workout_sets, one
+     * pair per session, purely from this line.
+     *
+     * `loadMissing()` only queries when the relation is genuinely absent, so a
+     * caller that has already eager-loaded (as finishedSessionsBetween does)
+     * pays nothing, while a caller that has not still gets the relation loaded
+     * and the method stays correct on its own.
+     */
     public function sessionVolume(WorkoutSession $session): float
     {
-        return (float) $session->load('workoutExercises.sets')
+        return (float) $session->loadMissing('workoutExercises.sets')
             ->workoutExercises->flatMap->sets
             ->whereNotNull('weight_kg')->whereNotNull('reps')
             ->sum(fn ($set) => $set->weight_kg * $set->reps);
@@ -216,6 +234,7 @@ class AnalyticsService
             'volume_prev_30d' => round($volumePrev30, 2),
             'strength_trend_pct' => $this->strength->bigLiftTrendPct($user, $trendFrom, $now, self::BIG_LIFTS),
             'recent_prs' => PersonalRecord::where('user_id', $user->id)
+                ->with('exercise')
                 ->latest('achieved_at')
                 ->limit(5)
                 ->get()
