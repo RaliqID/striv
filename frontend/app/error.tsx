@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/provider";
 
 export default function GlobalError({
   error,
@@ -10,6 +11,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -28,16 +30,16 @@ export default function GlobalError({
 
         <div className="space-y-2">
           <h1 className="font-headline-lg text-headline-lg text-on-error-container">
-            Something went wrong
+            {t("error.title")}
           </h1>
           <p className="font-body-md text-body-md text-on-error-container/80">
-            An unexpected error occurred. You can try again or head back to the dashboard.
+            {t("error.body")}
           </p>
         </div>
 
         {error.digest && (
           <p className="font-metric-sm text-metric-sm text-on-error-container/60">
-            Error ID: {error.digest}
+            {t("error.id", { id: error.digest })}
           </p>
         )}
 
@@ -46,13 +48,13 @@ export default function GlobalError({
             onClick={() => reset()}
             className="bg-primary text-on-primary rounded-lg px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary w-full sm:w-auto"
           >
-            Try again
+            {t("error.tryAgain")}
           </button>
           <button
             onClick={() => router.push("/dashboard")}
             className="text-on-error-container font-metric-sm text-metric-sm underline underline-offset-2 hover:text-on-error-container/70 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary w-full sm:w-auto"
           >
-            Go to dashboard
+            {t("error.goDashboard")}
           </button>
         </div>
       </div>

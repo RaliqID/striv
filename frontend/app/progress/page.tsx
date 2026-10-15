@@ -3,7 +3,9 @@
 import AppLayout from "@/components/AppLayout";
 import { apiClient, ApiError } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
+import { useUnit } from "@/lib/use-unit";
 
 type E1rmPoint = {
   session_id: number;
@@ -51,17 +53,102 @@ const PERIODS = [
   { label: "1Y", days: 365 },
 ];
 
-function formatDate(iso: string): string {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Plot geometry. The SVG keeps a fixed viewBox and stretches to its container,
+// so every label is rendered as HTML on top rather than as <text> inside the
+// SVG — text inside a preserveAspectRatio="none" box would be stretched with it.
+const PLOT_W = 600;
+const PLOT_H = 200;
+const PAD = { top: 16, bottom: 24, left: 6, right: 6 };
+const INNER_W = PLOT_W - PAD.left - PAD.right;
+const INNER_H = PLOT_H - PAD.top - PAD.bottom;
+
+function formatDate(iso: string, locale: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
-function formatVolume(vol: number): string {
-  if (vol >= 1000) return (vol / 1000).toFixed(1) + "k";
-  return vol.toString();
+type ChartGeometry = {
+  dots: { x: number; y: number }[];
+  pathD: string;
+  areaD: string;
+  projectionD: string;
+  ticks: { topPct: number; value: number }[];
+};
+
+/**
+ * Trend line plus a projected continuation.
+ *
+ * The Y domain spans the data with padding rather than starting at zero. A
+ * zero-based axis turns a normal week-to-week wobble into what looks like a
+ * collapse to the floor, because the interesting range is a small band near the
+ * top of a 0..max scale.
+ *
+ * The projection is a least-squares fit across every point, not an extension of
+ * the final segment. One unusually heavy or light session would otherwise decide
+ * the direction of the whole forecast.
+ */
+function buildChart(points: E1rmPoint[]): ChartGeometry {
+  const values = points.map((p) => p.e1rm);
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  // A flat series would leave a zero-height domain; give it one so the line
+  // still reads as a line instead of collapsing onto a single row.
+  const span = rawMax - rawMin || Math.max(rawMax * 0.1, 1);
+  const min = rawMin - span * 0.15;
+  const max = rawMax + span * 0.15;
+
+  const times = points.map((p) => new Date(p.date).getTime());
+  const firstT = times[0];
+  const lastT = times[times.length - 1];
+  const timeSpan = lastT - firstT || DAY_MS;
+
+  const mapX = (t: number) => PAD.left + ((t - firstT) / timeSpan) * INNER_W;
+  const mapY = (v: number) => PAD.top + INNER_H - ((v - min) / (max - min)) * INNER_H;
+
+  const dots = points.map((p, i) => ({ x: mapX(times[i]), y: mapY(p.e1rm) }));
+
+  const pathD = dots
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(" ");
+
+  const floor = PAD.top + INNER_H;
+  const areaD = `${pathD} L${dots[dots.length - 1].x.toFixed(1)},${floor} L${dots[0].x.toFixed(1)},${floor} Z`;
+
+  const n = points.length;
+  const meanX = times.reduce((a, b) => a + b, 0) / n;
+  const meanY = values.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (times[i] - meanX) * (values[i] - meanY);
+    den += (times[i] - meanX) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+
+  const projectedT = lastT + 30 * DAY_MS;
+  const projectedV = meanY + slope * (projectedT - meanX);
+
+  // Clamped to the box: a steep fit would otherwise draw past the edge and look
+  // like the forecast escapes the chart.
+  const projX = Math.min(PAD.left + INNER_W, mapX(projectedT));
+  const projY = Math.max(PAD.top, Math.min(floor, mapY(projectedV)));
+
+  const last = dots[dots.length - 1];
+  const projectionD = `M${last.x.toFixed(1)},${last.y.toFixed(1)} L${projX.toFixed(1)},${projY.toFixed(1)}`;
+
+  const ticks = [0, 1, 2, 3].map((i) => {
+    const value = min + ((max - min) * (3 - i)) / 3;
+    return { topPct: (mapY(value) / PLOT_H) * 100, value };
+  });
+
+  return { dots, pathD, areaD, projectionD, ticks };
 }
 
 export default function ProgressPage() {
+  const { t, locale } = useTranslation();
+  const { label, formatWeight, formatVolume } = useUnit();
   const router = useRouter();
   const [periodDays, setPeriodDays] = useState(90);
   const [loading, setLoading] = useState(true);
@@ -82,11 +169,16 @@ export default function ProgressPage() {
         router.push("/login");
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Couldn't load progress data.");
+      setError(err instanceof ApiError ? err.message : t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [periodDays, router]);
+    /*
+     * `t` belongs here: the catch above uses it for the fallback message, and
+     * `t` changes identity when the language does — so this callback must be
+     * rebuilt then, or a failed load would report in the old language.
+     */
+  }, [periodDays, router, t]);
 
   useEffect(() => {
     fetchData();
@@ -94,104 +186,86 @@ export default function ProgressPage() {
 
   const handleRetry = () => setReloadKey((k) => k + 1);
 
-  // ---- E1RM chart ----
+  // ---- Strength trend ----
   const e1rmSeries = data?.e1rm_trend?.find((s) => s.points.length >= 2) ?? null;
   const e1rmPoints = e1rmSeries?.points ?? [];
   const latestE1rm = e1rmPoints.length > 0 ? e1rmPoints[e1rmPoints.length - 1].e1rm : null;
   const firstE1rm = e1rmPoints.length > 0 ? e1rmPoints[0].e1rm : null;
-  const delta = firstE1rm && latestE1rm ? ((latestE1rm - firstE1rm) / firstE1rm) * 100 : null;
+  const delta =
+    firstE1rm && latestE1rm ? ((latestE1rm - firstE1rm) / firstE1rm) * 100 : null;
 
-  // Build SVG path and projection
-  const chartWidth = 600;
-  const chartHeight = 200;
-  const padding = { top: 20, bottom: 30, left: 20, right: 20 };
-  const innerWidth = chartWidth - padding.left - padding.right;
-  const innerHeight = chartHeight - padding.top - padding.bottom;
+  const peakPoint = useMemo(() => {
+    if (e1rmPoints.length === 0) return null;
+    return e1rmPoints.reduce((best, p) => (p.e1rm > best.e1rm ? p : best), e1rmPoints[0]);
+  }, [e1rmPoints]);
 
-  const getPoint = (index: number, value: number, total: number) => {
-    const x = padding.left + (index / Math.max(total - 1, 1)) * innerWidth;
-    const yMax = Math.max(...e1rmPoints.map((p) => p.e1rm), 1);
-    const y = padding.top + innerHeight - (value / yMax) * innerHeight;
-    return { x, y };
-  };
+  const chart = useMemo(
+    () => (e1rmPoints.length >= 2 ? buildChart(e1rmPoints) : null),
+    [e1rmPoints]
+  );
 
-  let pathD = "";
-  let projectedPathD = "";
-  if (e1rmPoints.length >= 2) {
-    const pts = e1rmPoints.map((p) => p.e1rm);
-    const points = pts.map((v, i) => getPoint(i, v, pts.length));
-    pathD = points.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join(" ");
-
-    // Projection: last two points
-    const last = pts.length - 1;
-    const p1 = getPoint(last - 1, pts[last - 1], pts.length);
-    const p2 = getPoint(last, pts[last], pts.length);
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    // Extend by 15% of width
-    const extendX = innerWidth * 0.15;
-    const slope = dy / dx;
-    const p3x = p2.x + extendX;
-    const p3y = p2.y + slope * extendX;
-    projectedPathD = `M${p2.x},${p2.y} L${p3x},${p3y}`;
-  }
-
-  // ---- Weekly Frequency ----
+  // ---- Frequency and adherence ----
   const frequencyData = data?.frequency_weekly ?? [];
-  const avgSessions = frequencyData.length > 0
-    ? frequencyData.reduce((sum, w) => sum + w.workouts, 0) / frequencyData.length
-    : null;
+  const totalWorkouts = frequencyData.reduce((sum, w) => sum + w.workouts, 0);
+  const avgSessions = frequencyData.length > 0 ? totalWorkouts / frequencyData.length : null;
   const adherence = data?.consistency?.adherence_pct ?? null;
   const targetDays = data?.consistency?.target_days ?? null;
   const avgSessionsVal = data?.consistency?.avg_sessions_per_week ?? avgSessions;
-  const diff = (avgSessionsVal !== null && targetDays !== null)
-    ? avgSessionsVal - targetDays
-    : null;
+  const diff =
+    avgSessionsVal !== null && targetDays !== null ? avgSessionsVal - targetDays : null;
 
-  // Radial progress: circumference = 2 * pi * 48 = 301.59
-  const circumference = 2 * Math.PI * 48;
-  const offset = adherence !== null ? circumference * (1 - adherence / 100) : circumference;
+  // Consecutive weeks with at least one finished session, counted back from the
+  // most recent week — a streak that has already been broken this week still
+  // counts the weeks behind it.
+  const streak = useMemo(() => {
+    let count = 0;
+    for (let i = frequencyData.length - 1; i >= 0; i--) {
+      if (frequencyData[i].workouts > 0) count++;
+      else break;
+    }
+    return count;
+  }, [frequencyData]);
 
-  // ---- Weekly Volume Bars ----
+  const trainedDays = (data?.volume_by_day ?? []).filter((d) => d.volume > 0).length;
+
+  const ringRadius = 44;
+  const circumference = 2 * Math.PI * ringRadius;
+  const ringOffset =
+    adherence !== null ? circumference * (1 - Math.max(0, Math.min(100, adherence)) / 100) : circumference;
+
+  // ---- Weekly volume ----
   const weeklyVolumes = data?.volume_by_week ?? [];
   const last8 = weeklyVolumes.slice(-8);
-  const maxVol = last8.length > 0 ? Math.max(...last8.map(w => w.volume)) : 1;
+  // Guarded against an all-zero window, which would otherwise divide by zero and
+  // render every bar at NaN%.
+  const maxVol = Math.max(1, ...last8.map((w) => w.volume));
   const totalLast4 = weeklyVolumes.slice(-4).reduce((sum, w) => sum + w.volume, 0);
+  const volumeTrendingUp =
+    last8.length > 1 && last8[last8.length - 1].volume > last8[0].volume;
 
-  // ---- Consistency Map ----
-  const frequencyMap = data?.frequency_weekly ?? [];
-  // Build 12 columns x 7 rows, pad leading with zeros
-  const numWeeks = 12;
-  const daysPerWeek = 7;
-  // Assume frequency entries are in order, one per week. Use workouts count per week.
-  // We'll map each week's workouts to 7 cells, but we need to map each day? Simpler: we have weekly data, so each week gets a column, and we repeat that column 7 times.
-  // Or we could use volume_by_day if available for daily granularity. But spec says use frequency_weekly.
-  // We'll treat each week as a column, and each day in that week has the same intensity.
-  // So we need 12 columns, each with 7 rows. For columns beyond data length, pad with zeros.
-  const weekCounts = frequencyMap.map(w => w.workouts);
-  const paddedCounts = Array.from({ length: numWeeks }, (_, i) => i < weekCounts.length ? weekCounts[i] : 0);
-  // Build grid: for each column (week), we have 7 rows all with same value (since we only have weekly data)
-  // Actually we need 84 cells. We'll fill column by column (week), each column gets 7 cells of same value.
-  const gridCells = paddedCounts.flatMap(count => Array(daysPerWeek).fill(count));
+  // ---- Activity strip ----
+  const maxWeekWorkouts = Math.max(1, ...frequencyData.map((w) => w.workouts));
 
-  // Determine color scale: 0 -> bg-surface-container-highest, 1 -> bg-outline-variant, 2 -> bg-outline, 3+ -> bg-primary
-  const getColor = (val: number) => {
-    if (val === 0) return "bg-surface-container-highest";
-    if (val === 1) return "bg-outline-variant";
-    if (val === 2) return "bg-outline";
-    return "bg-primary";
+  const intensityClass = (workouts: number) => {
+    if (workouts === 0) return "bg-surface-container-highest";
+    if (workouts >= 4) return "bg-secondary";
+    if (workouts >= 2) return "bg-secondary-container";
+    return "bg-secondary-fixed-dim";
   };
 
-  const totalWorkouts = frequencyMap.reduce((sum, w) => sum + w.workouts, 0);
+  const cardClass =
+    "bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col transition-shadow duration-300 hover:shadow-[0_4px_24px_rgba(0,0,0,0.06)]";
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
+      <div className="flex flex-col gap-8 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div>
-            <h2 className="font-headline-lg text-headline-lg text-primary tracking-tight">Progress</h2>
+            <h2 className="font-metric-display text-headline-lg-mobile md:text-metric-display text-primary tracking-tight">
+              {t("progress.title")}
+            </h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-2 max-w-lg">
-              Comprehensive analysis of your training trajectory across volume, strength, and consistency.
+              {t("progress.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1 bg-surface-container-low rounded-lg p-1 border border-outline-variant">
@@ -199,6 +273,7 @@ export default function ProgressPage() {
               <button
                 key={p.label}
                 onClick={() => setPeriodDays(p.days)}
+                aria-pressed={periodDays === p.days}
                 className={`px-3 py-1.5 md:px-4 md:py-2 rounded font-metric-sm text-metric-sm transition-colors ${
                   periodDays === p.days
                     ? "bg-surface border border-outline-variant shadow-sm text-primary"
@@ -219,274 +294,459 @@ export default function ProgressPage() {
               onClick={handleRetry}
               className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 hover:bg-primary-hover transition-colors"
             >
-              Retry
+              {t("action.retry")}
             </button>
           </div>
         )}
 
         {!error && (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min">
-            {/* Estimated 1RM Avg */}
-            <div className="md:col-span-8 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300 relative overflow-hidden">
-              <div className="flex justify-between items-start mb-8">
-                <div>
+            {/* Strength trend — the hero card */}
+            <div className="md:col-span-8 ai-glow bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col relative overflow-hidden">
+              <div className="flex justify-between items-start gap-4">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider">Estimated 1RM Avg</h3>
-                    {e1rmPoints.length >= 2 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary-container" title="AI Predicted Data Available"></span>
+                    <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
+                      {t("progress.estimated1rm")}
+                    </h3>
+                    {chart && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-secondary-container"
+                        title={t("progress.aiPredicted")}
+                      />
                     )}
                   </div>
-                  <div className="flex items-baseline gap-3">
+                  <div className="flex flex-wrap items-baseline gap-3">
                     {loading ? (
-                      <div className="animate-pulse h-12 w-24 bg-surface-container rounded"></div>
+                      <div className="animate-pulse h-12 w-32 bg-surface-container rounded" />
                     ) : (
                       <>
                         <span className="font-metric-display text-metric-display text-primary">
-                          {latestE1rm !== null ? Math.round(latestE1rm) : "—"}
+                          {latestE1rm !== null ? formatWeight(latestE1rm) : "—"}
                         </span>
-                        <span className="font-body-md text-body-md text-on-surface-variant">kg</span>
-                        {delta !== null && delta !== 0 && (
-                          <span className={`font-metric-sm text-metric-sm ${delta > 0 ? "text-secondary-container" : "text-error"} bg-secondary-container/10 px-2 py-0.5 rounded ml-2`}>
-                            {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
+                        <span className="font-body-md text-body-md text-on-surface-variant">
+                          {label}
+                        </span>
+                        {delta !== null && Math.abs(delta) >= 0.1 && (
+                          <span
+                            className={`font-metric-sm text-metric-sm px-2 py-0.5 rounded ${
+                              delta > 0
+                                ? "text-secondary bg-secondary-fixed/40"
+                                : "text-error bg-error-container/40"
+                            }`}
+                          >
+                            {delta > 0 ? "+" : ""}
+                            {delta.toFixed(1)}%
                           </span>
                         )}
                       </>
                     )}
                   </div>
+                  {e1rmSeries && (
+                    <p className="font-body-md text-body-md text-on-surface-variant mt-2 text-sm">
+                      {e1rmSeries.name}
+                    </p>
+                  )}
                 </div>
-                <button className="text-on-surface-variant hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined">more_horiz</span>
-                </button>
-              </div>
-              <div className="h-64 w-full relative mt-auto">
-                {loading ? (
-                  <div className="animate-pulse h-full w-full bg-surface-container rounded" />
-                ) : e1rmPoints.length < 2 ? (
-                  <div className="h-full w-full flex flex-col items-center justify-center text-on-surface-variant font-body-md border border-dashed border-outline-variant rounded">
-                    <span className="material-symbols-outlined text-4xl mb-2">insights</span>
-                    <p>No strength data yet</p>
-                    <p className="text-sm">Start logging workouts to see your trend.</p>
-                  </div>
-                ) : (
-                  <svg className="w-full h-full" preserveAspectRatio="none" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
-                    <defs>
-                      <linearGradient id="aiGradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#6063ee" stopOpacity="0.1" />
-                        <stop offset="100%" stopColor="#6063ee" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <line stroke="#e5e2e1" strokeWidth="1" strokeDasharray="4 4" x1="0" x2="600" y1="50" y2="50" />
-                    <line stroke="#e5e2e1" strokeWidth="1" strokeDasharray="4 4" x1="0" x2="600" y1="100" y2="100" />
-                    <line stroke="#e5e2e1" strokeWidth="1" strokeDasharray="4 4" x1="0" x2="600" y1="150" y2="150" />
-                    {pathD && (
-                      <path className="stroke-primary fill-none" d={pathD} strokeWidth="1.5" />
-                    )}
-                    {projectedPathD && (
-                      <path className="stroke-secondary fill-none" d={projectedPathD} strokeDasharray="4 4" strokeWidth="1.5" />
-                    )}
-                    {/* Data points */}
-                    {e1rmPoints.map((p, i) => {
-                      const pt = getPoint(i, p.e1rm, e1rmPoints.length);
-                      return (
-                        <circle key={i} cx={pt.x} cy={pt.y} r={3} fill="#000" />
-                      );
-                    })}
-                    {/* Last point highlighted */}
-                    {e1rmPoints.length > 0 && (
-                      <circle
-                        cx={getPoint(e1rmPoints.length - 1, e1rmPoints[e1rmPoints.length - 1].e1rm, e1rmPoints.length).x}
-                        cy={getPoint(e1rmPoints.length - 1, e1rmPoints[e1rmPoints.length - 1].e1rm, e1rmPoints.length).y}
-                        r={4}
-                        fill="#000"
-                        stroke="#fff"
-                        strokeWidth="2"
-                      />
-                    )}
-                    {/* X-axis labels */}
-                    <text x="0" y={chartHeight - 5} className="text-[10px] text-outline font-label-caps">
-                      {e1rmPoints.length > 0 ? formatDate(e1rmPoints[0].date) : ""}
-                    </text>
-                    <text x={chartWidth - 40} y={chartHeight - 5} className="text-[10px] text-outline font-label-caps text-right">
-                      {e1rmPoints.length > 0 ? formatDate(e1rmPoints[e1rmPoints.length - 1].date) : ""}
-                    </text>
-                    {e1rmPoints.length >= 2 && (
-                      <text x={chartWidth - 20} y={30} className="text-[10px] text-secondary-container font-label-caps text-right">
-                        Projected
-                      </text>
-                    )}
-                  </svg>
-                )}
-              </div>
-            </div>
 
-            {/* Weekly Frequency */}
-            <div className="md:col-span-4 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Weekly Frequency</h3>
-                  <div className="flex items-baseline gap-2">
-                    {loading ? (
-                      <div className="animate-pulse h-8 w-16 bg-surface-container rounded"></div>
-                    ) : (
-                      <>
-                        <span className="font-headline-lg text-headline-lg text-primary">
-                          {avgSessions !== null ? avgSessions.toFixed(1) : "—"}
-                        </span>
-                        <span className="font-body-md text-body-md text-on-surface-variant">days/wk</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 flex items-center justify-center relative min-h-[200px]">
-                {loading ? (
-                  <div className="animate-pulse w-40 h-40 rounded-full bg-surface-container"></div>
-                ) : (
-                  <div className="w-40 h-40 rounded-full border-4 border-surface-container-high relative flex items-center justify-center">
-                    <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle
-                        cx="50"
-                        cy="50"
-                        fill="none"
-                        r="48"
-                        stroke="#000000"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={offset}
-                        strokeWidth="4"
-                      />
-                    </svg>
-                    <div className="text-center">
-                      <span className="block font-metric-display text-[32px] font-semibold text-primary">
-                        {adherence !== null ? Math.round(adherence) : "—"}
-                      </span>
-                      <span className="block font-label-caps text-[10px] text-on-surface-variant mt-1">Adherence</span>
+                {/* Secondary readings: the number above is today's, these are
+                    the reference points a lifter actually checks against it. */}
+                {!loading && e1rmPoints.length >= 2 && (
+                  <div className="hidden sm:flex shrink-0 gap-6 text-right">
+                    <div>
+                      <div className="font-label-caps text-label-caps text-outline uppercase">
+                        {t("progress.peak")}
+                      </div>
+                      <div className="font-metric-sm text-metric-sm text-primary">
+                        {peakPoint ? `${formatWeight(peakPoint.e1rm)} ${label}` : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-label-caps text-label-caps text-outline uppercase">
+                        {t("progress.bestSet")}
+                      </div>
+                      <div className="font-metric-sm text-metric-sm text-primary">
+                        {peakPoint
+                          ? `${formatWeight(peakPoint.weight)} ${label} × ${peakPoint.reps}`
+                          : "—"}
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
-              <div className="mt-4 flex justify-between items-center text-sm">
+
+              <div className="mt-6 h-64 w-full relative">
+                {loading ? (
+                  <div className="animate-pulse h-full w-full bg-surface-container rounded" />
+                ) : !chart ? (
+                  <div className="h-full w-full flex flex-col items-center justify-center text-on-surface-variant font-body-md border border-dashed border-outline-variant rounded">
+                    <span className="material-symbols-outlined text-4xl mb-2">insights</span>
+                    <p>{t("progress.noStrength")}</p>
+                    <p className="text-sm">{t("progress.startTrend")}</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Y ticks as HTML, positioned by percentage of the plot box */}
+                    <div className="pointer-events-none absolute inset-0">
+                      {chart.ticks.map((tick) => (
+                        <div
+                          key={tick.value}
+                          className="absolute left-0 right-0 flex items-center gap-2"
+                          style={{ top: `${tick.topPct}%` }}
+                        >
+                          <span className="w-9 shrink-0 text-right font-label-caps text-[10px] text-outline">
+                            {Math.round(tick.value)}
+                          </span>
+                          <span className="h-px flex-1 bg-outline-variant/40" />
+                        </div>
+                      ))}
+                    </div>
+
+                    <svg
+                      className="absolute inset-0 h-full w-full"
+                      preserveAspectRatio="none"
+                      viewBox={`0 0 ${PLOT_W} ${PLOT_H}`}
+                    >
+                      <defs>
+                        <linearGradient id="e1rmArea" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#4648D4" stopOpacity="0.22" />
+                          <stop offset="100%" stopColor="#4648D4" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path d={chart.areaD} fill="url(#e1rmArea)" />
+                      <path
+                        d={chart.pathD}
+                        fill="none"
+                        className="stroke-primary"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <path
+                        d={chart.projectionD}
+                        fill="none"
+                        className="stroke-secondary"
+                        strokeWidth="2"
+                        strokeDasharray="5 5"
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      {chart.dots.map((p, i) => (
+                        <circle
+                          key={i}
+                          cx={p.x}
+                          cy={p.y}
+                          r={i === chart.dots.length - 1 ? 4 : 2.5}
+                          fill={i === chart.dots.length - 1 ? "#4648D4" : "#1C1B1B"}
+                          stroke="#FFFFFF"
+                          strokeWidth="1.5"
+                        />
+                      ))}
+                    </svg>
+                  </>
+                )}
+              </div>
+
+              {!loading && chart && (
+                <div className="mt-2 flex items-center justify-between gap-3 pl-11">
+                  <span className="font-label-caps text-label-caps text-outline text-[10px]">
+                    {formatDate(e1rmPoints[0].date, locale)}
+                  </span>
+                  <span className="font-label-caps text-label-caps text-[10px] text-secondary flex items-center gap-1.5">
+                    <span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-secondary" />
+                    {t("progress.projected")}
+                  </span>
+                  <span className="font-label-caps text-label-caps text-outline text-[10px]">
+                    {formatDate(e1rmPoints[e1rmPoints.length - 1].date, locale)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Adherence ring */}
+            <div className={`md:col-span-4 ${cardClass}`}>
+              <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1">
+                {t("progress.weeklyFrequency")}
+              </h3>
+              <div className="flex items-baseline gap-2">
+                {loading ? (
+                  <div className="animate-pulse h-8 w-20 bg-surface-container rounded" />
+                ) : (
+                  <>
+                    <span className="font-headline-lg text-headline-lg text-primary">
+                      {avgSessionsVal !== null ? avgSessionsVal.toFixed(1) : "—"}
+                    </span>
+                    <span className="font-body-md text-body-md text-on-surface-variant">
+                      {t("progress.avgPerWeek")}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <div className="flex-1 flex items-center justify-center py-6">
+                {loading ? (
+                  <div className="animate-pulse w-40 h-40 rounded-full bg-surface-container" />
+                ) : (
+                  <div className="relative w-40 h-40">
+                    <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r={ringRadius}
+                        fill="none"
+                        stroke="#EBE7E6"
+                        strokeWidth="8"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r={ringRadius}
+                        fill="none"
+                        stroke="#4648D4"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={ringOffset}
+                        style={{ transition: "stroke-dashoffset 600ms ease-out" }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="font-metric-display text-[32px] font-semibold text-primary leading-none">
+                        {adherence !== null ? Math.round(adherence) : "—"}
+                        {adherence !== null && <span className="text-lg">%</span>}
+                      </span>
+                      <span className="font-label-caps text-label-caps text-on-surface-variant mt-1">
+                        {t("progress.adherence")}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center gap-3 text-sm border-t border-outline-variant pt-3">
                 <span className="text-on-surface-variant">
-                  Target: {targetDays !== null ? `${targetDays} days` : "Set in profile"}
+                  {t("progress.target")}:{" "}
+                  {targetDays !== null
+                    ? `${targetDays} ${t("profile.daysPerWeek")}`
+                    : t("progress.setInProfile")}
                 </span>
-                {diff !== null && diff !== 0 && (
-                  <span className={`font-metric-sm ${diff < 0 ? "text-error bg-error-container/30" : "text-secondary-container bg-secondary-container/10"} px-2 py-0.5 rounded`}>
-                    {diff > 0 ? "+" : ""}{diff.toFixed(1)}
+                {diff !== null && Math.abs(diff) >= 0.05 && (
+                  <span
+                    className={`font-metric-sm text-metric-sm px-2 py-0.5 rounded ${
+                      diff < 0
+                        ? "text-error bg-error-container/40"
+                        : "text-secondary bg-secondary-fixed/40"
+                    }`}
+                  >
+                    {diff > 0 ? "+" : ""}
+                    {diff.toFixed(1)}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Weekly Volume */}
-            <div className="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
-              <div className="flex justify-between items-start mb-8">
+            {/* Stat strip */}
+            <div className="md:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { labelKey: "progress.totalWorkouts", value: String(totalWorkouts) },
+                { labelKey: "progress.trainedDays", value: String(trainedDays) },
+                { labelKey: "progress.streak", value: `${streak} ${t("progress.weekStreak")}` },
+                {
+                  labelKey: "progress.volumeTrend",
+                  value: totalLast4 > 0 ? formatVolume(totalLast4) : "—",
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.labelKey}
+                  className="bg-surface border border-outline-variant rounded-xl px-4 py-3"
+                >
+                  <div className="font-label-caps text-label-caps text-outline uppercase">
+                    {t(stat.labelKey)}
+                  </div>
+                  <div className="font-metric-sm text-metric-sm text-primary mt-1 truncate">
+                    {loading ? "—" : stat.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Weekly volume */}
+            <div className={`md:col-span-6 ${cardClass}`}>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-6">
                 <div>
-                  <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Weekly Volume</h3>
+                  <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1">
+                    {t("progress.weeklyVolume")}
+                  </h3>
                   <div className="flex items-baseline gap-2">
                     {loading ? (
-                      <div className="animate-pulse h-8 w-20 bg-surface-container rounded"></div>
+                      <div className="animate-pulse h-8 w-24 bg-surface-container rounded" />
                     ) : (
                       <>
                         <span className="font-headline-lg text-headline-lg text-primary">
                           {totalLast4 > 0 ? formatVolume(totalLast4) : "—"}
                         </span>
-                        <span className="font-body-md text-body-md text-on-surface-variant">kg total</span>
+                        <span className="font-body-md text-body-md text-on-surface-variant">
+                          {t("progress.volumeTotal", { unit: label })}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
+                {/*
+                  Stacks under the heading on narrow screens. Held beside it with
+                  shrink-0 the sentence could not wrap, so on a phone it pushed
+                  past the viewport and gave the whole page a horizontal scroll.
+                */}
+                {!loading && last8.length > 1 && (
+                  <span className="self-start flex items-center gap-1 font-label-caps text-label-caps text-secondary bg-secondary-fixed/30 rounded px-2 py-1">
+                    <span className="material-symbols-outlined text-[14px]">
+                      {volumeTrendingUp ? "trending_up" : "trending_flat"}
+                    </span>
+                    {volumeTrendingUp ? t("progress.trendUp") : t("progress.trendSteady")}
+                  </span>
+                )}
               </div>
-              <div className="h-48 w-full flex items-end gap-2 mt-auto pb-6 relative">
+
+              {/*
+                The bar wrapper is a flex child of a fixed-height column, so its
+                percentage-height bars resolve against a definite box. Against an
+                indefinite (auto) parent a percentage height collapses to zero and
+                only the min-height sliver would paint.
+              */}
+              <div className="h-48 w-full flex gap-2 mt-auto">
                 {loading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full rounded-t-sm bg-surface-container-highest animate-pulse h-12"></div>
+                      <div className="w-full flex-1 flex items-end">
+                        <div className="w-full rounded-t-sm bg-surface-container-highest animate-pulse h-12" />
+                      </div>
                       <span className="font-label-caps text-[10px] text-outline">—</span>
                     </div>
                   ))
                 ) : last8.length === 0 ? (
-                  <div className="w-full text-center text-on-surface-variant font-body-md">No volume data yet.</div>
+                  <div className="w-full flex items-center justify-center text-on-surface-variant font-body-md">
+                    {t("progress.noVolumeData")}
+                  </div>
                 ) : (
-                  last8.map((week, i) => {
-                    const isMax = week.volume === maxVol;
+                  last8.map((week) => {
+                    const isMax = week.volume === maxVol && week.volume > 0;
                     const height = (week.volume / maxVol) * 100;
-                    const label = formatDate(week.week_start);
                     return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2 group/bar cursor-pointer">
-                        <div
-                          className={`w-full rounded-t-sm ${isMax ? "bg-primary" : "bg-surface-container-highest group-hover/bar:bg-outline-variant"} transition-colors`}
-                          style={{ height: `${height}%`, minHeight: "4px" }}
-                        ></div>
-                        <span className={`font-label-caps text-[10px] ${isMax ? "text-primary font-semibold" : "text-outline"}`}>
-                          {label}
+                      <div
+                        key={week.week_start}
+                        className="flex-1 min-w-0 flex flex-col items-center gap-2"
+                      >
+                        <div className="w-full flex-1 flex items-end">
+                          <div
+                            className={`w-full rounded-t-sm transition-colors ${
+                              isMax
+                                ? "bg-secondary"
+                                : "bg-secondary-fixed-dim hover:bg-secondary-container"
+                            }`}
+                            style={{ height: `${Math.max(height, 2)}%` }}
+                            title={`${formatVolume(week.volume)} ${label}`}
+                          />
+                        </div>
+                        <span
+                          className={`font-label-caps text-[10px] truncate ${
+                            isMax ? "text-secondary" : "text-outline"
+                          }`}
+                        >
+                          {formatDate(week.week_start, locale)}
                         </span>
                       </div>
                     );
                   })
                 )}
-                {last8.length > 0 && (
-                  <div className="absolute top-4 right-0 max-w-[140px] bg-surface/90 backdrop-blur border border-outline-variant p-3 rounded-lg shadow-sm hidden md:block">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="material-symbols-outlined text-[14px] text-secondary-container">psychology</span>
-                      <span className="font-label-caps text-[10px] text-secondary-container font-semibold">Insight</span>
-                    </div>
-                    <p className="font-body-md text-[11px] leading-tight text-on-surface">
-                      {maxVol > 0 && last8.length > 1 && last8[last8.length - 1].volume > last8[0].volume
-                        ? "Volume trending upward. Keep pushing."
-                        : "Consistent volume builds strength."}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Consistency Map */}
-            <div className="md:col-span-6 bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col group hover:shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
-              <div className="flex justify-between items-start mb-6">
+            {/* Activity strip */}
+            <div className={`md:col-span-6 ${cardClass}`}>
+              <div className="flex justify-between items-start gap-4 mb-6">
                 <div>
-                  <h3 className="font-metric-sm text-metric-sm text-on-surface-variant uppercase tracking-wider mb-1">Consistency Map</h3>
+                  <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1">
+                    {t("progress.consistencyMap")}
+                  </h3>
                   <div className="flex items-baseline gap-2">
                     {loading ? (
-                      <div className="animate-pulse h-8 w-16 bg-surface-container rounded"></div>
+                      <div className="animate-pulse h-8 w-20 bg-surface-container rounded" />
                     ) : (
                       <>
-                        <span className="font-headline-lg text-headline-lg text-primary">{totalWorkouts}</span>
-                        <span className="font-body-md text-body-md text-on-surface-variant">active days</span>
+                        <span className="font-headline-lg text-headline-lg text-primary">
+                          {totalWorkouts}
+                        </span>
+                        <span className="font-body-md text-body-md text-on-surface-variant">
+                          {t("progress.totalWorkouts")}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-label-caps text-outline">Less</span>
-                  <div className="w-2 h-2 rounded-sm bg-surface-container-highest"></div>
-                  <div className="w-2 h-2 rounded-sm bg-outline-variant"></div>
-                  <div className="w-2 h-2 rounded-sm bg-outline"></div>
-                  <div className="w-2 h-2 rounded-sm bg-primary"></div>
-                  <span className="text-[10px] font-label-caps text-outline">More</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] font-label-caps text-outline">
+                    {t("progress.legendLess")}
+                  </span>
+                  <span className="w-2.5 h-2.5 rounded-sm bg-surface-container-highest" />
+                  <span className="w-2.5 h-2.5 rounded-sm bg-secondary-fixed-dim" />
+                  <span className="w-2.5 h-2.5 rounded-sm bg-secondary-container" />
+                  <span className="w-2.5 h-2.5 rounded-sm bg-secondary" />
+                  <span className="text-[10px] font-label-caps text-outline">
+                    {t("progress.legendMore")}
+                  </span>
                 </div>
               </div>
-              <div className="mt-auto overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-2">
-                {loading ? (
-                  <div className="grid grid-cols-[repeat(12,_minmax(16px,_1fr))] gap-1.5 min-w-[300px]">
-                    {Array.from({ length: 12 * 7 }).map((_, i) => (
-                      <div key={i} className="w-full aspect-square rounded-sm bg-surface-container-highest animate-pulse"></div>
-                    ))}
+
+              {loading ? (
+                <div className="h-40 flex gap-1.5">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-sm bg-surface-container-highest animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : frequencyData.length === 0 ? (
+                <div className="h-40 flex items-center justify-center text-on-surface-variant font-body-md">
+                  {t("progress.noConsistencyData")}
+                </div>
+              ) : (
+                <>
+                  {/*
+                    One column per week, drawn from the real weekly workout count.
+                    The previous version stretched each week across seven fake
+                    daily cells, which produced an all-black grid that carried no
+                    information beyond the weekly totals it was built from.
+                  */}
+                  <div className="h-40 flex gap-1.5">
+                    {frequencyData.map((week) => {
+                      const pct = (week.workouts / maxWeekWorkouts) * 100;
+                      return (
+                        <div
+                          key={week.week_start}
+                          className="flex-1 min-w-0 flex flex-col items-center gap-2"
+                        >
+                          <div className="w-full flex-1 flex items-end">
+                            <div
+                              className={`w-full rounded-sm ${intensityClass(week.workouts)}`}
+                              style={{ height: `${Math.max(pct, 3)}%` }}
+                              title={`${week.workouts} ${t("progress.sessions")}`}
+                            />
+                          </div>
+                          <span className="font-label-caps text-[9px] text-outline truncate w-full text-center">
+                            {week.workouts}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : gridCells.length === 0 ? (
-                  <div className="text-center text-on-surface-variant font-body-md">No consistency data.</div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-[repeat(12,_minmax(16px,_1fr))] gap-1.5 min-w-[300px]">
-                      {gridCells.map((val, idx) => (
-                        <div key={idx} className={`w-full aspect-square rounded-sm ${getColor(val)}`} />
-                      ))}
-                    </div>
-                    <div className="col-span-12 flex justify-between text-[10px] font-label-caps text-outline mt-2">
-                      <span>12 weeks</span>
-                      <span>Now</span>
-                    </div>
-                  </>
-                )}
-              </div>
+                  <div className="flex justify-between mt-3 font-label-caps text-[10px] text-outline">
+                    <span>{t("progress.weeks12")}</span>
+                    <span>{t("progress.now")}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

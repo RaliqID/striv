@@ -1,7 +1,10 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import { apiClient } from "@/lib/api";
+import { USER_UPDATED_EVENT } from "@/lib/progression";
+import { useTranslation } from "@/lib/i18n/provider";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,15 +26,15 @@ type User = {
 };
 
 const experienceLabels: Record<string, string> = {
-  beginner: "Beginner",
-  intermediate: "Intermediate",
-  advanced: "Advanced",
+  beginner: "onboarding.expBeginner",
+  intermediate: "onboarding.expIntermediate",
+  advanced: "onboarding.expAdvanced",
 };
 
 const goalLabels: Record<string, string> = {
-  muscle: "Build Muscle",
-  strength: "Get Stronger",
-  endurance: "Conditioning",
+  muscle: "onboarding.goalMuscle",
+  strength: "onboarding.goalStrength",
+  endurance: "onboarding.goalEndurance",
 };
 
 const fmtNum = (n: number | string | null, unit: string) => {
@@ -44,10 +47,11 @@ const fmtNum = (n: number | string | null, unit: string) => {
   return `${display} ${unit}`;
 };
 
-const fmtAge = (n: number | null) => (n == null ? "—" : `${n} years`);
-const fmtFreq = (n: number | null) => (n == null ? "—" : `${n} days/week`);
+const fmtAge = (n: number | null, unit: string) => (n == null ? "-" : `${n} ${unit}`);
+const fmtFreq = (n: number | null, unit: string) => (n == null ? "-" : `${n} ${unit}`);
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +69,7 @@ export default function ProfilePage() {
         router.push("/login");
         return;
       }
-      setError(e.message || "Could not load profile");
+      setError(e.message || t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -95,7 +99,7 @@ export default function ProfilePage() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="font-headline-lg text-headline-lg text-primary">Profile</h1>
+        <h1 className="font-headline-lg text-headline-lg text-primary">{t("profile.title")}</h1>
 
         {loading ? (
           <div className="space-y-4" aria-busy="true">
@@ -129,21 +133,68 @@ export default function ProfilePage() {
           <div className="p-6 bg-error-container rounded-xl text-on-error-container text-center">
             <p>{error}</p>
             <button onClick={fetchProfile} className="mt-2 text-primary font-semibold">
-              Retry
+              {t("action.retry")}
             </button>
           </div>
         ) : (
           <>
-            {/* Header */}
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-full bg-surface-variant flex items-center justify-center font-metric-display text-2xl text-on-surface">
-                {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
-              </div>
-              <div className="min-w-0">
-                <p className="font-headline-lg text-headline-lg text-primary truncate">
+            {/*
+              Header: photo above, name below, both centred.
+
+              Was a horizontal row (photo beside name), which left the caption
+              with nowhere to go but beside the name — and that competed with it.
+              Stacking gives the photo its own column, so its caption sits
+              directly under the thing it describes and the name gets the full
+              width instead of being squeezed by a control.
+            */}
+            <div className="flex flex-col items-center gap-3">
+              <ProfileAvatar
+                name={user?.name ?? null}
+                avatarUrl={(user as any)?.avatar_url ?? null}
+                /*
+                 * Passed so the control can disable itself and explain the wait
+                 * before the member picks a file. The server enforces the same
+                 * limit, so this is courtesy rather than the boundary — but being
+                 * told up front is much better than choosing a photo and then
+                 * being refused.
+                 */
+                lockedUntil={(user as any)?.avatar_locked_until ?? null}
+                onChanged={(url) => {
+                  /*
+                   * Built from the current state rather than inside a setUser
+                   * updater. React may invoke an updater more than once (it does
+                   * so deliberately in StrictMode to surface impurity), and
+                   * dispatching a DOM event from one would fire it twice.
+                   */
+                  const next = { ...(user as any), avatar_url: url };
+
+                  setUser(next);
+
+                  try {
+                    localStorage.setItem("user", JSON.stringify(next));
+                  } catch {
+                    // Storage can be unavailable; the in-memory update stands.
+                  }
+
+                  /*
+                   * Tell the rest of the chrome.
+                   *
+                   * The sidebar renders the member's photo but holds its OWN copy
+                   * of the user, so without this it keeps showing the old image
+                   * until the next full page load — which reads as a failed
+                   * upload even though the save succeeded.
+                   */
+                  window.dispatchEvent(
+                    new CustomEvent(USER_UPDATED_EVENT, { detail: { user: next } })
+                  );
+                }}
+              />
+
+              <div className="min-w-0 text-center">
+                <p className="font-headline-lg text-headline-lg text-primary">
                   {user?.name || "—"}
                 </p>
-                <p className="font-body-md text-body-md text-on-surface-variant truncate">
+                <p className="font-body-md text-body-md text-on-surface-variant">
                   {user?.email || "—"}
                 </p>
               </div>
@@ -153,32 +204,32 @@ export default function ProfilePage() {
 
             {/* Biodata */}
             <section className="space-y-4">
-              <h2 className="font-metric-sm text-metric-sm text-primary">Biodata</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary">{t("profile.biodata")}</h2>
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Age</p>
-                  <p className="font-body-md text-body-md text-on-surface">{fmtAge(user?.profile?.age ?? null)}</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.age")}</p>
+                  <p className="font-body-md text-body-md text-on-surface">{fmtAge(user?.profile?.age ?? null, t("profile.years"))}</p>
                 </div>
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Location</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.location")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
                     {user?.profile?.location || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Weight</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.weight")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
                     {fmtNum(user?.profile?.weight_kg ?? null, "kg")}
                   </p>
                 </div>
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Height</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.height")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
                     {fmtNum(user?.profile?.height_cm ?? null, "cm")}
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Target Weight</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.targetWeight")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
                     {fmtNum(user?.profile?.target_weight_kg ?? null, "kg")}
                   </p>
@@ -190,28 +241,28 @@ export default function ProfilePage() {
 
             {/* Training Profile */}
             <section className="space-y-4">
-              <h2 className="font-metric-sm text-metric-sm text-primary">Training Profile</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary">{t("profile.trainingProfile")}</h2>
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Experience</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.experience")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
                     {user?.profile?.experience_level
-                      ? experienceLabels[user.profile.experience_level] || "—"
+                      ? t(experienceLabels[user.profile.experience_level] || "-")
                       : "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Primary Goal</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.primaryGoal")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
                     {user?.profile?.primary_goal
-                      ? goalLabels[user.profile.primary_goal] || "—"
+                      ? t(goalLabels[user.profile.primary_goal] || "-")
                       : "—"}
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Training Frequency</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">{t("profile.frequency")}</p>
                   <p className="font-body-md text-body-md text-on-surface">
-                    {fmtFreq(user?.profile?.training_frequency ?? null)}
+                    {fmtFreq(user?.profile?.training_frequency ?? null, t("profile.daysPerWeek"))}
                   </p>
                 </div>
               </div>
@@ -222,7 +273,7 @@ export default function ProfilePage() {
                 onClick={() => router.push("/settings")}
                 className="bg-primary text-on-primary rounded-lg px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors"
               >
-                Edit Profile
+                {t("profile.editProfile")}
               </button>
               <button
                 onClick={handleSignOut}
@@ -230,7 +281,7 @@ export default function ProfilePage() {
                 className="text-error border border-error/30 rounded-lg px-6 py-3 font-metric-sm text-metric-sm hover:bg-error/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">logout</span>
-                {signingOut ? "Signing out..." : "Sign Out"}
+                {signingOut ? t("action.sending") : t("profile.signOut")}
               </button>
             </div>
           </>

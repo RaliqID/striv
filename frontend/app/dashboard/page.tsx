@@ -6,19 +6,34 @@ import { captureTokenFromUrl, readStoredUser, storeUser } from "@/lib/auth";
 import type { DashboardStats } from "@/types/dashboard";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
+import { useUnit } from "@/lib/use-unit";
 
-function formatVolume(vol: number): string {
-  if (vol >= 1000) {
-    return (vol / 1000).toFixed(1) + "k";
-  }
-  return vol.toString();
+/*
+ * PR types arrive as machine enums ("one_rm"), which must not reach the UI
+ * as-is. Same mapping as the records page — takes `t` because this is a
+ * module-level helper, not a component.
+ */
+const PR_TYPE_KEYS: Record<string, string> = {
+  weight: "records.typeWeight",
+  one_rm: "records.typeOneRm",
+  volume: "records.typeVolume",
+  reps: "records.reps",
+};
+
+function prTypeLabel(type: string, t: (key: string) => string): string {
+  const key = PR_TYPE_KEYS[type];
+  return key ? t(key) : type;
 }
 
-function formatReviewRange(c: { week_start: string; week_end: string }): string {
+function formatReviewRange(
+  c: { week_start: string; week_end: string },
+  locale: string,
+): string {
   const fmt = (iso: string) => {
     const d = new Date(iso + "T00:00:00");
     if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
   const start = fmt(c.week_start);
   const end = fmt(c.week_end);
@@ -46,24 +61,32 @@ interface WeeklyReport {
   generated_at: string;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, t: (key: string, params?: Record<string, string | number>) => string, locale: string): string {
   const date = new Date(iso);
   const now = new Date();
   const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  if (diff < 7) return `${diff} days ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (diff === 0) return t("dashboard.today");
+  if (diff === 1) return t("dashboard.yesterday");
+  if (diff < 7) return t("dashboard.daysAgo", { count: diff });
+  return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
-function getGreeting(): string {
+/**
+ * Time-of-day greeting.
+ *
+ * Takes `t` as an argument rather than calling the hook itself: this is a plain
+ * module-level helper, not a component, so there is no hook context here.
+ */
+function getGreeting(t: (key: string) => string): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return t("dashboard.goodMorning");
+  if (hour < 17) return t("dashboard.goodAfternoon");
+  return t("dashboard.goodEvening");
 }
 
 export default function DashboardPage() {
+  const { t, locale } = useTranslation();
+  const { label, formatVolume, formatWeight } = useUnit();
   const router = useRouter();
   const [user, setUser] = useState<{ name?: string; profile?: { onboarding_completed_at?: string | null } | null } | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -154,11 +177,18 @@ export default function DashboardPage() {
         router.push("/login");
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Couldn't load dashboard.");
+      setError(err instanceof ApiError ? err.message : t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [router]);
+    /*
+     * `t` is a dependency because the catch above builds the fallback message
+     * from it. It is a useCallback keyed on locale, so it keeps a stable
+     * identity until the language changes — at which point this callback must be
+     * rebuilt, or a failed load would report itself in the language that was
+     * active when the page first opened.
+     */
+  }, [router, t]);
 
   useEffect(() => {
     fetchDashboard();
@@ -202,7 +232,7 @@ export default function DashboardPage() {
           router.push("/login");
           return;
         }
-        setGoalsError("Couldn't load goals.");
+        setGoalsError(t("common.loadFailed"));
       } finally {
         if (!cancelled) setGoalsLoading(false);
       }
@@ -250,15 +280,15 @@ export default function DashboardPage() {
       <div className="space-y-8">
         <section className="mb-12">
           <p className="font-body-md text-body-md text-on-surface-variant mb-2">
-            {getGreeting()}. {stats?.strength_trend_pct != null && stats.strength_trend_pct > 0
-              ? "Your training is trending upward."
+              {getGreeting(t)}. {stats?.strength_trend_pct != null && stats.strength_trend_pct > 0
+              ? t("dashboard.trendUp")
               : stats?.strength_trend_pct != null && stats.strength_trend_pct < 0
-              ? "Stay consistent, you're building."
-              : "Keep showing up."}
+              ? t("dashboard.trendSteady")
+              : t("dashboard.trendKeep")}
           </p>
           <div className="flex items-baseline gap-4 mb-8">
             <h2 className="font-metric-display text-[36px] leading-[40px] md:text-metric-display md:leading-[52px] text-primary">{strengthDisplay}</h2>
-            <span className="font-headline-lg text-headline-lg text-on-surface-variant">Strength</span>
+            <span className="font-headline-lg text-headline-lg text-on-surface-variant">{t("dashboard.strength")}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
             {loading ? (
@@ -266,23 +296,29 @@ export default function DashboardPage() {
                 <div key={i} className="animate-pulse rounded-xl p-6 bg-surface-container h-24" />
               ))
             ) : error ? (
-              <div className="col-span-4 text-error font-body-md">Error loading stats.</div>
+              <div className="col-span-4 text-error font-body-md">{t("dashboard.errorStats")}</div>
             ) : (
               <>
                 <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Workouts</span>
+                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("dashboard.statWorkouts")}</span>
                   <span className="font-headline-lg text-headline-lg text-primary">{stats?.workouts_last_30d ?? 0}</span>
                 </div>
                 <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Sets</span>
+                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("progress.sets")}</span>
                   <span className="font-headline-lg text-headline-lg text-primary">{stats?.sets_last_30d ?? 0}</span>
                 </div>
                 <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Volume</span>
-                  <span className="font-headline-lg text-headline-lg text-primary">{formatVolume(stats?.volume_last_30d ?? 0)}</span>
+                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("progress.volume")}</span>
+                  <span className="font-headline-lg text-headline-lg text-primary">
+                    {formatVolume(stats?.volume_last_30d ?? 0)}
+                    {/* A real space, not a margin: a margin leaves textContent
+                        as "236.8kkg", which is what a screen reader reads out. */}
+                    {" "}
+                    <span className="font-metric-sm text-metric-sm text-on-surface-variant">{label}</span>
+                  </span>
                 </div>
                 <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Strength Trend</span>
+                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("progress.strengthTrend")}</span>
                   <span className="font-headline-lg text-headline-lg text-primary">{strengthDisplay}</span>
                 </div>
               </>
@@ -293,15 +329,15 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
           <section className="minimal-card rounded-xl p-6 lg:col-span-2 flex flex-col border border-border bg-surface-container-lowest">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-metric-sm text-metric-sm text-primary">Strength Progress</h3>
-              <span className="font-label-caps text-label-caps text-on-surface-variant">LAST 8 WEEKS</span>
+              <h3 className="font-metric-sm text-metric-sm text-primary">{t("dashboard.strengthProgress")}</h3>
+              <span className="font-label-caps text-label-caps text-on-surface-variant">{t("dashboard.last8Weeks")}</span>
             </div>
             {loading ? (
               <div className="animate-pulse h-48 bg-surface-container rounded" />
             ) : error ? (
-              <div className="text-error font-body-md">Couldn&apos;t load progress.</div>
+              <div className="text-error font-body-md">{t("dashboard.errorProgress")}</div>
             ) : weeklyData.length === 0 ? (
-              <div className="flex items-center justify-center h-48 text-on-surface-variant font-body-md">{"No data yet."}</div>
+              <div className="flex items-center justify-center h-48 text-on-surface-variant font-body-md">{t("dashboard.noData")}</div>
             ) : (
               <div className="flex-1 relative min-h-[200px] md:min-h-[240px] w-full">
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 400 200">
@@ -328,32 +364,32 @@ export default function DashboardPage() {
             </div>
             <h3 className="font-metric-sm text-metric-sm text-primary mb-4 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-secondary"></span>
-              Striv Intelligence
+              {t("dashboard.intelligence")}
             </h3>
             {loading ? (
               <div className="animate-pulse h-20 bg-surface-container rounded" />
             ) : error ? (
-              <p className="font-body-md text-body-md text-on-surface-variant">Insight unavailable.</p>
+              <p className="font-body-md text-body-md text-on-surface-variant">{t("dashboard.insightUnavailable")}</p>
             ) : (
               <>
                 <p className="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-6">
                   {stats?.strength_trend_pct != null && stats.strength_trend_pct > 0
-                    ? "Your strength is trending upward."
+                    ? t("dashboard.strengthUp")
                     : stats?.strength_trend_pct != null && stats.strength_trend_pct < 0
-                    ? "Strength is building. Stay consistent."
-                    : "Keep pushing."}
+                    ? t("dashboard.strengthBuilding")
+                    : t("dashboard.push")}
                 </p>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center border-b border-outline-variant pb-2">
-                    <span className="font-body-md text-body-md text-on-surface-variant">Analyzed Window</span>
-                    <span className="font-metric-sm text-metric-sm text-primary">8 Weeks</span>
+                    <span className="font-body-md text-body-md text-on-surface-variant">{t("dashboard.analyzedWindow")}</span>
+                    <span className="font-metric-sm text-metric-sm text-primary">{t("dashboard.windowValue")}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-outline-variant pb-2">
-                    <span className="font-body-md text-body-md text-on-surface-variant">Sessions</span>
+                    <span className="font-body-md text-body-md text-on-surface-variant">{t("progress.sessions")}</span>
                     <span className="font-metric-sm text-metric-sm text-primary">{stats?.workouts_last_30d ?? 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-body-md text-body-md text-on-surface-variant">Strength Change</span>
+                    <span className="font-body-md text-body-md text-on-surface-variant">{t("dashboard.strengthChange")}</span>
                     <span className="font-metric-sm text-metric-sm text-secondary">{strengthDisplay}</span>
                   </div>
                 </div>
@@ -362,15 +398,15 @@ export default function DashboardPage() {
           </section>
 
           <section className="minimal-card rounded-xl p-6 lg:col-span-2 border border-border bg-surface-container-lowest">
-            <h3 className="font-metric-sm text-metric-sm text-primary mb-6">Recent Personal Records</h3>
+            <h3 className="font-metric-sm text-metric-sm text-primary mb-6">{t("dashboard.recentPrs")}</h3>
             {loading ? (
               Array.from({ length: 2 }).map((_, i) => (
                 <div key={i} className="animate-pulse h-16 bg-surface-container rounded-lg mb-4" />
               ))
             ) : error ? (
-              <div className="text-error font-body-md">Couldn&apos;t load PRs.</div>
+              <div className="text-error font-body-md">{t("dashboard.errorPrs")}</div>
             ) : stats?.recent_prs?.length === 0 ? (
-              <div className="text-on-surface-variant font-body-md">{"No PRs yet. Keep training."}</div>
+              <div className="text-on-surface-variant font-body-md">{t("dashboard.noPrs")}</div>
             ) : (
               <div className="space-y-4">
                 {stats?.recent_prs?.slice(0, 5).map((pr) => (
@@ -380,13 +416,23 @@ export default function DashboardPage() {
                         <span className="material-symbols-outlined text-primary">fitness_center</span>
                       </div>
                       <div>
-                        <h4 className="font-metric-sm text-metric-sm text-primary">{pr.exercise?.name ?? "Exercise"}</h4>
-                        <p className="font-body-md text-body-md text-on-surface-variant text-sm">{formatDate(pr.achieved_at)}</p>
+                        <h4 className="font-metric-sm text-metric-sm text-primary">{pr.exercise?.name ?? t("dashboard.exerciseFallback")}</h4>
+                        <p className="font-body-md text-body-md text-on-surface-variant text-sm">{formatDate(pr.achieved_at, t, locale)}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="font-metric-sm text-metric-sm text-primary block">{pr.value} {pr.pr_type === 'weight' ? 'kg' : ''}</span>
-                      <span className="font-label-caps text-label-caps text-secondary uppercase">{pr.pr_type}</span>
+                      {/*
+                        A PR is stored in kg, but only a weight/1RM record is a
+                        mass — a volume record is kg lifted across the session,
+                        which converts the same way. Rep-based records have no
+                        unit at all, so they print the bare number.
+                      */}
+                      <span className="font-metric-sm text-metric-sm text-primary block">
+                        {pr.pr_type === "reps"
+                          ? pr.value
+                          : `${formatWeight(pr.value)} ${label}`}
+                      </span>
+                      <span className="font-label-caps text-label-caps text-secondary uppercase">{prTypeLabel(pr.pr_type, t)}</span>
                     </div>
                   </div>
                 ))}
@@ -398,16 +444,16 @@ export default function DashboardPage() {
           {!loading && latestReview?.content && (
             <section className="minimal-card rounded-xl p-6 lg:col-span-2 border border-border bg-surface-container-lowest">
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 className="font-metric-sm text-metric-sm text-primary">Latest Weekly Review</h3>
+                <h3 className="font-metric-sm text-metric-sm text-primary">{t("dashboard.latestReview")}</h3>
                 <a
                   href="/reviews/weekly"
                   className="font-metric-sm text-metric-sm text-secondary hover:underline"
                 >
-                  View all
+                  {t("workout.viewAll")}
                 </a>
               </div>
               <p className="font-body-md text-body-md text-sm text-on-surface-variant mb-2">
-                {formatReviewRange(latestReview.content)}
+                {formatReviewRange(latestReview.content, locale)}
               </p>
               <p className="font-body-md text-body-md text-on-surface line-clamp-3">
                 {latestReview.content.summary}
@@ -421,7 +467,7 @@ export default function DashboardPage() {
           )}
 
           <section className="minimal-card rounded-xl p-6 border border-border bg-surface-container-lowest">
-            <h3 className="font-metric-sm text-metric-sm text-primary mb-6">Active Goals</h3>
+            <h3 className="font-metric-sm text-metric-sm text-primary mb-6">{t("dashboard.activeGoals")}</h3>
             {goalsLoading ? (
               <div className="space-y-6">
                 <div className="animate-pulse h-10 bg-surface-container rounded" />
@@ -429,42 +475,47 @@ export default function DashboardPage() {
               </div>
             ) : goalsError || error ? (
               <div className="text-error font-body-md">
-                {goalsError || "Couldn't load goals."}
+                {goalsError || t("common.loadFailed")}
                 <button
                   onClick={handleRetry}
                   className="ml-3 text-primary font-semibold hover:underline"
                 >
-                  Retry
+                  {t("action.retry")}
                 </button>
               </div>
             ) : goals.length === 0 ? (
               <div>
                 <p className="font-body-md text-body-md text-on-surface-variant mb-4">
-                  No active goals. Set one in Goals.
+                  {t("dashboard.noActiveGoals")}
                 </p>
                 <a
                   href="/goals"
                   className="inline-block bg-primary text-on-primary rounded-lg px-4 py-2 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors"
                 >
-                  Go to Goals
+                  {t("dashboard.goToGoals")}
                 </a>
               </div>
             ) : (
               <div className="space-y-6">
                 {goals.map((g) => {
                   const pct = progressByGoal[g.id];
-                  const isWorkouts = g.target_type === "workouts";
-                  const unit = isWorkouts ? "" : ` ${g.unit}`;
+                  /*
+                   * The server labels a goal's unit ("kg", "reps", or nothing
+                   * for a workout count). Only a "kg" goal is a mass, so only
+                   * that one converts — a rep target must not be run through the
+                   * pound factor, which is why this branches rather than
+                   * converting unconditionally.
+                   */
+                  const isWeight = g.unit === "kg";
+                  const unit = g.unit ? ` ${isWeight ? label : g.unit}` : "";
+                  const fmt = (raw: number) => (isWeight ? formatWeight(raw) : String(raw));
 
                   // Show the journey, not just a ratio: a bare percentage hides
                   // where the member started and what is actually left to do.
                   const targetLabel =
                     g.target_type === "weight" && g.target_reps
-                      ? `${g.target_value}${unit} × ${g.target_reps}`
-                      : `${g.target_value}${unit}`;
-
-                  const fmt = (value: number) =>
-                    Number.isInteger(value) ? String(value) : value.toFixed(1);
+                      ? `${fmt(g.target_value)}${unit} × ${g.target_reps}`
+                      : `${fmt(g.target_value)}${unit}`;
 
                   const displayPct = typeof pct === "number" ? `${Math.round(pct)}%` : "—";
                   const widthPct =
@@ -474,7 +525,7 @@ export default function DashboardPage() {
                     <div key={g.id}>
                       <div className="flex justify-between items-end mb-2 gap-3">
                         <span className="min-w-0 truncate font-metric-sm text-metric-sm text-primary">
-                          {g.exercise?.name ?? "All workouts"}
+                          {g.exercise?.name ?? t("goals.allWorkouts")}
                           <span className="text-on-surface-variant">
                             {" · "}
                             {fmt(g.starting_value)}
@@ -491,7 +542,7 @@ export default function DashboardPage() {
                         aria-valuenow={widthPct}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label={`${g.exercise?.name ?? "Workouts"} progress`}
+                        aria-label={t("dashboard.ariaWorkoutsProgress", { name: g.exercise?.name ?? t("dashboard.statWorkouts") })}
                       >
                         <div
                           className="bg-primary h-full rounded-full transition-all"

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n/provider";
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +26,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Login failed");
+        throw new Error(data.message || t("auth.loginFailed"));
       }
 
       const data = await res.json();
@@ -81,10 +83,10 @@ export default function LoginPage() {
             Striv
           </Link>
           <h1 className="mt-6 font-display text-headline-lg-mobile md:text-headline-lg text-foreground">
-            Sign in
+            {t("auth.loginTitle")}
           </h1>
           <p className="mt-1 text-body-md text-muted">
-            Welcome back to your training.
+            {t("auth.welcomeBack")}
           </p>
         </div>
 
@@ -100,7 +102,7 @@ export default function LoginPage() {
               htmlFor="email"
               className="block text-sm font-medium text-foreground"
             >
-              Email
+              {t("auth.email")}
             </label>
             <input
               id="email"
@@ -108,7 +110,7 @@ export default function LoginPage() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-soft focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -120,7 +122,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-foreground"
             >
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -140,7 +142,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? t("action.sending") : t("auth.loginButton")}
           </button>
 
           <div className="relative my-2">
@@ -149,7 +151,7 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-surface-container-lowest px-2 text-muted">
-                or continue with
+                {t("auth.orContinueWith")}
               </span>
             </div>
           </div>
@@ -176,17 +178,17 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Sign in with Google
+            {t("auth.signInGoogle")}
           </a>
         </form>
 
         <p className="mt-6 text-center text-body-md text-muted">
-          No account?{" "}
+          {t("auth.noAccount")}{" "}
           <Link
             href="/register"
             className="font-semibold text-primary hover:text-primary-hover"
           >
-            Create one
+            {t("auth.createOne")}
           </Link>
         </p>
       </div>

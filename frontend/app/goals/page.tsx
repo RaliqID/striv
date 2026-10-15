@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { EmptyState, ErrorBanner, LoadingRows } from "@/components/admin/States";
 import { apiClient, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/admin";
+import { useTranslation } from "@/lib/i18n/provider";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -34,26 +35,26 @@ type Goal = {
 const GOAL_TYPES = [
   {
     value: "weight",
-    label: "Lift a heavier weight",
-    hint: "Pick the weight and the reps you want to hit it for.",
+    labelKey: "goals.typeLift",
+    hintKey: "goals.typeLiftHint",
     icon: "fitness_center",
   },
   {
     value: "one_rm",
-    label: "Improve estimated 1RM",
-    hint: "Based on your best set converted to a one-rep max.",
+    labelKey: "goals.typeOneRm",
+    hintKey: "goals.typeOneRmHint",
     icon: "trending_up",
   },
   {
     value: "reps",
-    label: "Do more reps",
-    hint: "The most reps you can perform in a single set.",
+    labelKey: "goals.typeReps",
+    hintKey: "goals.typeRepsHint",
     icon: "repeat",
   },
   {
     value: "workouts",
-    label: "Complete more workouts",
-    hint: "Counts sessions you finish after setting this goal.",
+    labelKey: "goals.typeWorkouts",
+    hintKey: "goals.typeWorkoutsHint",
     icon: "calendar_month",
   },
 ];
@@ -65,6 +66,7 @@ function num(value: number | null | undefined): string {
 }
 
 export default function GoalsPage() {
+  const { t, locale } = useTranslation();
   const router = useRouter();
 
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -106,11 +108,11 @@ export default function GoalsPage() {
         router.push("/login");
         return;
       }
-      setError(caught instanceof Error ? caught.message : "Could not load goals.");
+      setError(caught instanceof Error ? caught.message : t("goals.errLoad"));
     } finally {
       setLoading(false);
     }
-  }, [filter, router]);
+  }, [filter, router, t]);
 
   useEffect(() => {
     void fetchGoals();
@@ -214,18 +216,16 @@ export default function GoalsPage() {
 
     const parsedTarget = parseFloat(targetValue);
     if (targetType !== "workouts" && !selectedExercise) {
-      setFormError("Choose an exercise first.");
+      setFormError(t("goals.errPickExercise"));
       return;
     }
     if (!targetValue || Number.isNaN(parsedTarget) || parsedTarget <= 0) {
-      setFormError("Enter a target above zero.");
+      setFormError(t("goals.errAboveZero"));
       return;
     }
     // Mirror the server rule so the member is told before the round trip.
     if (baseline !== null && parsedTarget <= baseline) {
-      setFormError(
-        `Your current best is ${num(baseline)}. Set a target above that to make this a goal.`
-      );
+      setFormError(t("goals.errAboveBaseline", { value: num(baseline) }));
       return;
     }
 
@@ -250,7 +250,7 @@ export default function GoalsPage() {
       closeModal();
       void fetchGoals();
     } catch (caught) {
-      setFormError(caught instanceof Error ? caught.message : "Could not save the goal.");
+      setFormError(caught instanceof Error ? caught.message : t("goals.errSave"));
     } finally {
       setSubmitting(false);
     }
@@ -264,7 +264,7 @@ export default function GoalsPage() {
       setDeleteTarget(null);
       void fetchGoals();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not delete the goal.");
+      setError(caught instanceof Error ? caught.message : t("goals.errDelete"));
     } finally {
       setSubmitting(false);
     }
@@ -280,29 +280,34 @@ export default function GoalsPage() {
   );
 
   const selectedType = GOAL_TYPES.find((type) => type.value === targetType);
-  const unitLabel = targetType === "workouts" ? "workouts" : targetType === "reps" ? "reps" : "kg";
+  const unitLabel =
+    targetType === "workouts"
+      ? t("goals.unitWorkouts")
+      : targetType === "reps"
+        ? t("goals.unitReps")
+        : t("goals.unitKg");
 
   return (
     <AppLayout>
         <div className="mx-auto w-full max-w-container-max min-w-0 space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="font-headline-lg text-headline-lg text-primary">Goals</h1>
+              <h1 className="font-headline-lg text-headline-lg text-primary">{t("goals.title")}</h1>
               <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                Targets measured from where you started, so progress is real.
+                {t("goals.subtitle")}
               </p>
             </div>
             <Button icon="add" onClick={openCreate}>
-              New goal
+              {t("goals.new")}
             </Button>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "all", label: `All (${counts.all})` },
-              { value: "active", label: `Active (${counts.active})` },
-              { value: "completed", label: `Completed (${counts.completed})` },
-              { value: "abandoned", label: "Abandoned" },
+              { value: "all", label: `${t("goals.filterAll")} (${counts.all})` },
+              { value: "active", label: `${t("goals.filterActive")} (${counts.active})` },
+              { value: "completed", label: `${t("goals.filterCompleted")} (${counts.completed})` },
+              { value: "abandoned", label: t("goals.filterAbandoned") },
             ].map((option) => (
               <button
                 key={option.value}
@@ -327,9 +332,9 @@ export default function GoalsPage() {
             <div className="rounded-xl border border-outline-variant bg-surface-container-lowest">
               <EmptyState
                 icon="flag"
-                title={filter === "all" ? "No goals yet." : "Nothing here."}
-                description="Set a target and Striv will measure your progress from the day you started."
-                action={<Button onClick={openCreate}>Set your first goal</Button>}
+                title={filter === "all" ? t("goals.emptyTitle") : t("goals.nothingHere")}
+                description={t("goals.emptyBody")}
+                action={<Button onClick={openCreate}>{t("goals.setFirst")}</Button>}
               />
             </div>
           ) : (
@@ -352,10 +357,10 @@ export default function GoalsPage() {
                     <header className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h2 className="truncate font-headline-lg-mobile text-headline-lg-mobile text-primary">
-                          {goal.exercise?.name ?? "All workouts"}
+                          {goal.exercise?.name ?? t("goals.allWorkouts")}
                         </h2>
                         <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                          {selectedTypeLabel(goal.target_type)}
+                          {selectedTypeLabel(goal.target_type, t)}
                           {repSuffix}
                         </p>
                       </div>
@@ -363,14 +368,14 @@ export default function GoalsPage() {
                         <button
                           onClick={() => openEdit(goal)}
                           className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"
-                          aria-label={`Edit goal for ${goal.exercise?.name ?? "workouts"}`}
+                          aria-label={t("goals.editAria", { name: goal.exercise?.name ?? t("goals.allWorkouts") })}
                         >
                           <span className="material-symbols-outlined text-[18px]">edit</span>
                         </button>
                         <button
                           onClick={() => setDeleteTarget(goal)}
                           className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
-                          aria-label={`Delete goal for ${goal.exercise?.name ?? "workouts"}`}
+                          aria-label={t("goals.deleteAria", { name: goal.exercise?.name ?? t("goals.allWorkouts") })}
                         >
                           <span className="material-symbols-outlined text-[18px]">delete</span>
                         </button>
@@ -380,7 +385,7 @@ export default function GoalsPage() {
                     {/* Journey: baseline -> current -> target */}
                     <div className="mt-4 flex items-end justify-between gap-2">
                       <div>
-                        <p className="font-label-caps text-label-caps text-on-surface-variant">Started</p>
+                        <p className="font-label-caps text-label-caps text-on-surface-variant">{t("goals.started")}</p>
                         <p className="font-metric-sm text-metric-sm text-on-surface">
                           {fromLabel} {isWorkouts ? "" : goal.unit}
                         </p>
@@ -392,7 +397,7 @@ export default function GoalsPage() {
                         trending_flat
                       </span>
                       <div className="text-right">
-                        <p className="font-label-caps text-label-caps text-on-surface-variant">Target</p>
+                        <p className="font-label-caps text-label-caps text-on-surface-variant">{t("goals.target")}</p>
                         <p className="font-metric-sm text-metric-sm text-primary">
                           {targetLabel} {isWorkouts ? "" : goal.unit}
                         </p>
@@ -406,7 +411,7 @@ export default function GoalsPage() {
                         aria-valuenow={Math.round(pct)}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label={`${goal.exercise?.name ?? "Workouts"} progress`}
+                        aria-label={t("goals.progressAria", { name: goal.exercise?.name ?? t("goals.allWorkouts") })}
                       >
                         <div
                           className={`h-full rounded-full transition-all ${
@@ -417,7 +422,7 @@ export default function GoalsPage() {
                       </div>
                       <div className="mt-2 flex items-center justify-between">
                         <span className="font-body-md text-body-md text-on-surface-variant">
-                          Now <strong className="text-on-surface">{currentLabel}</strong>
+                          {t("goals.nowLabel")} <strong className="text-on-surface">{currentLabel}</strong>
                           {!isWorkouts && ` ${goal.unit}`}
                         </span>
                         <span className="font-metric-sm text-metric-sm text-primary">
@@ -428,18 +433,18 @@ export default function GoalsPage() {
 
                     <footer className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant pt-4">
                       {goal.status === "completed" ? (
-                        <Badge tone="success">Completed</Badge>
+                        <Badge tone="success">{t("goals.statusCompleted")}</Badge>
                       ) : goal.status === "abandoned" ? (
-                        <Badge tone="neutral">Abandoned</Badge>
+                        <Badge tone="neutral">{t("goals.statusAbandoned")}</Badge>
                       ) : (
                         <Badge tone="primary">
                           {goal.remaining > 0
-                            ? `${num(goal.remaining)}${isWorkouts ? "" : " " + goal.unit} to go`
-                            : "Almost there"}
+                            ? `${num(goal.remaining)}${isWorkouts ? "" : " " + goal.unit} ${t("goals.toGo")}`
+                            : t("goals.almostThere")}
                         </Badge>
                       )}
                       {goal.deadline && (
-                        <Badge tone="info">Due {formatDate(goal.deadline)}</Badge>
+                        <Badge tone="info">{t("goals.due", { date: formatDate(goal.deadline, locale) })}</Badge>
                       )}
                     </footer>
                   </article>
@@ -462,17 +467,17 @@ export default function GoalsPage() {
             className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-outline-variant bg-surface p-6"
           >
             <h2 id="goal-form-title" className="font-headline-lg text-headline-lg text-primary">
-              {editingGoal ? "Edit goal" : "New goal"}
+              {editingGoal ? t("goals.edit") : t("goals.new")}
             </h2>
             <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-              {selectedType?.hint}
+              {selectedType ? t(selectedType.hintKey) : ""}
             </p>
 
             <form onSubmit={submitGoal} className="mt-5 space-y-5">
               {/* Goal kind */}
               <fieldset>
                 <legend className="font-label-caps text-label-caps text-on-surface-variant">
-                  What are you working towards?
+                  {t("goals.whatWorkingTowards")}
                 </legend>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {GOAL_TYPES.map((type) => (
@@ -491,13 +496,13 @@ export default function GoalsPage() {
                       <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">
                         {type.icon}
                       </span>
-                      <span className="font-body-md text-body-md text-on-surface">{type.label}</span>
+                      <span className="font-body-md text-body-md text-on-surface">{t(type.labelKey)}</span>
                     </button>
                   ))}
                 </div>
                 {editingGoal && (
                   <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-                    The goal type is fixed once created, because changing it would reset your baseline.
+                    {t("goals.typeFixed")}
                   </p>
                 )}
               </fieldset>
@@ -509,7 +514,7 @@ export default function GoalsPage() {
                     htmlFor="goal-exercise"
                     className="font-label-caps text-label-caps text-on-surface-variant"
                   >
-                    Exercise
+                    {t("goals.exercise")}
                   </label>
                   <input
                     id="goal-exercise"
@@ -517,7 +522,7 @@ export default function GoalsPage() {
                     value={exerciseSearch}
                     onChange={(event) => setExerciseSearch(event.target.value)}
                     disabled={Boolean(editingGoal)}
-                    placeholder="Search exercises…"
+                    placeholder={t("goals.searchExercisesPlaceholder")}
                     autoComplete="off"
                     className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none disabled:opacity-60"
                   />
@@ -542,7 +547,7 @@ export default function GoalsPage() {
                   )}
                   {editingGoal && (
                     <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                      The exercise cannot be changed after a goal is created.
+                      {t("goals.exerciseFixed")}
                     </p>
                   )}
                 </div>
@@ -555,7 +560,7 @@ export default function GoalsPage() {
                     htmlFor="goal-reps"
                     className="font-label-caps text-label-caps text-on-surface-variant"
                   >
-                    Reps <span className="normal-case">(optional)</span>
+                    {t("goals.repsOptional")}
                   </label>
                   <input
                     id="goal-reps"
@@ -564,12 +569,11 @@ export default function GoalsPage() {
                     max={500}
                     value={targetReps}
                     onChange={(event) => setTargetReps(event.target.value)}
-                    placeholder="e.g. 5"
+                    placeholder={t("goals.targetPlaceholder")}
                     className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
                   />
                   <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                    Set a rep count to make this exact — e.g. 100 kg for 5 reps. Only sets
-                    with at least that many reps count towards the goal.
+                    {t("goals.repsHint")}
                   </p>
                 </div>
               )}
@@ -580,7 +584,7 @@ export default function GoalsPage() {
                   htmlFor="goal-target"
                   className="font-label-caps text-label-caps text-on-surface-variant"
                 >
-                  Target {unitLabel}
+                  {t("goals.targetLabel", { unit: unitLabel })}
                 </label>
                 <input
                   id="goal-target"
@@ -596,14 +600,15 @@ export default function GoalsPage() {
                 {targetType !== "workouts" && selectedExercise && (
                   <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
                     {baselineLoading ? (
-                      "Checking your current best…"
+                      t("goals.checkingBest")
                     ) : baseline !== null ? (
                       <>
-                        Your current best for this is{" "}
+                        {t("goals.currentBestPrefix")}{" "}
                         <strong className="text-on-surface">
                           {num(baseline)} {unitLabel}
                         </strong>
-                        {targetReps ? ` at ${targetReps} reps` : ""}. Your target must be higher.
+                        {targetReps ? ` ${t("goals.currentBestAt", { reps: targetReps })}` : ""}.{" "}
+                        {t("goals.currentBestSuffix")}
                       </>
                     ) : null}
                   </p>
@@ -615,7 +620,7 @@ export default function GoalsPage() {
                   htmlFor="goal-deadline"
                   className="font-label-caps text-label-caps text-on-surface-variant"
                 >
-                  Deadline <span className="normal-case">(optional)</span>
+                  {t("goals.deadlineOptional")}
                 </label>
                 <input
                   id="goal-deadline"
@@ -633,7 +638,7 @@ export default function GoalsPage() {
                     htmlFor="goal-status"
                     className="font-label-caps text-label-caps text-on-surface-variant"
                   >
-                    Status
+                    {t("goals.status")}
                   </label>
                   <select
                     id="goal-status"
@@ -641,9 +646,9 @@ export default function GoalsPage() {
                     onChange={(event) => setStatusValue(event.target.value)}
                     className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"
                   >
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                    <option value="abandoned">Abandoned</option>
+                    <option value="active">{t("goals.filterActive")}</option>
+                    <option value="completed">{t("goals.filterCompleted")}</option>
+                    <option value="abandoned">{t("goals.filterAbandoned")}</option>
                   </select>
                 </div>
               )}
@@ -656,10 +661,10 @@ export default function GoalsPage() {
 
               <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <Button variant="secondary" onClick={closeModal} disabled={submitting}>
-                  Cancel
+                  {t("action.cancel")}
                 </Button>
                 <Button type="submit" busy={submitting} disabled={submitting}>
-                  {editingGoal ? "Save changes" : "Create goal"}
+                  {editingGoal ? t("goals.saveChanges") : t("goals.create")}
                 </Button>
               </div>
             </form>
@@ -669,9 +674,9 @@ export default function GoalsPage() {
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Delete this goal?"
-        description={`${deleteTarget?.exercise?.name ?? "This workout goal"} and its progress will be removed. This cannot be undone.`}
-        confirmLabel="Delete goal"
+        title={t("goals.deleteTitle")}
+        description={t("goals.deleteBody", { name: deleteTarget?.exercise?.name ?? t("goals.thisGoal") })}
+        confirmLabel={t("action.delete")}
         busy={submitting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -680,17 +685,22 @@ export default function GoalsPage() {
   );
 }
 
-/** Human label for a goal type, used on the cards. */
-function selectedTypeLabel(targetType: string): string {
+/**
+ * Human label for a goal type, used on the cards.
+ *
+ * Takes `t` rather than calling the hook: this is a module-level helper, so
+ * there is no hook context available here.
+ */
+function selectedTypeLabel(targetType: string, t: (key: string) => string): string {
   switch (targetType) {
     case "weight":
-      return "Weight target";
+      return t("goals.kindWeight");
     case "one_rm":
-      return "Estimated 1RM";
+      return t("goals.kindOneRm");
     case "reps":
-      return "Rep target";
+      return t("goals.kindReps");
     case "workouts":
-      return "Workout count";
+      return t("goals.kindWorkouts");
     default:
       return targetType;
   }

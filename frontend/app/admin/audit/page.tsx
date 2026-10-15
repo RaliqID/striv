@@ -16,6 +16,7 @@ import {
 import type { AdminAuditLogsResponse } from "@/types/admin";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
 /** Colour destructive verbs differently from restorative ones at a glance. */
 function toneFor(action: string): "danger" | "success" | "primary" | "warning" | "neutral" {
@@ -27,6 +28,7 @@ function toneFor(action: string): "danger" | "success" | "primary" | "warning" |
 }
 
 export default function AdminAuditPage() {
+  const { t, locale } = useTranslation();
   const [result, setResult] = useState<AdminAuditLogsResponse | null>(null);
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("all");
@@ -56,7 +58,7 @@ export default function AdminAuditPage() {
         setPage(query.page);
         setDenied(false);
       } catch (caught) {
-        const { kind, message } = classifyError(caught);
+        const { kind, message } = classifyError(caught, t);
         if (kind === "unauthorized") return redirectToLogin();
         if (kind === "forbidden") setDenied(true);
         else setError(message);
@@ -64,7 +66,7 @@ export default function AdminAuditPage() {
         setLoading(false);
       }
     },
-    [page, search, action]
+    [page, search, action, t]
   );
 
   useEffect(() => {
@@ -76,11 +78,11 @@ export default function AdminAuditPage() {
 
   return (
     <AdminLayout
-      title="Audit log"
-      description="Every privileged action, who performed it, and on which account."
+      title={t("admin.auditLog")}
+      description={t("admin.auditDesc")}
     >
       {denied ? (
-        <ErrorBanner message="This area is available to administrators only." />
+        <ErrorBanner message={t("admin.adminsOnly")} />
       ) : (
         <>
           <Panel bodyClassName="p-4">
@@ -92,16 +94,16 @@ export default function AdminAuditPage() {
               className="flex flex-col gap-3 sm:flex-row"
             >
               <label className="min-w-0 flex-1">
-                <span className="sr-only">Search the audit log</span>
+                <span className="sr-only">{t("admin.srSearchAudit")}</span>
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by admin, account or action"
+                  placeholder={t("admin.searchAudit")}
                   className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
                 />
               </label>
               <label>
-                <span className="sr-only">Filter by action</span>
+                <span className="sr-only">{t("admin.srFilterAction")}</span>
                 <select
                   value={action}
                   onChange={(event) => {
@@ -111,7 +113,7 @@ export default function AdminAuditPage() {
                   }}
                   className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none sm:w-auto"
                 >
-                  <option value="all">All actions</option>
+                  <option value="all">{t("admin.allActions")}</option>
                   {(result?.actions ?? []).map((option) => (
                     <option key={option} value={option}>
                       {humanizeAction(option)}
@@ -120,7 +122,7 @@ export default function AdminAuditPage() {
                 </select>
               </label>
               <Button type="submit" icon="search" disabled={loading}>
-                Search
+                {t("action.search")}
               </Button>
               {filtersActive && (
                 <Button
@@ -131,7 +133,7 @@ export default function AdminAuditPage() {
                     void load({ search: "", action: "all", page: 1 });
                   }}
                 >
-                  Clear
+                  {t("action.clear")}
                 </Button>
               )}
             </form>
@@ -184,7 +186,7 @@ export default function AdminAuditPage() {
                       </div>
                       <div className="shrink-0 text-left sm:text-right">
                         <p className="whitespace-nowrap font-body-md text-body-md text-on-surface-variant">
-                          {formatDateTime(log.created_at)}
+                          {formatDateTime(log.created_at, locale)}
                         </p>
                         {log.ip_address && (
                           <p className="font-mono text-[12px] text-on-surface-variant">
@@ -202,11 +204,11 @@ export default function AdminAuditPage() {
             ) : (
               <EmptyState
                 icon="history_edu"
-                title={filtersActive ? "No entries match these filters." : "No admin actions recorded yet."}
+                title={filtersActive ? t("admin.auditEmptyFiltered") : t("admin.auditEmptyTitle")}
                 description={
                   filtersActive
-                    ? "Try a different search term or clear the filters."
-                    : "Actions such as suspending an account or resetting a password will appear here."
+                    ? t("admin.emptyFilteredBody")
+                    : t("admin.auditEmptyBody")
                 }
                 action={
                   filtersActive ? (
@@ -218,7 +220,7 @@ export default function AdminAuditPage() {
                         void load({ search: "", action: "all", page: 1 });
                       }}
                     >
-                      Clear filters
+                      {t("admin.clearFilters")}
                     </Button>
                   ) : undefined
                 }

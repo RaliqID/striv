@@ -1,15 +1,18 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { ToastProvider } from "@/components/admin/Toast";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/provider";
 
 const sections = [
-  { label: "Overview", href: "/admin", icon: "monitoring", exact: true },
-  { label: "Users", href: "/admin/users", icon: "group" },
-  { label: "Security", href: "/admin/security", icon: "shield" },
-  { label: "Audit log", href: "/admin/audit", icon: "history_edu" },
+  { key: "admin.overview", href: "/admin", icon: "monitoring", exact: true },
+  { key: "admin.users", href: "/admin/users", icon: "group" },
+  // Roster, workload and the waiting queue. Placed before Security because it
+  // is a daily-operations concern rather than a compliance one.
+  { key: "admin.training", href: "/admin/training", icon: "fitness_center" },
+  { key: "admin.security", href: "/admin/security", icon: "shield" },
+  { key: "admin.auditLog", href: "/admin/audit", icon: "history_edu" },
 ];
 
 /**
@@ -31,6 +34,7 @@ export default function AdminLayout({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const pathname = usePathname();
 
   const isActive = (href: string, exact?: boolean) =>
@@ -38,10 +42,19 @@ export default function AdminLayout({
 
   return (
     <AppLayout>
-      <ToastProvider>
-        <div className="mx-auto w-full max-w-container-max min-w-0 space-y-6">
+      {/*
+        No ToastProvider here — see TrainerLayout for the full reasoning.
+
+        It used to wrap this content, placing it below the pages that call
+        useToast(); React context flows downward only, so those calls resolved to
+        the no-op fallback and every admin confirmation was silently dropped.
+        The provider is now in the root layout. A second one here would render a
+        second toast container, so the same toast could appear in two different
+        places depending on which side of the tree dispatched it.
+      */}
+      <div className="mx-auto w-full max-w-container-max min-w-0 space-y-6">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant">Administration</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.administration")}</p>
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 <h1 className="font-headline-lg text-headline-lg text-primary">{title}</h1>
@@ -54,7 +67,7 @@ export default function AdminLayout({
           </div>
 
           <nav
-            aria-label="Admin sections"
+            aria-label={t("admin.sections")}
             className="-mx-margin-mobile overflow-x-auto border-b border-outline-variant px-margin-mobile md:mx-0 md:px-0"
           >
             <ul className="flex min-w-max gap-1">
@@ -74,7 +87,7 @@ export default function AdminLayout({
                       <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                         {section.icon}
                       </span>
-                      {section.label}
+                      {t(section.key)}
                     </Link>
                   </li>
                 );
@@ -84,7 +97,6 @@ export default function AdminLayout({
 
           {children}
         </div>
-      </ToastProvider>
     </AppLayout>
   );
 }

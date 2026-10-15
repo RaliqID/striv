@@ -16,29 +16,52 @@ import {
   formatVolume,
   redirectToLogin,
 } from "@/lib/admin";
-import type { AdminUser, AdminUserDetail, Capability } from "@/types/admin";
-import Link from "next/link";import { useParams, useRouter } from "next/navigation";
+import type { AdminUser, AdminUserDetail, Capability, UserRole } from "@/types/admin";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
 const PROFILE_LABELS: Record<string, string> = {
-  age: "Age",
-  location: "Location",
-  weight_kg: "Weight (kg)",
-  height_cm: "Height (cm)",
-  target_weight_kg: "Target weight (kg)",
-  experience_level: "Experience",
-  primary_goal: "Primary goal",
-  training_frequency: "Frequency",
+  age: "profile.age",
+  location: "profile.location",
+  weight_kg: "profile.weight",
+  height_cm: "profile.height",
+  target_weight_kg: "profile.targetWeight",
+  experience_level: "profile.experience",
+  primary_goal: "profile.primaryGoal",
+  training_frequency: "profile.frequency",
+};
+
+/**
+ * Role descriptions, shown so an operator understands the consequence of the
+ * change they are about to make rather than guessing from a label.
+ */
+const ROLE_LABELS: Record<UserRole, { titleKey: string; descriptionKey: string }> = {
+  user: {
+    titleKey: "admin.roleMember",
+    descriptionKey: "admin.roleMemberDesc",
+  },
+  trainer: {
+    titleKey: "admin.roleTrainer",
+    descriptionKey: "admin.roleTrainerDesc",
+  },
+  admin: {
+    titleKey: "admin.roleAdmin",
+    descriptionKey: "admin.roleAdminDesc",
+  },
 };
 
 type DialogState =
   | { kind: "none" }
   | { kind: "suspend" }
-  | { kind: "revoke_admin" }
+  | { kind: "revoke_admin"; targetRole?: UserRole }
+  | { kind: "promote_trainer" }
   | { kind: "delete" }
   | { kind: "reset_password"; temp: string };
 
 export default function AdminUserDetailPage() {
+  const { t, locale } = useTranslation();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -64,14 +87,14 @@ export default function AdminUserDetailPage() {
       setDraftEmail(detail.user.email);
       setDenied(false);
     } catch (caught) {
-      const { kind, message } = classifyError(caught);
+      const { kind, message } = classifyError(caught, t);
       if (kind === "unauthorized") return redirectToLogin();
       if (kind === "forbidden") setDenied(true);
       else setError(message);
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [params.id, t]);
 
   useEffect(() => {
     void load();
@@ -93,7 +116,7 @@ export default function AdminUserDetailPage() {
       toast.success(message);
       onSuccess?.(result);
     } catch (caught) {
-      const { kind, message } = classifyError(caught);
+      const { kind, message } = classifyError(caught, t);
       if (kind === "unauthorized") return redirectToLogin();
       // 422 responses here mean a guard refused the action — show why.
       toast.error(message);
@@ -109,7 +132,7 @@ export default function AdminUserDetailPage() {
           name: draftName.trim(),
           email: draftEmail.trim(),
         }),
-      "Account updated.",
+      t("admin.accountUpdated"),
       () => setEditing(false)
     );
 
@@ -120,18 +143,31 @@ export default function AdminUserDetailPage() {
         apiClient.post<{ user: AdminUser }>(
           `/admin/users/${params.id}/${suspended ? "unsuspend" : "suspend"}`
         ),
-      suspended ? "User unsuspended." : "User suspended."
+      suspended ? t("admin.userUnsuspended") : t("admin.userSuspended")
     ).then(() => setDialog({ kind: "none" }));
   };
 
-  const toggleAdmin = () => {
-    const isAdmin = data?.user.is_admin;
+  /**
+   * Change the account's role.
+   *
+   * Three roles now, not a boolean: a member can be promoted to trainer (which
+   * unlocks the client workspace) or to admin. Promoting to trainer requires a
+   * specialisation so the matcher has something to route on, so that is
+   * collected in the dialog before the request goes out.
+   */
+  const changeRole = (role: UserRole, extras?: { specialization?: string; capacity?: number }) => {
+    const labels: Record<UserRole, string> = {
+      user: t("admin.roleRestoredMember"),
+      trainer: t("admin.roleGrantedTrainer"),
+      admin: t("admin.roleGrantedAdmin"),
+    };
     act(
       () =>
         apiClient.put<{ user: AdminUser; message: string }>(`/admin/users/${params.id}/role`, {
-          is_admin: !isAdmin,
+          role,
+          ...(extras ?? {}),
         }),
-      isAdmin ? "Admin rights revoked." : "Admin rights granted."
+      labels[role]
     ).then(() => setDialog({ kind: "none" }));
   };
 
@@ -145,7 +181,7 @@ export default function AdminUserDetailPage() {
       await load();
       setDialog({ kind: "reset_password", temp: result.temporary_password });
     } catch (caught) {
-      const { kind, message } = classifyError(caught);
+      const { kind, message } = classifyError(caught, t);
       if (kind === "unauthorized") return redirectToLogin();
       toast.error(message);
     } finally {
@@ -156,7 +192,7 @@ export default function AdminUserDetailPage() {
   const revokeSessions = () =>
     act(
       () => apiClient.post<{ revoked: number; message: string }>(`/admin/users/${params.id}/revoke-sessions`),
-      "Sessions revoked."
+      t("admin.sessionsRevoked")
     );
 
   const deleteUser = async () => {
@@ -164,10 +200,10 @@ export default function AdminUserDetailPage() {
     setError("");
     try {
       await apiClient.delete(`/admin/users/${params.id}`);
-      toast.success("Account deleted.");
+      toast.success(t("admin.accountDeleted"));
       router.push("/admin/users");
     } catch (caught) {
-      const { kind, message } = classifyError(caught);
+      const { kind, message } = classifyError(caught, t);
       if (kind === "unauthorized") return redirectToLogin();
       toast.error(message);
       setBusy(false);
@@ -176,7 +212,7 @@ export default function AdminUserDetailPage() {
 
   if (loading && !data) {
     return (
-      <AdminLayout title="User account">
+      <AdminLayout title={t("admin.userAccount")}>
         <LoadingRows rows={4} />
       </AdminLayout>
     );
@@ -184,16 +220,16 @@ export default function AdminUserDetailPage() {
 
   if (denied) {
     return (
-      <AdminLayout title="User account">
-        <ErrorBanner message="This area is available to administrators only." />
+      <AdminLayout title={t("admin.userAccount")}>
+        <ErrorBanner message={t("admin.adminsOnly")} />
       </AdminLayout>
     );
   }
 
   if (!data) {
     return (
-      <AdminLayout title="User account">
-        <ErrorBanner message={error || "User not found."} onRetry={load} />
+      <AdminLayout title={t("admin.userAccount")}>
+        <ErrorBanner message={error || t("admin.userNotFound")} onRetry={load} />
       </AdminLayout>
     );
   }
@@ -213,7 +249,7 @@ export default function AdminUserDetailPage() {
         <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
           arrow_back
         </span>
-        All users
+        {t("admin.allUsers")}
       </Link>
 
       {error && <ErrorBanner message={error} onRetry={load} />}
@@ -229,27 +265,29 @@ export default function AdminUserDetailPage() {
               <h2 className="break-words font-headline-lg text-headline-lg text-primary">{user.name}</h2>
               <p className="break-all font-body-md text-body-md text-on-surface-variant">{user.email}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {user.is_admin ? <Badge tone="primary">Administrator</Badge> : <Badge>Member</Badge>}
+                <Badge tone={user.role === "admin" ? "primary" : undefined}>
+                  {t(ROLE_LABELS[user.role].titleKey)}
+                </Badge>
                 {user.is_suspended ? (
-                  <Badge tone="danger">Suspended</Badge>
+                  <Badge tone="danger">{t("admin.suspendedLabel")}</Badge>
                 ) : (
-                  <Badge tone="success">Active</Badge>
+                  <Badge tone="success">{t("admin.statusActive")}</Badge>
                 )}
-                {user.must_change_password && <Badge tone="warning">Password reset pending</Badge>}
+                {user.must_change_password && <Badge tone="warning">{t("admin.resetPending")}</Badge>}
               </div>
             </div>
           </div>
           <dl className="grid grid-cols-2 gap-4 text-right sm:shrink-0">
             <div>
-              <dt className="font-label-caps text-label-caps text-on-surface-variant">Joined</dt>
+              <dt className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.joined")}</dt>
               <dd className="font-metric-sm text-metric-sm text-on-surface">
-                {formatRelative(user.created_at)}
+                {formatRelative(user.created_at, t, locale)}
               </dd>
             </div>
             <div>
-              <dt className="font-label-caps text-label-caps text-on-surface-variant">Last active</dt>
+              <dt className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.lastActive")}</dt>
               <dd className="font-metric-sm text-metric-sm text-on-surface">
-                {formatRelative(user.last_active_at)}
+                {formatRelative(user.last_active_at, t, locale)}
               </dd>
             </div>
           </dl>
@@ -259,13 +297,13 @@ export default function AdminUserDetailPage() {
       {/* Engagement metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Workouts", value: formatNumber(stats.total_workouts), detail: `${formatNumber(stats.workouts_30d)} in 30d` },
-          { label: "Total sets", value: formatNumber(stats.total_sets), detail: "All time" },
-          { label: "Volume", value: formatVolume(stats.volume_all_time_kg), detail: "All time" },
-          { label: "Active sessions", value: formatNumber(stats.active_tokens), detail: `${formatNumber(stats.goals_count)} goals` },
+          { labelKey: "dashboard.statWorkouts", value: formatNumber(stats.total_workouts), detail: t("admin.in30d", { count: formatNumber(stats.workouts_30d) }) },
+          { labelKey: "client.totalSets", value: formatNumber(stats.total_sets), detail: t("admin.allTime") },
+          { labelKey: "progress.volume", value: formatVolume(stats.volume_all_time_kg), detail: t("admin.allTime") },
+          { labelKey: "admin.activeSessions", value: formatNumber(stats.active_tokens), detail: t("admin.goalCount", { count: formatNumber(stats.goals_count) }) },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
-            <p className="font-label-caps text-label-caps text-on-surface-variant">{card.label}</p>
+          <div key={card.labelKey} className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+            <p className="font-label-caps text-label-caps text-on-surface-variant">{t(card.labelKey)}</p>
             <p className="mt-2 break-words font-headline-lg text-headline-lg text-primary">{card.value}</p>
             <p className="mt-1 font-body-md text-body-md text-on-surface-variant">{card.detail}</p>
           </div>
@@ -275,12 +313,12 @@ export default function AdminUserDetailPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Account details / edit */}
         <Panel
-          title="Account details"
-          description="Correct the member's name or email address."
+          title={t("admin.accountDetails")}
+          description={t("admin.accountDetailsDesc")}
           action={
             !editing ? (
               <Button variant="secondary" size="sm" icon="edit" onClick={() => setEditing(true)}>
-                Edit
+                {t("action.edit")}
               </Button>
             ) : undefined
           }
@@ -294,7 +332,7 @@ export default function AdminUserDetailPage() {
               className="space-y-4"
             >
               <label className="block">
-                <span className="font-label-caps text-label-caps text-on-surface-variant">Name</span>
+                <span className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.fieldName")}</span>
                 <input
                   value={draftName}
                   onChange={(event) => setDraftName(event.target.value)}
@@ -304,7 +342,7 @@ export default function AdminUserDetailPage() {
                 />
               </label>
               <label className="block">
-                <span className="font-label-caps text-label-caps text-on-surface-variant">Email</span>
+                <span className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.fieldEmail")}</span>
                 <input
                   type="email"
                   value={draftEmail}
@@ -314,12 +352,12 @@ export default function AdminUserDetailPage() {
                   className="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none"
                 />
                 <span className="mt-1 block font-body-md text-body-md text-on-surface-variant">
-                  Changing the email signs the member out of all devices.
+                  {t("admin.emailChangeWarning")}
                 </span>
               </label>
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" busy={busy} disabled={busy}>
-                  Save changes
+                  {t("settings.saveChanges")}
                 </Button>
                 <Button
                   variant="secondary"
@@ -330,26 +368,26 @@ export default function AdminUserDetailPage() {
                     setDraftEmail(user.email);
                   }}
                 >
-                  Cancel
+                  {t("action.cancel")}
                 </Button>
               </div>
             </form>
           ) : (
             <dl className="grid gap-4 sm:grid-cols-2">
               <div>
-                <dt className="font-label-caps text-label-caps text-on-surface-variant">Name</dt>
+                <dt className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.fieldName")}</dt>
                 <dd className="mt-1 break-words font-body-md text-body-md text-on-surface">{user.name}</dd>
               </div>
               <div>
-                <dt className="font-label-caps text-label-caps text-on-surface-variant">Email</dt>
+                <dt className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.fieldEmail")}</dt>
                 <dd className="mt-1 break-all font-body-md text-body-md text-on-surface">{user.email}</dd>
               </div>
               <div>
-                <dt className="font-label-caps text-label-caps text-on-surface-variant">Joined</dt>
-                <dd className="mt-1 font-body-md text-body-md text-on-surface">{formatDateTime(user.created_at)}</dd>
+                <dt className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.joined")}</dt>
+                <dd className="mt-1 font-body-md text-body-md text-on-surface">{formatDateTime(user.created_at, locale)}</dd>
               </div>
               <div>
-                <dt className="font-label-caps text-label-caps text-on-surface-variant">Chat messages</dt>
+                <dt className="font-label-caps text-label-caps text-on-surface-variant">{t("admin.chatMessages")}</dt>
                 <dd className="mt-1 font-body-md text-body-md text-on-surface">
                   {formatNumber(stats.chat_messages_total)}
                 </dd>
@@ -359,13 +397,13 @@ export default function AdminUserDetailPage() {
         </Panel>
 
         {/* Training profile */}
-        <Panel title="Training profile" description="Onboarding answers supplied by the member.">
+        <Panel title={t("admin.trainingProfile")} description={t("admin.trainingProfileDesc")}>
           {profileEntries.length ? (
             <dl className="grid gap-4 sm:grid-cols-2">
               {profileEntries.map(([key, value]) => (
                 <div key={key}>
                   <dt className="font-label-caps text-label-caps text-on-surface-variant">
-                    {PROFILE_LABELS[key] ?? key.replace(/_/g, " ")}
+                    {PROFILE_LABELS[key] ? t(PROFILE_LABELS[key]) : key.replace(/_/g, " ")}
                   </dt>
                   <dd className="mt-1 break-words font-body-md text-body-md text-on-surface">
                     {value == null || value === "" ? "—" : String(value)}
@@ -374,23 +412,23 @@ export default function AdminUserDetailPage() {
               ))}
             </dl>
           ) : (
-            <EmptyState icon="badge" title="No profile data." description="The member has not completed onboarding." />
+            <EmptyState icon="badge" title={t("admin.noProfileData")} description={t("admin.noProfileDesc")} />
           )}
         </Panel>
       </div>
 
       {/* Access control */}
-      <Panel title="Access control" description="Change what this account can do and where it is signed in.">
+      <Panel title={t("admin.accessControl")} description={t("admin.accessControlDesc")}>
         <div className="divide-y divide-outline-variant">
           <div className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="font-metric-sm text-metric-sm text-on-surface">
-                {user.is_suspended ? "Suspended" : "Active"}
+                {user.is_suspended ? t("admin.userSuspended") : t("admin.statusActive")}
               </p>
               <p className="font-body-md text-body-md text-on-surface-variant">
                 {user.is_suspended
-                  ? "This member cannot sign in. Suspending also ends all sessions."
-                  : "Suspending blocks sign-in immediately and revokes every session."}
+                  ? t("admin.suspendBodyOn")
+                  : t("admin.suspendBodyOff")}
               </p>
             </div>
             <Button
@@ -400,52 +438,69 @@ export default function AdminUserDetailPage() {
               disabled={busy || !capabilities.suspend.allowed}
               title={guardReason(capabilities.suspend)}
             >
-              {user.is_suspended ? "Unsuspend account" : "Suspend account"}
+              {user.is_suspended ? t("admin.unsuspend") : t("admin.suspend")}
             </Button>
           </div>
 
           <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="font-metric-sm text-metric-sm text-on-surface">
-                {user.is_admin ? "Administrator" : "Member"}
+                {t("admin.roleLabel")}: {t(ROLE_LABELS[user.role].titleKey)}
               </p>
               <p className="font-body-md text-body-md text-on-surface-variant">
-                Administrators can view every account and change platform data.
+                {t(ROLE_LABELS[user.role].descriptionKey)}
               </p>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                user.is_admin && capabilities.revoke_admin.allowed
-                  ? setDialog({ kind: "revoke_admin" })
-                  : void toggleAdmin()
-              }
-              disabled={busy || (user.is_admin && !capabilities.revoke_admin.allowed)}
-              title={user.is_admin ? guardReason(capabilities.revoke_admin) : undefined}
-            >
-              {user.is_admin ? "Revoke admin rights" : "Grant admin rights"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Each target role gets its own button, and the current one is
+                  disabled, so it is always clear what the account is now and
+                  what clicking will do. */}
+              {(["user", "trainer", "admin"] as UserRole[]).map((role) => {
+                const isCurrent = user.role === role;
+                // Demoting the last admin is refused server-side; disable it
+                // here so the operator sees why before clicking.
+                const blockedByGuard =
+                  user.role === "admin" && role !== "admin" && !capabilities.revoke_admin.allowed;
+
+                return (
+                  <Button
+                    key={role}
+                    variant={isCurrent ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() =>
+                      role === "trainer"
+                        ? setDialog({ kind: "promote_trainer" })
+                        : user.role === "admin"
+                          ? setDialog({ kind: "revoke_admin", targetRole: role })
+                          : changeRole(role)
+                    }
+                    disabled={busy || isCurrent || blockedByGuard}
+                    title={blockedByGuard ? guardReason(capabilities.revoke_admin) : undefined}
+                  >
+                    {isCurrent ? `${t(ROLE_LABELS[role].titleKey)} ${t("admin.current")}` : t("admin.makeRole", { role: t(ROLE_LABELS[role].titleKey) })}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="font-metric-sm text-metric-sm text-on-surface">Password</p>
+              <p className="font-metric-sm text-metric-sm text-on-surface">{t("admin.password")}</p>
               <p className="font-body-md text-body-md text-on-surface-variant">
-                Issues a one-time password and signs the member out everywhere.
+                {t("admin.resetPasswordHint")}
               </p>
             </div>
             <Button variant="secondary" size="sm" onClick={resetPassword} busy={busy} disabled={busy}>
-              Reset password
+              {t("admin.resetPassword")}
             </Button>
           </div>
 
           <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="font-metric-sm text-metric-sm text-on-surface">Active sessions</p>
+              <p className="font-metric-sm text-metric-sm text-on-surface">{t("admin.activeSessions")}</p>
               <p className="font-body-md text-body-md text-on-surface-variant">
-                {formatNumber(stats.active_tokens)} active session
-                {stats.active_tokens === 1 ? "" : "s"}. Signing out does not change the password.
+                {t("admin.sessionCountHint", { count: formatNumber(stats.active_tokens) })}
               </p>
             </div>
             <Button
@@ -455,7 +510,7 @@ export default function AdminUserDetailPage() {
               busy={busy}
               disabled={busy || stats.active_tokens === 0}
             >
-              Sign out everywhere
+              {t("admin.revokeSessions")}
             </Button>
           </div>
         </div>
@@ -463,48 +518,48 @@ export default function AdminUserDetailPage() {
 
       {/* Recent activity */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Recent workouts" description="Last 10 sessions" bodyClassName="p-0">
+        <Panel title={t("admin.recentWorkouts")} description={t("admin.last10")} bodyClassName="p-0">
           {data.recent_workouts.length ? (
             <ul className="divide-y divide-outline-variant">
               {data.recent_workouts.map((workout) => (
                 <li key={workout.id} className="flex items-center justify-between gap-3 px-5 py-3">
                   <div className="min-w-0">
                     <p className="font-metric-sm text-metric-sm text-on-surface">
-                      {formatDateTime(workout.started_at)}
+                      {formatDateTime(workout.started_at, locale)}
                     </p>
                     <p className="font-body-md text-body-md text-on-surface-variant">
                       {formatNumber(workout.total_sets)} sets · {formatVolume(workout.total_volume_kg)}
                     </p>
                   </div>
                   <Badge tone={workout.status === "completed" ? "success" : "warning"}>
-                    {workout.status === "completed" ? "Completed" : "In progress"}
+                    {workout.status === "completed" ? t("workout.completed") : t("workout.inProgress")}
                   </Badge>
                 </li>
               ))}
             </ul>
           ) : (
             <div className="p-5">
-              <EmptyState icon="fitness_center" title="No workouts logged." />
+              <EmptyState icon="fitness_center" title={t("admin.noWorkouts")} />
             </div>
           )}
         </Panel>
 
-        <Panel title="Coach conversations" description="Last 20 sessions" bodyClassName="p-0">
+        <Panel title={t("admin.coachConversations")} description={t("admin.last20")} bodyClassName="p-0">
           {data.chat_sessions.length ? (
             <ul className="divide-y divide-outline-variant">
               {data.chat_sessions.map((session) => (
                 <li key={session.id} className="flex items-center justify-between gap-3 px-5 py-3">
                   <div className="min-w-0">
                     <p className="truncate font-metric-sm text-metric-sm text-on-surface">
-                      {session.title || `Session #${session.id}`}
+                      {session.title || t("admin.sessionNumber", { id: session.id })}
                     </p>
                     <p className="font-body-md text-body-md text-on-surface-variant">
                       {formatNumber(session.messages_count)} messages ·{" "}
-                      {formatRelative(session.last_message_at)}
+                      {formatRelative(session.last_message_at, t, locale)}
                     </p>
                   </div>
                   {session.has_images && (
-                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant" title="Contains images">
+                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant" title={t("admin.containsImages")}>
                       image
                     </span>
                   )}
@@ -513,7 +568,7 @@ export default function AdminUserDetailPage() {
             </ul>
           ) : (
             <div className="p-5">
-              <EmptyState icon="chat" title="No conversations." />
+              <EmptyState icon="chat" title={t("admin.noConversations")} />
             </div>
           )}
         </Panel>
@@ -521,16 +576,16 @@ export default function AdminUserDetailPage() {
 
       {/* Danger zone */}
       <Panel
-        title="Danger zone"
-        description="Irreversible actions. These are recorded in the audit log."
+        title={t("admin.dangerZone")}
+        description={t("admin.dangerZoneDesc")}
         className="border-error/30"
         bodyClassName="p-5"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="font-metric-sm text-metric-sm text-on-surface">Delete this account</p>
+            <p className="font-metric-sm text-metric-sm text-on-surface">{t("admin.deleteAccountLabel")}</p>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Permanently removes the member and all of their data. This cannot be undone.
+              {t("admin.deleteHint")}
             </p>
           </div>
           <Button
@@ -541,7 +596,7 @@ export default function AdminUserDetailPage() {
             disabled={busy || !capabilities.delete.allowed}
             title={guardReason(capabilities.delete)}
           >
-            Delete account
+            {t("settings.deleteAccount")}
           </Button>
         </div>
       </Panel>
@@ -549,13 +604,13 @@ export default function AdminUserDetailPage() {
       {/* Dialogs */}
       <ConfirmDialog
         open={dialog.kind === "suspend"}
-        title={user.is_suspended ? "Unsuspend this account?" : "Suspend this account?"}
+        title={user.is_suspended ? t("admin.unsuspendTitle") : t("admin.suspendTitle")}
         description={
           user.is_suspended
-            ? `${user.name} will be able to sign in again immediately.`
-            : `${user.name} will be signed out of every device and blocked from signing in until unsuspended.`
+            ? t("admin.unsuspendBody", { name: user.name })
+            : t("admin.suspendBody", { name: user.name })
         }
-        confirmLabel={user.is_suspended ? "Unsuspend account" : "Suspend account"}
+        confirmLabel={user.is_suspended ? t("admin.unsuspend") : t("admin.suspend")}
         tone={user.is_suspended ? "primary" : "danger"}
         busy={busy}
         onConfirm={toggleSuspension}
@@ -564,24 +619,33 @@ export default function AdminUserDetailPage() {
 
       <ConfirmDialog
         open={dialog.kind === "revoke_admin"}
-        title="Revoke administrator rights?"
-        description={`${user.name} will lose access to the admin area immediately.`}
-        confirmLabel="Revoke admin rights"
+        title={t("admin.confirmRoleChange")}
+        description={t("admin.revokeAdminBody", { name: user.name })}
+        confirmLabel={t("admin.changeRoleAction")}
+        tone="danger"
         busy={busy}
-        onConfirm={toggleAdmin}
+        onConfirm={() => changeRole(dialog.kind === "revoke_admin" ? (dialog.targetRole ?? "user") : "user")}
+        onCancel={() => setDialog({ kind: "none" })}
+      />
+
+      <PromoteTrainerDialog
+        open={dialog.kind === "promote_trainer"}
+        name={user.name}
+        busy={busy}
+        onConfirm={(specialization, capacity) => changeRole("trainer", { specialization, capacity })}
         onCancel={() => setDialog({ kind: "none" })}
       />
 
       <ConfirmDialog
         open={dialog.kind === "delete"}
-        title="Delete this account?"
+        title={t("admin.confirmDelete")}
         description={
           <>
             This permanently deletes <strong className="text-on-surface">{user.name}</strong> and every
             workout, goal and conversation belonging to them. It cannot be undone.
           </>
         }
-        confirmLabel="Delete permanently"
+        confirmLabel={t("settings.deletePermanently")}
         requireText={user.email}
         busy={busy}
         onConfirm={deleteUser}
@@ -592,7 +656,7 @@ export default function AdminUserDetailPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
           <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-xl">
             <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-primary">
-              Temporary password
+              {t("admin.tempPassword")}
             </h2>
             <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
               Share this with {user.name} over a secure channel. It is shown only once and they must
@@ -606,16 +670,106 @@ export default function AdminUserDetailPage() {
                 variant="secondary"
                 onClick={() => {
                   void navigator.clipboard?.writeText(dialog.temp);
-                  toast.success("Password copied.");
+                  toast.success(t("admin.passwordCopied"));
                 }}
               >
-                Copy
+                {t("action.copy")}
               </Button>
-              <Button onClick={() => setDialog({ kind: "none" })}>Done</Button>
+              <Button onClick={() => setDialog({ kind: "none" })}>{t("action.done")}</Button>
             </div>
           </div>
         </div>
       )}
     </AdminLayout>
+  );
+}
+
+/**
+ * Promote a member to personal trainer.
+ *
+ * Specialisation and capacity are collected here rather than defaulted, because
+ * both feed the matcher immediately: the specialisation decides which members
+ * get routed to this person, and capacity is the hard ceiling on how many they
+ * can take. A trainer created with neither would be eligible for everyone and
+ * limited by nothing.
+ */
+function PromoteTrainerDialog({
+  open,
+  name,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  name: string;
+  busy: boolean;
+  onConfirm: (specialization: string, capacity: number) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [specialization, setSpecialization] = useState("muscle");
+  const [capacity, setCapacity] = useState("20");
+
+  if (!open) return null;
+
+  const input =
+    "w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body-md text-body-md text-on-surface";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("admin.ariaMakeTrainer", { name })}
+    >
+      <div className="w-full max-w-md rounded-xl border border-outline-variant bg-surface p-5">
+        <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-1">
+          {t("admin.makeTrainerTitleNamed", { name })}
+        </h2>
+        <p className="mb-4 font-body-md text-sm text-on-surface-variant">
+          {t("admin.makeTrainerBody")}
+        </p>
+
+        <label className="mb-3 block">
+          <span className="mb-1 block font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {t("settings.specialisation")}
+          </span>
+          <select value={specialization} onChange={(e) => setSpecialization(e.target.value)} className={input}>
+            <option value="muscle">{t("settings.specMuscle")}</option>
+            <option value="strength">{t("settings.specStrength")}</option>
+            <option value="endurance">{t("settings.specEndurance")}</option>
+          </select>
+        </label>
+
+        <label className="mb-4 block">
+          <span className="mb-1 block font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {t("settings.capacity")}
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            className={input}
+          />
+          <span className="mt-1 block font-body-md text-sm text-on-surface-variant">
+            {t("admin.capacityHint")}
+          </span>
+        </label>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onCancel}>
+            {t("action.cancel")}
+          </Button>
+          <Button
+            onClick={() => onConfirm(specialization, Number(capacity) || 20)}
+            disabled={busy}
+          >
+            {busy ? t("admin.promoting") : t("admin.makeTrainer")}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

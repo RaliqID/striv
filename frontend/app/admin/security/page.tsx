@@ -14,14 +14,16 @@ import {
 } from "@/lib/admin";
 import type { AdminSecurityResponse } from "@/types/admin";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
 const WINDOWS = [
-  { value: 1, label: "Last 24 hours" },
-  { value: 7, label: "Last 7 days" },
-  { value: 30, label: "Last 30 days" },
+  { value: 1, labelKey: "admin.last24h" },
+  { value: 7, labelKey: "admin.last7d" },
+  { value: 30, labelKey: "admin.lastDays" },
 ];
 
 export default function AdminSecurityPage() {
+  const { t, locale } = useTranslation();
   const [data, setData] = useState<AdminSecurityResponse | null>(null);
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(true);
@@ -35,14 +37,14 @@ export default function AdminSecurityPage() {
       setData(await apiClient.get<AdminSecurityResponse>(`/admin/security?days=${window}`));
       setDenied(false);
     } catch (caught) {
-      const { kind, message } = classifyError(caught);
+      const { kind, message } = classifyError(caught, t);
       if (kind === "unauthorized") return redirectToLogin();
       if (kind === "forbidden") setDenied(true);
       else setError(message);
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [days, t]);
 
   useEffect(() => {
     void load(days);
@@ -51,11 +53,11 @@ export default function AdminSecurityPage() {
 
   return (
     <AdminLayout
-      title="Security"
-      description="Sign-in attempts and rate-limit activity."
+      title={t("admin.security")}
+      description={t("admin.securityDesc")}
       actions={
         <label>
-          <span className="sr-only">Time window</span>
+          <span className="sr-only">{t("admin.srTimeWindow")}</span>
           <select
             value={days}
             onChange={(event) => setDays(Number(event.target.value))}
@@ -63,7 +65,7 @@ export default function AdminSecurityPage() {
           >
             {WINDOWS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -71,7 +73,7 @@ export default function AdminSecurityPage() {
       }
     >
       {denied ? (
-        <ErrorBanner message="This area is available to administrators only." />
+        <ErrorBanner message={t("admin.adminsOnly")} />
       ) : (
         <>
           {error && <ErrorBanner message={error} onRetry={() => void load()} />}
@@ -84,44 +86,46 @@ export default function AdminSecurityPage() {
                 {/* How throttling works — stated once so the numbers are readable */}
                 <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
                   <p className="font-metric-sm text-metric-sm text-on-surface">
-                    Login throttling is active
+                    {t("admin.throttleActive")}
                   </p>
                   <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                    Each IP is limited to 20 attempts per minute, and each account to 5 attempts per
-                    15 minutes per IP. Once an account is locked, even the correct password is
-                    refused until the window passes.
+                    {t("admin.throttleBody")}
                   </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     {
-                      label: "Total attempts",
+                      labelKey: "admin.totalAttempts",
                       value: formatNumber(data.summary.total_attempts),
-                      detail: `${formatNumber(data.summary.successful_attempts)} succeeded`,
+                      detail: t("admin.succeeded", {
+                        count: formatNumber(data.summary.successful_attempts),
+                      }),
                     },
                     {
-                      label: "Failed attempts",
+                      labelKey: "admin.failedAttempts",
                       value: formatNumber(data.summary.failed_attempts),
-                      detail: `${data.summary.failure_rate}% of all attempts`,
+                      detail: t("admin.ofAllAttempts", { rate: data.summary.failure_rate }),
                     },
                     {
-                      label: "Distinct sources",
+                      labelKey: "admin.distinctSources",
                       value: formatNumber(data.summary.distinct_ips),
-                      detail: `${formatNumber(data.summary.distinct_emails)} accounts targeted`,
+                      detail: t("admin.accountsTargeted", {
+                        count: formatNumber(data.summary.distinct_emails),
+                      }),
                     },
                     {
-                      label: "Locked accounts",
+                      labelKey: "admin.lockedAccounts",
                       value: formatNumber(data.summary.locked_accounts),
-                      detail: "Currently over the limit",
+                      detail: t("admin.overLimit"),
                     },
                   ].map((card) => (
                     <div
-                      key={card.label}
+                      key={card.labelKey}
                       className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5"
                     >
                       <p className="font-label-caps text-label-caps text-on-surface-variant">
-                        {card.label}
+                        {t(card.labelKey)}
                       </p>
                       <p className="mt-2 break-words font-headline-lg text-headline-lg text-primary">
                         {card.value}
@@ -135,8 +139,8 @@ export default function AdminSecurityPage() {
 
                 <div className="grid gap-6 lg:grid-cols-2">
                   <Panel
-                    title="Top offending IPs"
-                    description="Addresses with the most failed sign-ins"
+                    title={t("admin.topIps")}
+                    description={t("admin.topIpsDesc")}
                     bodyClassName="p-0"
                   >
                     {data.top_offending_ips.length ? (
@@ -146,27 +150,26 @@ export default function AdminSecurityPage() {
                             <div className="min-w-0">
                               <p className="font-mono text-[14px] text-on-surface">{row.ip_address}</p>
                               <p className="font-body-md text-body-md text-on-surface-variant">
-                                {formatNumber(row.distinct_emails)} account
-                                {row.distinct_emails === 1 ? "" : "s"} targeted ·{" "}
-                                {formatRelative(row.last_seen_at)}
+                                {t("admin.accountsTargetedShort", { count: formatNumber(row.distinct_emails) })} ·{" "}
+                                {formatRelative(row.last_seen_at, t, locale)}
                               </p>
                             </div>
                             <Badge tone={row.failures >= 20 ? "danger" : "warning"}>
-                              {formatNumber(row.failures)} fails
+                              {t("admin.fails", { count: formatNumber(row.failures) })}
                             </Badge>
                           </li>
                         ))}
                       </ul>
                     ) : (
                       <div className="p-5">
-                        <EmptyState icon="verified_user" title="No failed sign-ins in this window." />
+                        <EmptyState icon="verified_user" title={t("admin.noFailedSignins")} />
                       </div>
                     )}
                   </Panel>
 
                   <Panel
-                    title="Top targeted accounts"
-                    description="Accounts absorbing the most failures"
+                    title={t("admin.topAccounts")}
+                    description={t("admin.topAccountsDesc")}
                     bodyClassName="p-0"
                   >
                     {data.top_targeted_accounts.length ? (
@@ -178,27 +181,26 @@ export default function AdminSecurityPage() {
                                 {row.email}
                               </p>
                               <p className="font-body-md text-body-md text-on-surface-variant">
-                                From {formatNumber(row.distinct_ips)} address
-                                {row.distinct_ips === 1 ? "" : "es"} · {formatRelative(row.last_seen_at)}
+                                {t("admin.fromAddresses", { count: formatNumber(row.distinct_ips) })} · {formatRelative(row.last_seen_at, t, locale)}
                               </p>
                             </div>
                             <Badge tone={row.distinct_ips > 3 ? "danger" : "warning"}>
-                              {formatNumber(row.failures)} fails
+                              {t("admin.fails", { count: formatNumber(row.failures) })}
                             </Badge>
                           </li>
                         ))}
                       </ul>
                     ) : (
                       <div className="p-5">
-                        <EmptyState icon="verified_user" title="No targeted accounts in this window." />
+                        <EmptyState icon="verified_user" title={t("admin.noTargeted")} />
                       </div>
                     )}
                   </Panel>
                 </div>
 
                 <Panel
-                  title="Recent attempts"
-                  description="Most recent 50 sign-in attempts, newest first"
+                  title={t("admin.recentAttempts")}
+                  description={t("admin.recentAttemptsDesc")}
                   bodyClassName="p-0"
                 >
                   {data.recent_attempts.length ? (
@@ -206,13 +208,13 @@ export default function AdminSecurityPage() {
                       <table className="w-full min-w-[40rem] border-collapse text-left">
                         <thead>
                           <tr className="border-b border-outline-variant">
-                            {["When", "Account", "IP address", "Result"].map((header) => (
+                            {["admin.colWhen", "admin.colAccount", "admin.colIp", "admin.colResult"].map((headerKey) => (
                               <th
-                                key={header}
+                                key={headerKey}
                                 scope="col"
                                 className="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant"
                               >
-                                {header}
+                                {t(headerKey)}
                               </th>
                             ))}
                           </tr>
@@ -224,7 +226,7 @@ export default function AdminSecurityPage() {
                               className="border-b border-outline-variant/60 last:border-0 hover:bg-surface-container-low"
                             >
                               <td className="whitespace-nowrap px-4 py-3 font-body-md text-body-md text-on-surface-variant">
-                                {formatDateTime(attempt.created_at)}
+                                {formatDateTime(attempt.created_at, locale)}
                               </td>
                               <td className="px-4 py-3 font-body-md text-body-md text-on-surface">
                                 {attempt.email || "—"}
@@ -234,7 +236,7 @@ export default function AdminSecurityPage() {
                               </td>
                               <td className="px-4 py-3">
                                 <Badge tone={attempt.successful ? "success" : "danger"}>
-                                  {attempt.successful ? "Success" : "Failed"}
+                                  {attempt.successful ? t("admin.success") : t("admin.failed")}
                                 </Badge>
                               </td>
                             </tr>
@@ -246,8 +248,8 @@ export default function AdminSecurityPage() {
                     <div className="p-5">
                       <EmptyState
                         icon="shield"
-                        title="No sign-in attempts recorded."
-                        description="Attempts will appear here as members sign in."
+                        title={t("admin.noAttempts")}
+                        description={t("admin.noAttemptsDesc")}
                       />
                     </div>
                   )}

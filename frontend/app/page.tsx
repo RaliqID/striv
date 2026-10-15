@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import StrivLogo from "@/components/StrivLogo";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { apiUrl } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n/provider";
 
 /* Scroll-triggered reveal — IntersectionObserver, no library, respects prefers-reduced-motion */
 function Reveal({
@@ -107,6 +109,7 @@ function SmartNav({
 }
 
 export default function LandingPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [contactStatus, setContactStatus] = useState<null | 'loading' | 'success' | 'error'>(null);
   const [contactError, setContactError] = useState('');
@@ -118,7 +121,7 @@ export default function LandingPage() {
     const email = (form.querySelector('#contact-email') as HTMLInputElement).value.trim();
     const message = (form.querySelector('#contact-msg') as HTMLTextAreaElement).value.trim();
     if (!name || !email || !message) {
-      setContactError('Please fill in all fields.');
+      setContactError(t("landing.errFields"));
       return;
     }
     setContactStatus('loading');
@@ -131,12 +134,12 @@ export default function LandingPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || 'Failed to send message.');
+        throw new Error(data.message || t("landing.sendFailed"));
       }
       setContactStatus('success');
       form.reset();
     } catch (err: any) {
-      setContactError(err.message || 'Something went wrong. Try again later.');
+      setContactError(err.message || t("landing.genericRetry"));
       setContactStatus('error');
     } finally {
       setTimeout(() => setContactStatus(null), 5000);
@@ -197,16 +200,68 @@ export default function LandingPage() {
           <span className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-black text-primary tracking-tighter">Striv</span>
         </div>
         <nav className="hidden md:flex items-center gap-6 py-4">
-          <a className="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md transition-colors" href="#">Overview</a>
-          <a className="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1 cursor-pointer" onClick={handleNavClick("/workout")}>Workout</a>
-          <a className="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1 cursor-pointer" onClick={handleNavClick("/progress")}>Progress</a>
-          <a className="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1 cursor-pointer" onClick={handleNavClick("/insights")}>Insights</a>
+          {/*
+            Real hrefs, not onClick-only anchors.
+
+            Three of these had an onClick handler but NO href, which made them
+            anchors in appearance only: an <a> without href is not focusable by
+            keyboard, is not announced as a link by a screen reader, and cannot
+            be opened in a new tab or copied as a link. A member navigating by
+            keyboard could not reach them at all.
+
+            Each now carries the destination it actually goes to. The onClick is
+            kept because it adds something the href cannot: a visitor with no
+            token is sent to /login rather than to a page that would bounce them
+            there anyway. A middle-click or "open in new tab" skips the handler
+            and follows the href, which is the expected behaviour.
+
+            The current page is marked with aria-current instead of href="#",
+            which previously jumped the visitor to the top of the page they were
+            already on.
+          */}
+          <a
+            className="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md transition-colors"
+            href="/"
+            aria-current="page"
+          >
+            {t("nav.overview")}
+          </a>
+          <a
+            className="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1"
+            href="/workout"
+            onClick={handleNavClick("/workout")}
+          >
+            {t("nav.workout")}
+          </a>
+          <a
+            className="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1"
+            href="/progress"
+            onClick={handleNavClick("/progress")}
+          >
+            {t("nav.progress")}
+          </a>
+          <a
+            className="text-on-surface-variant font-medium hover:text-on-surface font-body-md text-body-md transition-colors pb-1"
+            href="/insights"
+            onClick={handleNavClick("/insights")}
+          >
+            {t("nav.insights")}
+          </a>
         </nav>
         <div className="flex items-center gap-2 py-4">
-          <button aria-label="Search" className="hidden md:flex text-on-surface hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95">
-            <span className="material-symbols-outlined">search</span>
-          </button>
-          <Link href="/login" aria-label="Sign in" className="text-on-surface hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95">
+          {/*
+            Language switcher where a search button used to be.
+
+            The search control was inert — it had no handler and opened nothing,
+            so it promised a feature that did not exist. A visitor's more
+            plausible need on a landing page is to read it in their own
+            language, and that control already exists and works.
+
+            Same slot, same size and hover treatment as the icon it replaces, so
+            the bar keeps its rhythm; the avatar beside it is untouched.
+          */}
+          <LanguageSwitcher placement="down" />
+          <Link href="/login" aria-label={t("auth.signIn")} className="text-on-surface hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95">
             <span className="material-symbols-outlined">account_circle</span>
           </Link>
         </div>
@@ -240,17 +295,17 @@ export default function LandingPage() {
                 id="hero-heading"
                 className="font-metric-display text-metric-display md:text-[72px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance"
               >
-                Your training has a story.
+                {t("landing.heroTitle")}
               </h1>
               <p className="font-body-md text-body-md md:text-xl text-on-surface-variant max-w-2xl text-balance">
-                Track your workouts, discover your progress, and understand what your training data is telling you with precision analytics designed for serious athletes.
+                {t("landing.heroBody1")} {t("landing.heroBody3")}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto">
                 <Link href="/register" className="bg-primary text-on-primary font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95 duration-200">
-                  Start Tracking
+                  {t("landing.startTracking")}
                 </Link>
                 <Link href="#how-it-works" className="bg-surface text-primary border border-outline font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-surface-container-low transition-all active:scale-95 duration-200">
-                  See How It Works
+                  {t("landing.seeHow")}
                 </Link>
               </div>
             </div>
@@ -263,7 +318,7 @@ export default function LandingPage() {
             <div className="md:col-span-8 md:row-span-2 border border-outline-variant rounded-xl p-6 md:p-8 bg-surface flex flex-col gap-6 relative overflow-hidden group hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow duration-300 min-h-[280px]">
               <div className="flex justify-between items-start z-10">
                 <div>
-                  <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1">Volume Progression</h3>
+                  <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-1">{t("landing.eyebrowVolume")}</h3>
                   <p className="font-headline-lg-mobile text-headline-lg-mobile text-primary font-semibold">14,250 kg</p>
                 </div>
                 <span className="material-symbols-outlined text-secondary">auto_graph</span>
@@ -280,12 +335,12 @@ export default function LandingPage() {
             <Reveal delay={150} className="md:col-span-4 md:row-span-1 h-full">
               <div className="border border-outline-variant rounded-xl p-6 bg-surface flex flex-col justify-between h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow duration-300">
                 <div className="flex justify-between items-center">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Next Session</span>
+                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("landing.eyebrowNext")}</span>
                   <span className="material-symbols-outlined text-on-surface-variant text-sm">fitness_center</span>
                 </div>
                 <div>
-                  <h4 className="font-headline-lg-mobile text-headline-lg-mobile text-primary font-semibold">Hypertrophy B</h4>
-                  <p className="font-body-md text-body-md text-on-surface-variant mt-1">Est. 65 mins</p>
+                  <h4 className="font-headline-lg-mobile text-headline-lg-mobile text-primary font-semibold">{t("landing.mockWorkoutName")}</h4>
+                  <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("landing.mockWorkoutDuration")}</p>
                 </div>
               </div>
             </Reveal>
@@ -295,10 +350,10 @@ export default function LandingPage() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 blur-2xl rounded-full -mr-16 -mt-16 pointer-events-none"></div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(70,72,212,0.6)] animate-pulse"></div>
-                  <span className="font-label-caps text-label-caps text-secondary font-semibold uppercase tracking-wider">AI Insight</span>
+                  <span className="font-label-caps text-label-caps text-secondary font-semibold uppercase tracking-wider">{t("landing.aiInsight")}</span>
                 </div>
                 <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed text-sm">
-                  Recovery indicates you can push harder on primary compound lifts today. Consider a 5% load increase.
+                  {t("landing.aiInsightBody")}
                 </p>
               </div>
             </Reveal>
@@ -309,14 +364,14 @@ export default function LandingPage() {
         <Reveal>
           <section className="w-full flex flex-col md:flex-row pt-12 md:pt-24 pb-12 gap-8 md:gap-12 border-t border-outline-variant">
             <div className="md:w-1/3">
-              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">About Striv</h2>
+              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowAbout")}</h2>
             </div>
             <div className="md:w-2/3 flex flex-col gap-6">
               <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                Training is more than numbers.
+                {t("landing.sectionMoreThan")}
               </h3>
               <p className="font-body-md text-body-md md:text-xl text-on-surface-variant max-w-2xl text-balance">
-                Every set, every rep, every moment of exertion builds a larger narrative. We believe that to truly improve, you need to see the whole picture.
+                {t("landing.sectionNarrative")} {t("landing.sectionNarrative2")}
               </p>
             </div>
           </section>
@@ -327,11 +382,11 @@ export default function LandingPage() {
           <section className="w-full pt-12 md:pt-24 pb-12 flex flex-col gap-12 md:gap-16 border-t border-outline-variant">
             <div className="flex flex-col md:flex-row gap-8 md:gap-12">
               <div className="md:w-1/3">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">The Problem</h2>
+                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowProblem")}</h2>
               </div>
               <div className="md:w-2/3">
                 <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                  More data doesn&apos;t always mean more understanding.
+                  {t("landing.sectionData")}
                 </h3>
               </div>
             </div>
@@ -344,10 +399,10 @@ export default function LandingPage() {
                     <circle cx="50%" cy="50%" r="20%" strokeDasharray="4 4" strokeWidth="1" />
                   </svg>
                 </div>
-                {["SETS", "REPS", "WEIGHT", "VOLUME", "FREQUENCY", "CONSISTENCY"].map((label, i) => (
-                  <div key={label} className={`px-4 md:px-6 py-2 md:py-3 border border-outline-variant rounded-full text-on-surface font-metric-sm text-metric-sm bg-surface shadow-sm z-10 text-[12px] md:text-[14px] ${
+                {["progress.sets", "client.reps", "profile.weight", "progress.volume", "progress.weeklyFrequency", "progress.adherence"].map((labelKey, i) => (
+                  <div key={labelKey} className={`px-4 md:px-6 py-2 md:py-3 border border-outline-variant rounded-full text-on-surface font-metric-sm text-metric-sm bg-surface shadow-sm z-10 text-[12px] md:text-[14px] ${
                     i === 1 ? "translate-y-3 md:translate-y-4" : i === 2 ? "-translate-y-3 md:-translate-y-4" : i === 3 ? "translate-y-2" : i === 4 ? "-translate-y-4 md:-translate-y-6" : ""
-                  }`}>{label}</div>
+                  }`}>{t(labelKey)}</div>
                 ))}
               </div>
             </Reveal>
@@ -359,24 +414,24 @@ export default function LandingPage() {
           <section className="w-full pt-12 md:pt-24 pb-12 flex flex-col gap-12 md:gap-16 border-t border-outline-variant">
             <div className="flex flex-col md:flex-row gap-8 md:gap-12">
               <div className="md:w-1/3">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">The Striv Approach</h2>
+                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowApproach")}</h2>
               </div>
               <div className="md:w-2/3">
                 <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                  Turn training data into something you can understand.
+                  {t("landing.sectionTurn")}
                 </h3>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 pt-8 border-t border-outline-variant">
               {[
-                { num: "01", title: "Track", desc: "Log every detail of your workout with precision and ease. Our interface stays out of your way." },
-                { num: "02", title: "Understand", desc: "See the patterns in your history. Striv connects the dots between your sessions." },
-                { num: "03", title: "Improve", desc: "Train with clarity. Use intelligent insights to guide your next macrocycle." },
+                { num: "01", titleKey: "landing.stepTrainTitle", descKey: "landing.stepTrainDesc2" },
+                { num: "02", titleKey: "landing.stepUnderstandTitle", descKey: "landing.stepUnderstandDesc2" },
+                { num: "03", titleKey: "landing.stepImproveTitle", descKey: "landing.stepImproveDesc" },
               ].map((step, i) => (
                 <Reveal key={step.num} delay={i * 100}>
                   <div className="flex flex-col gap-4">
-                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{step.num} {step.title}</span>
-                    <p className="font-body-md text-body-md text-on-surface-variant">{step.desc}</p>
+                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{step.num} {t(step.titleKey)}</span>
+                    <p className="font-body-md text-body-md text-on-surface-variant">{t(step.descKey)}</p>
                   </div>
                 </Reveal>
               ))}
@@ -388,22 +443,22 @@ export default function LandingPage() {
         <Reveal>
           <section id="how-it-works" className="w-full pt-12 md:pt-24 pb-12 flex flex-col gap-12 md:gap-16 border-t border-outline-variant scroll-mt-24">
             <div className="flex flex-col text-center gap-6">
-              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">How It Works</h2>
+              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowHow")}</h2>
               <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance mx-auto">
-                From workout to insight.
+                {t("landing.sectionFrom")}
               </h3>
             </div>
             <div className="flex flex-col md:flex-row justify-between items-start gap-8 relative pt-12">
               <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-[1px] bg-outline-variant z-0" aria-hidden="true"></div>
               {[
-                { num: "01", title: "Train", desc: "Log workout" },
-                { num: "02", title: "Analyze", desc: "Process history" },
-                { num: "03", title: "Understand", desc: "Meaningful patterns" },
+                { num: "01", titleKey: "landing.stepTrain", descKey: "landing.stepTrainDesc2" },
+                { num: "02", titleKey: "landing.stepAnalyze", descKey: "landing.stepAnalyzeDesc" },
+                { num: "03", titleKey: "landing.stepUnderstand", descKey: "landing.stepUnderstandDesc2" },
               ].map((step, i) => (
                 <Reveal key={step.num} delay={i * 120} className="flex flex-col items-center text-center gap-4 w-full md:w-1/3 z-10">
                   <div className="w-8 h-8 rounded-full bg-surface border border-outline-variant flex items-center justify-center font-metric-sm text-metric-sm text-primary">{step.num}</div>
-                  <h4 className="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary">{step.title}</h4>
-                  <p className="font-body-md text-body-md text-on-surface-variant">{step.desc}</p>
+                  <h4 className="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary">{t(step.titleKey)}</h4>
+                  <p className="font-body-md text-body-md text-on-surface-variant">{t(step.descKey)}</p>
                 </Reveal>
               ))}
             </div>
@@ -415,11 +470,11 @@ export default function LandingPage() {
           <section className="w-full pt-12 md:pt-24 pb-12 flex flex-col gap-12 border-t border-outline-variant">
             <div className="flex flex-col md:flex-row gap-8 md:gap-12">
               <div className="md:w-1/3">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Striv Intelligence</h2>
+                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowIntelligence")}</h2>
               </div>
               <div className="md:w-2/3">
                 <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                  Your data tells a story. Striv helps you read it.
+                  {t("landing.quote")}
                 </h3>
               </div>
             </div>
@@ -429,9 +484,9 @@ export default function LandingPage() {
                 <div className="z-10 bg-surface border border-outline-variant p-6 rounded-xl shadow-lg max-w-sm w-full flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-secondary text-xl">psychology</span>
-                    <span className="font-label-caps text-label-caps text-secondary font-semibold uppercase tracking-wider">AI Insight</span>
+                    <span className="font-label-caps text-label-caps text-secondary font-semibold uppercase tracking-wider">{t("landing.aiInsight")}</span>
                   </div>
-                  <p className="font-body-md text-body-md text-primary font-medium">Your strength is trending upward.</p>
+                  <p className="font-body-md text-body-md text-primary font-medium">{t("dashboard.strengthUp")}</p>
                 </div>
               </div>
             </Reveal>
@@ -443,24 +498,24 @@ export default function LandingPage() {
           <section className="w-full pt-12 md:pt-24 pb-12 flex flex-col gap-12 md:gap-16 border-t border-outline-variant">
             <div className="flex flex-col md:flex-row gap-8 md:gap-12">
               <div className="md:w-1/3">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Why Striv</h2>
+                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowWhy")}</h2>
               </div>
               <div className="md:w-2/3">
                 <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                  Train with context, not just numbers.
+                  {t("landing.sectionContext")}
                 </h3>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 border-t border-outline-variant pt-12">
               {[
-                { num: "1", title: "Clarity" },
-                { num: "2", title: "Consistency" },
-                { num: "3", title: "Evidence" },
+                { num: "1", titleKey: "landing.clarity" },
+                { num: "2", titleKey: "progress.adherence" },
+                { num: "3", titleKey: "landing.evidence" },
               ].map((item, i) => (
                 <Reveal key={item.num} delay={i * 100}>
                   <div className="flex flex-col gap-4">
                     <span className="font-metric-display text-[56px] md:text-[72px] font-black text-outline-variant/30 leading-none">{item.num}</span>
-                    <h4 className="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary uppercase tracking-tight">{item.title}</h4>
+                    <h4 className="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary uppercase tracking-tight">{t(item.titleKey)}</h4>
                   </div>
                 </Reveal>
               ))}
@@ -473,7 +528,7 @@ export default function LandingPage() {
           <section className="w-full pt-12 md:pt-24 pb-12 flex flex-col gap-12 border-t border-outline-variant">
             <div className="text-center">
               <h3 className="font-metric-display text-metric-display md:text-[56px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                Everything about your training, in one place.
+                {t("landing.sectionEverything")}
               </h3>
             </div>
             <Reveal delay={150}>
@@ -492,16 +547,16 @@ export default function LandingPage() {
                     <div className="p-4 md:p-6 flex flex-col gap-4">
                       <div className="flex items-baseline gap-3">
                         <span className="font-metric-display text-[28px] md:text-[36px] font-bold text-primary leading-none">+12.8%</span>
-                        <span className="font-body-md text-sm text-on-surface-variant">Strength</span>
+                        <span className="font-body-md text-sm text-on-surface-variant">{t("achievements.categoryStrength")}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {[
-                          { label: 'Workouts', value: '16' },
-                          { label: 'Sets', value: '184' },
-                          { label: 'Volume', value: '18.4k' },
+                          { labelKey: 'dashboard.statWorkouts', value: '16' },
+                          { labelKey: 'progress.sets', value: '184' },
+                          { labelKey: 'progress.volume', value: '18.4k' },
                         ].map(m => (
-                          <div key={m.label} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
-                            <p className="text-[9px] md:text-[10px] font-label-caps text-on-surface-variant uppercase">{m.label}</p>
+                          <div key={m.labelKey} className="border border-outline-variant rounded-lg p-3 bg-surface-container-lowest">
+                            <p className="text-[9px] md:text-[10px] font-label-caps text-on-surface-variant uppercase">{t(m.labelKey)}</p>
                             <p className="text-[16px] md:text-[20px] font-bold text-primary">{m.value}</p>
                           </div>
                         ))}
@@ -530,7 +585,7 @@ export default function LandingPage() {
                     <div className="p-4 md:p-6 flex flex-col gap-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[9px] md:text-[10px] font-label-caps text-on-surface-variant uppercase">Estimated 1RM</p>
+                          <p className="text-[9px] md:text-[10px] font-label-caps text-on-surface-variant uppercase">{t("goals.kindOneRm")}</p>
                           <p className="text-[20px] md:text-[26px] font-bold text-primary leading-tight">102.5 kg
                             <span className="ml-2 text-[10px] md:text-[12px] font-semibold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">+14%</span>
                           </p>
@@ -544,7 +599,7 @@ export default function LandingPage() {
                         ))}
                       </div>
                       <div className="flex justify-between text-[8px] md:text-[9px] font-label-caps text-outline">
-                        <span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span><span>W7</span><span className="text-secondary font-semibold">Now</span>
+                        <span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span><span>W7</span><span className="text-secondary font-semibold">{t("landing.chartNow")}</span>
                       </div>
                     </div>
                   </div>
@@ -559,17 +614,17 @@ export default function LandingPage() {
         <Reveal>
           <section className="w-full py-16 md:py-32 flex flex-col items-center text-center gap-6 md:gap-8 border-t border-outline-variant">
             <h2 className="font-metric-display text-metric-display md:text-[72px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-              Start understanding your training.
+              {t("landing.ctaTitle")}
             </h2>
             <p className="font-body-md text-body-md md:text-xl text-on-surface-variant max-w-2xl text-balance">
-              Track every session. Understand your progress. Train with more clarity.
+              {t("landing.ctaBody")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-4 md:mt-8 w-full sm:w-auto">
               <Link href="/register" className="bg-primary text-on-primary font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95 duration-200">
-                Start Tracking
+                {t("landing.startTracking")}
               </Link>
               <Link href="#how-it-works" className="bg-surface text-primary border border-outline font-metric-sm text-metric-sm px-8 py-4 rounded-lg hover:bg-surface-container-low transition-all active:scale-95 duration-200">
-                Explore Striv
+                {t("landing.explore")}
               </Link>
             </div>
           </section>
@@ -579,29 +634,29 @@ export default function LandingPage() {
         <Reveal>
           <section className="w-full pt-12 md:pt-24 pb-24 flex flex-col md:flex-row gap-12 md:gap-16 border-t border-outline-variant">
             <div className="md:w-1/2 flex flex-col gap-6">
-              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Get in Touch</h2>
+              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("landing.eyebrowContact")}</h2>
               <h3 className="font-metric-display text-metric-display md:text-[48px] md:leading-[1.1] font-bold text-primary tracking-tighter text-balance">
-                Have a question about Striv?
+                {t("landing.faqTitle")}
               </h3>
             </div>
             <div className="md:w-1/2">
               <form className="flex flex-col gap-6" onSubmit={handleContactSubmit}>
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="contact-name" className="font-label-caps text-label-caps text-on-surface-variant">Name</label>
+                  <label htmlFor="contact-name" className="font-label-caps text-label-caps text-on-surface-variant">{t("landing.formName")}</label>
                   <input id="contact-name" required className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors" type="text" />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="contact-email" className="font-label-caps text-label-caps text-on-surface-variant">Email</label>
+                  <label htmlFor="contact-email" className="font-label-caps text-label-caps text-on-surface-variant">{t("landing.formEmail")}</label>
                   <input id="contact-email" required className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors" type="email" />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="contact-msg" className="font-label-caps text-label-caps text-on-surface-variant">Message</label>
+                  <label htmlFor="contact-msg" className="font-label-caps text-label-caps text-on-surface-variant">{t("landing.formMessage")}</label>
                   <textarea id="contact-msg" required className="bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:outline-none focus:border-primary transition-colors min-h-[120px]" rows={4} />
                 </div>
 
                 {contactStatus === 'success' && (
                   <div className="bg-secondary/10 border border-secondary/30 text-secondary rounded-lg p-3 font-body-md text-sm" role="status">
-                    Message sent! We&apos;ll get back to you soon.
+                    {t("landing.contactSent")}
                   </div>
                 )}
                 {contactError && (
@@ -611,7 +666,7 @@ export default function LandingPage() {
                 )}
 
                 <button type="submit" disabled={contactStatus === 'loading'} className="bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 rounded-lg hover:bg-primary/90 transition-all shadow-sm self-start active:scale-95 duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {contactStatus === 'loading' ? 'Sending...' : 'Send Message'}
+                  {contactStatus === 'loading' ? t("action.sending") : t("landing.sendMessage")}
                 </button>
               </form>
             </div>
@@ -627,24 +682,24 @@ export default function LandingPage() {
               <StrivLogo size={28} />
               <span className="font-headline-lg-mobile font-black text-primary tracking-tighter">Striv</span>
             </div>
-            <p className="font-body-md text-on-surface-variant">Your training has a story.</p>
+            <p className="font-body-md text-on-surface-variant">{t("landing.heroTitle")}</p>
           </div>
           <div className="flex flex-wrap gap-12 md:gap-16 font-body-md text-on-surface-variant">
             <div className="flex flex-col gap-4">
-              <Link className="hover:text-primary transition-colors" href="/">Overview</Link>
-              <Link className="hover:text-primary transition-colors" href="/workout">Workout</Link>
-              <Link className="hover:text-primary transition-colors" href="/progress">Progress</Link>
-              <Link className="hover:text-primary transition-colors" href="/insights">Insights</Link>
+              <Link className="hover:text-primary transition-colors" href="/">{t("nav.overview")}</Link>
+              <Link className="hover:text-primary transition-colors" href="/workout">{t("nav.workout")}</Link>
+              <Link className="hover:text-primary transition-colors" href="/progress">{t("nav.progress")}</Link>
+              <Link className="hover:text-primary transition-colors" href="/insights">{t("nav.insights")}</Link>
             </div>
             <div className="flex flex-col gap-4">
-              <Link className="hover:text-primary transition-colors" href="/goals">Goals</Link>
-              <Link className="hover:text-primary transition-colors" href="/records">Records</Link>
-              <Link className="hover:text-primary transition-colors" href="/reviews/weekly">Reviews</Link>
+              <Link className="hover:text-primary transition-colors" href="/goals">{t("nav.goals")}</Link>
+              <Link className="hover:text-primary transition-colors" href="/records">{t("nav.records")}</Link>
+              <Link className="hover:text-primary transition-colors" href="/reviews/weekly">{t("nav.reviews")}</Link>
             </div>
           </div>
         </div>
         <div className="pt-8 mt-8 border-t border-outline-variant/50 text-on-surface-variant font-label-caps text-label-caps text-center px-margin-mobile">
-          © 2026 Striv. All rights reserved.
+          {t("landing.footerRights")}
         </div>
       </footer>
     </div>

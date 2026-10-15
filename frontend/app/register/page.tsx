@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiUrl } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n/provider";
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,7 +21,7 @@ export default function RegisterPage() {
     setError("");
 
     if (password !== passwordConfirmation) {
-      setError("Passwords do not match");
+      setError(t("auth.passwordsDontMatch"));
       return;
     }
 
@@ -34,7 +36,7 @@ export default function RegisterPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Registration failed");
+        throw new Error(data.message || t("auth.registerFailed"));
       }
 
       const data = await res.json();
@@ -56,10 +58,10 @@ export default function RegisterPage() {
             Striv
           </Link>
           <h1 className="mt-6 text-[24px] leading-[32px] font-semibold text-primary">
-            Create account
+            {t("auth.registerTitle")}
           </h1>
           <p className="mt-2 text-[16px] leading-[24px] text-on-surface-variant">
-            Start tracking your training.
+            {t("auth.registerHint")}
           </p>
         </div>
 
@@ -72,7 +74,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4 rounded-[4px] border border-outline-variant bg-surface-container-lowest p-6">
           <div>
             <label htmlFor="name" className="block text-[12px] font-medium text-on-surface-variant mb-1" style={{letterSpacing:'0.05em'}}>
-              Name
+              {t("auth.name")}
             </label>
             <input
               id="name"
@@ -80,7 +82,7 @@ export default function RegisterPage() {
               type="text"
               required
               autoComplete="name"
-              placeholder="Your name"
+              placeholder={t("auth.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-[2px] border border-outline-variant bg-surface px-3 py-2 text-[14px] text-primary placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -89,7 +91,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="email" className="block text-[12px] font-medium text-on-surface-variant mb-1" style={{letterSpacing:'0.05em'}}>
-              Email
+              {t("auth.email")}
             </label>
             <input
               id="email"
@@ -97,7 +99,7 @@ export default function RegisterPage() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-[2px] border border-outline-variant bg-surface px-3 py-2 text-[14px] text-primary placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -106,7 +108,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="password" className="block text-[12px] font-medium text-on-surface-variant mb-1" style={{letterSpacing:'0.05em'}}>
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -123,7 +125,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="password_confirmation" className="block text-[12px] font-medium text-on-surface-variant mb-1" style={{letterSpacing:'0.05em'}}>
-              Confirm password
+              {t("auth.confirmPassword")}
             </label>
             <input
               id="password_confirmation"
@@ -143,7 +145,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full rounded-[2px] bg-primary text-on-primary px-4 py-2 text-[14px] font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
-            {loading ? "Creating..." : "Create account"}
+            {loading ? t("action.sending") : t("auth.registerButton")}
           </button>
 
           <div className="relative my-2">
@@ -152,7 +154,7 @@ export default function RegisterPage() {
             </div>
             <div className="relative flex justify-center text-[12px] uppercase" style={{letterSpacing:'0.05em'}}>
               <span className="bg-surface-container-lowest px-2 text-on-surface-variant">
-                or continue with
+                {t("auth.orContinueWith")}
               </span>
             </div>
           </div>
@@ -167,14 +169,14 @@ export default function RegisterPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            Sign up with Google
+            {t("auth.signUpGoogle")}
           </a>
         </form>
 
         <p className="mt-6 text-center text-[16px] leading-[24px] text-on-surface-variant">
-          Already have an account?{" "}
+          {t('auth.haveAccount')}{" "}
           <Link href="/login" className="font-semibold text-primary hover:text-primary/80">
-            Sign in
+            {t("auth.signIn")}
           </Link>
         </p>
       </div>

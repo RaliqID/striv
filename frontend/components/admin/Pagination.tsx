@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "./Button";
+import { useTranslation } from "@/lib/i18n/provider";
 
 type Meta = { current_page: number; per_page: number; total: number; last_page: number };
 
@@ -20,15 +21,14 @@ export default function Pagination({
   onPage: (page: number) => void;
   busy?: boolean;
 }) {
+  const { t } = useTranslation();
   const from = meta.total === 0 ? 0 : (meta.current_page - 1) * meta.per_page + 1;
   const to = Math.min(meta.current_page * meta.per_page, meta.total);
 
   return (
     <div className="flex flex-col items-center justify-between gap-3 border-t border-outline-variant p-4 sm:flex-row">
       <p className="font-body-md text-body-md text-on-surface-variant">
-        Showing <strong className="text-on-surface">{from}</strong>–
-        <strong className="text-on-surface">{to}</strong> of{" "}
-        <strong className="text-on-surface">{meta.total}</strong>
+        {t("pagination.showing", { from, to, total: meta.total })}
       </p>
 
       <div className="flex items-center gap-2">
@@ -39,10 +39,10 @@ export default function Pagination({
           disabled={meta.current_page <= 1 || busy}
           onClick={() => onPage(meta.current_page - 1)}
         >
-          Previous
+          {t("pagination.previous")}
         </Button>
         <span className="px-2 font-metric-sm text-metric-sm text-on-surface-variant">
-          Page {meta.current_page} of {Math.max(meta.last_page, 1)}
+          {t("pagination.pageOf", { page: meta.current_page, total: Math.max(meta.last_page, 1) })}
         </span>
         <Button
           variant="secondary"
@@ -50,7 +50,7 @@ export default function Pagination({
           disabled={meta.current_page >= meta.last_page || busy}
           onClick={() => onPage(meta.current_page + 1)}
         >
-          Next
+          {t("pagination.next")}
           <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
             chevron_right
           </span>

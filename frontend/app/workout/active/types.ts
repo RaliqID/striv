@@ -39,6 +39,23 @@ export interface FinishResponse {
     notes: string | null;
   };
   summary: SessionSummary;
+  /**
+   * The reward payload, present once the server has computed it.
+   *
+   * Nullable because the AI sentence inside can fail while the rest still
+   * succeeds — the finish call must never fail because a reward could not be
+   * built.
+   */
+  reward: import("@/components/workout/WorkoutReward").Reward | null;
+  /**
+   * XP awarded for this session, plus the level state AFTER the awards.
+   *
+   * Optional because an older backend may omit it; the reward screen then
+   * simply does not show the XP block, rather than failing to finish.
+   */
+  xp?: import("@/lib/progression").SessionXp | null;
+  /** Badges that crossed their threshold on this session. */
+  achievements_unlocked?: import("@/lib/progression").UnlockedBadge[] | null;
 }
 
 /** Local UI model for a set row (editable strings + local completed flag). */

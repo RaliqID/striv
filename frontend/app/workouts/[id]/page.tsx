@@ -2,8 +2,10 @@
 
 import AppLayout from "@/components/AppLayout";
 import { apiClient, ApiError } from "@/lib/api";
+import { formatDuration, formatVolume } from "@/lib/format";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
 interface SessionSet {
   id: number;
@@ -36,32 +38,16 @@ interface SessionDetail {
   workout_exercises: SessionExercise[] | null;
 }
 
-function formatStartedAt(iso: string): string {
+function formatStartedAt(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function formatDuration(total: number | null): string {
-  if (total == null) return "—";
-  const hours = Math.floor(total / 60);
-  const minutes = total % 60;
-  if (hours <= 0) return `${minutes} min`;
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes}m`;
-}
-
-function formatVolume(vol: number): string {
-  if (vol >= 1000) {
-    return (vol / 1000).toFixed(1) + "k";
-  }
-  return Math.round(vol).toString();
 }
 
 function formatWeight(kg: number | null): string {
@@ -74,6 +60,7 @@ export default function SessionDetailPage({
 }: {
   params: { id: string };
 }) {
+  const { t, locale } = useTranslation();
   const [data, setData] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +93,7 @@ export default function SessionDetailPage({
           }
           setError(err.message);
         } else {
-          setError("Couldn't load workout.");
+          setError(t("common.loadFailed"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -115,7 +102,15 @@ export default function SessionDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [params.id, reloadKey]);
+    /*
+     * `t` belongs here because the catch block above calls it to build the
+     * fallback error message. `t` is a useCallback keyed on locale, so it keeps
+     * a stable identity until the language changes — at which point this effect
+     * must re-run to produce the message in the new language. Omitting it meant
+     * a member who switched language and then hit a failed load saw the error in
+     * the language that was active when the page first opened.
+     */
+  }, [params.id, reloadKey, t]);
 
   const handleRetry = () => setReloadKey((k) => k + 1);
 
@@ -125,13 +120,13 @@ export default function SessionDetailPage({
         <div className="max-w-3xl mx-auto flex flex-col items-center justify-center text-center gap-4 py-20">
           <span className="material-symbols-outlined text-outline text-4xl">error</span>
           <p className="font-headline-lg-mobile text-headline-lg-mobile text-primary">
-            Workout not found.
+            {t("history.notFound")}
           </p>
           <Link
             href="/history"
             className="bg-primary text-on-primary rounded px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors"
           >
-            Back to History
+            {t("history.backToHistory")}
           </Link>
         </div>
       </AppLayout>
@@ -161,7 +156,7 @@ export default function SessionDetailPage({
             onClick={handleRetry}
             className="bg-primary text-on-primary rounded px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors"
           >
-            Retry
+            {t("action.retry")}
           </button>
         </div>
       </AppLayout>
@@ -199,23 +194,23 @@ export default function SessionDetailPage({
           className="inline-flex items-center gap-2 font-metric-sm text-metric-sm text-on-surface-variant hover:text-primary transition-colors"
         >
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          Back
+          {t("action.back")}
         </Link>
 
         {/* Header card */}
         <div className="border border-outline-variant rounded-xl bg-surface-container-lowest p-6">
           <h1 className="font-headline-lg text-headline-lg text-primary">
-            {data.notes?.trim() ? data.notes.trim() : "Workout Session"}
+            {data.notes?.trim() ? data.notes.trim() : t("workout.session")}
           </h1>
           <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-3 font-body-md text-sm text-on-surface-variant">
             <span className="inline-flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[14px]">schedule</span>
-              {formatStartedAt(data.started_at)}
+              {formatStartedAt(data.started_at, locale)}
             </span>
             <span aria-hidden="true">•</span>
             {inProgress ? (
               <span className="bg-secondary/10 text-secondary rounded px-2 py-0.5 font-label-caps text-label-caps">
-                In progress
+                {t("workout.inProgress")}
               </span>
             ) : (
               <span>{formatDuration(data.duration_minutes)}</span>
@@ -225,7 +220,7 @@ export default function SessionDetailPage({
           <div className="grid grid-cols-3 gap-4 mt-6">
             <div>
               <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
-                Exercises
+                {t("nav.exercises")}
               </p>
               <p className="font-headline-lg text-headline-lg text-primary mt-1">
                 {exercises.length}
@@ -233,7 +228,7 @@ export default function SessionDetailPage({
             </div>
             <div>
               <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
-                Sets
+                {t("progress.sets")}
               </p>
               <p className="font-headline-lg text-headline-lg text-primary mt-1">
                 {totalSets}
@@ -241,7 +236,7 @@ export default function SessionDetailPage({
             </div>
             <div>
               <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
-                Volume
+                {t("progress.volume")}
               </p>
               <p className="font-headline-lg text-headline-lg text-primary mt-1">
                 {formatVolume(totalVolume)}
@@ -254,7 +249,7 @@ export default function SessionDetailPage({
         {exercises.length === 0 ? (
           <div className="border-2 border-dashed border-outline-variant rounded-xl p-12 text-center">
             <p className="font-body-md text-body-md text-on-surface-variant">
-              No exercises were logged in this session.
+              {t("history.noExercises")}
             </p>
           </div>
         ) : (
@@ -268,16 +263,16 @@ export default function SessionDetailPage({
                 >
                   <header className="bg-surface px-6 py-4 border-b border-outline-variant flex justify-between items-center">
                     <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-primary">
-                      {we.exercise?.name ?? "Exercise"}
+                      {we.exercise?.name ?? t("nav.exercises")}
                     </h2>
                     <p className="font-body-md text-body-md text-sm text-on-surface-variant">
-                      {sets.length} {sets.length === 1 ? "set" : "sets"}
+                      {t(sets.length === 1 ? "workout.setCountOne" : "workout.setCountOther", { count: sets.length })}
                     </p>
                   </header>
 
                   {sets.length === 0 ? (
                     <p className="font-body-md text-body-md text-sm text-on-surface-variant py-4 px-6">
-                      No sets logged.
+                      {t("history.noSets")}
                     </p>
                   ) : (
                     <>
@@ -289,7 +284,7 @@ export default function SessionDetailPage({
                           KG
                         </div>
                         <div className="col-span-5 text-center font-label-caps text-label-caps text-on-surface-variant">
-                          REPS
+                          {t("client.repsUpper")}
                         </div>
                       </div>
                       <div className="flex flex-col">

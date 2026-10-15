@@ -5,14 +5,15 @@ import { apiClient, ApiError } from "@/lib/api";
 import type { Exercise, Paginated } from "@/types/exercise";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
-const MUSCLE_FILTERS: { label: string; value: string }[] = [
-  { label: "ALL MUSCLES", value: "" },
-  { label: "CHEST", value: "chest" },
-  { label: "BACK", value: "back" },
-  { label: "LEGS", value: "legs" },
-  { label: "SHOULDERS", value: "shoulders" },
-  { label: "CORE", value: "core" },
+const MUSCLE_FILTERS: { labelKey: string; value: string }[] = [
+  { labelKey: "muscle.all", value: "" },
+  { labelKey: "muscle.chest", value: "chest" },
+  { labelKey: "muscle.back", value: "back" },
+  { labelKey: "muscle.legs", value: "legs" },
+  { labelKey: "muscle.shoulders", value: "shoulders" },
+  { labelKey: "muscle.core", value: "core" },
 ];
 
 const SPARKLINE_HEIGHTS = [8, 12, 16, 20, 24, 32];
@@ -25,6 +26,7 @@ function tagText(exercise: Exercise): string {
 }
 
 export default function ExercisesPage() {
+  const { t } = useTranslation();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -71,7 +73,7 @@ export default function ExercisesPage() {
       } catch (err) {
         if (id !== requestId.current) return;
         setError(
-          err instanceof ApiError ? err.message : "Something went wrong."
+          err instanceof ApiError ? err.message : t("common.loadFailed")
         );
       } finally {
         if (id === requestId.current) {
@@ -80,7 +82,7 @@ export default function ExercisesPage() {
         }
       }
     },
-    [search, muscle]
+    [search, muscle, t]
   );
 
   // Refetch on filter/search change
@@ -110,7 +112,7 @@ export default function ExercisesPage() {
         {/* Header row */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">
-            Exercise Library
+            {t("exercises.title")}
           </h1>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 md:flex-none min-w-[220px]">
@@ -121,21 +123,21 @@ export default function ExercisesPage() {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search exercises..."
-                aria-label="Search exercises"
+                placeholder={t("exercises.searchPlaceholder")}
+                aria-label={t("exercises.searchPlaceholder")}
                 className="w-full md:w-64 rounded-xl bg-surface-variant border border-outline-variant pl-10 pr-4 py-2 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant outline-none focus:outline-none focus:ring-1 focus:ring-outline transition"
               />
             </div>
             <button
               type="button"
-              aria-label="Filter list"
+              aria-label={t("exercises.filterAria")}
               className="rounded-xl bg-surface-variant border border-outline-variant p-2 text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <span className="material-symbols-outlined">filter_list</span>
             </button>
             <button
               type="button"
-              aria-label="More options"
+              aria-label={t("exercises.moreOptionsAria")}
               className="rounded-xl bg-surface-variant border border-outline-variant p-2 text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <span className="material-symbols-outlined">more_horiz</span>
@@ -144,18 +146,18 @@ export default function ExercisesPage() {
               href="/workout/active"
               className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-4 py-2 hover:bg-primary-hover transition-colors whitespace-nowrap"
             >
-              Start Workout
+              {t("workout.startWorkout")}
             </Link>
           </div>
         </header>
 
         {/* Filter pills */}
-        <div className="flex flex-wrap gap-3" role="group" aria-label="Filter by muscle">
+        <div className="flex flex-wrap gap-3" role="group" aria-label={t("exercises.filterMuscleAria")}>
           {MUSCLE_FILTERS.map((filter) => {
             const active = muscle === filter.value;
             return (
               <button
-                key={filter.label}
+                key={filter.value || "all"}
                 type="button"
                 aria-pressed={active}
                 onClick={() => selectMuscle(filter.value)}
@@ -165,7 +167,7 @@ export default function ExercisesPage() {
                     : "rounded-xl bg-surface-container text-on-surface border border-outline-variant px-5 py-3 font-label-caps text-label-caps uppercase hover:bg-surface-container-high transition-colors"
                 }
               >
-                {filter.label}
+                {t(filter.labelKey)}
               </button>
             );
           })}
@@ -187,14 +189,14 @@ export default function ExercisesPage() {
               cloud_off
             </span>
             <p className="font-body-md text-body-md text-on-surface">
-              Couldn&apos;t load exercises.
+              {t("common.loadFailed")}
             </p>
             <button
               type="button"
               onClick={handleRetry}
               className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 hover:bg-primary-hover transition-colors"
             >
-              Retry
+              {t("action.retry")}
             </button>
           </div>
         ) : exercises.length === 0 ? (
@@ -203,10 +205,10 @@ export default function ExercisesPage() {
               search_off
             </span>
             <p className="font-body-md text-body-md text-on-surface">
-              No exercises found.
+              {t("exercises.empty")}
             </p>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Try a different search or filter.
+              {t("exercises.tryDifferent")}
             </p>
           </div>
         ) : (
@@ -237,7 +239,7 @@ export default function ExercisesPage() {
                       className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors"
                       role="button"
                       tabIndex={0}
-                      aria-label={`More options for ${exercise.name}`}
+                      aria-label={t("exercises.moreOptionsForAria", { name: exercise.name })}
                       onClick={(e) => e.preventDefault()}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -253,7 +255,7 @@ export default function ExercisesPage() {
                   <div className="border-t border-outline-variant pt-4 flex items-end justify-between">
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-label-caps">
-                        Est. 1RM
+                        {t("exercises.est1rm")}
                       </p>
                       <p className="font-metric-sm text-metric-sm text-on-surface mt-1">
                         —
@@ -289,7 +291,7 @@ export default function ExercisesPage() {
                   disabled={loadingMore}
                   className="border border-outline rounded p-3 px-6 font-metric-sm text-metric-sm text-primary hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loadingMore ? "Loading..." : "Load More Exercises"}
+                  {loadingMore ? t("action.loading") : t("exercises.loadMore")}
                 </button>
               </div>
             )}

@@ -1,11 +1,13 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
+import ReminderSettings from "@/components/ReminderSettings";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { apiClient, apiUrl } from "@/lib/api";
-import type { Unit } from "@/lib/units";
+import { getUserUnit, publishUnit, type Unit } from "@/lib/units";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/provider";
 
 type Profile = {
   age: number | null;
@@ -26,6 +28,7 @@ type User = {
 };
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +44,7 @@ export default function SettingsPage() {
   });
   const [bioSaving, setBioSaving] = useState(false);
   const [bioMsg, setBioMsg] = useState("");
+  const [bioError, setBioError] = useState(false);
 
   // Training form state
   const [trainingForm, setTrainingForm] = useState({
@@ -50,6 +54,7 @@ export default function SettingsPage() {
   });
   const [trainingSaving, setTrainingSaving] = useState(false);
   const [trainingMsg, setTrainingMsg] = useState("");
+  const [trainingError, setTrainingError] = useState(false);
   const [unit, setUnit] = useState<Unit>("kg");
   const [unitSaving, setUnitSaving] = useState(false);
   const [unitMsg, setUnitMsg] = useState("");
@@ -76,11 +81,20 @@ export default function SettingsPage() {
         primary_goal: p?.primary_goal ?? "",
         training_frequency: p?.training_frequency != null ? String(p.training_frequency) : "",
       });
-      setUnit(p?.preferences?.unit || "kg");
+      /*
+       * The toggle shows what the app is ACTUALLY rendering in.
+       *
+       * `getUserUnit()` is the display source of truth, so when the server has
+       * no preference yet (a fresh account) the toggle follows the cached user
+       * rather than assuming kg — otherwise the switch could sit on "kg" while
+       * every other page rendered pounds, and flipping it would look like a
+       * no-op because `changeUnit` short-circuits on `next === unit`.
+       */
+      setUnit(p?.preferences?.unit ?? getUserUnit());
       setError("");
     } catch (e: any) {
       if (e.status === 401) router.push("/login");
-      setError(e.message || "Could not load profile");
+      setError(e.message || t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -96,6 +110,15 @@ export default function SettingsPage() {
    *
    * Stored under profile.preferences so it travels with the account rather
    * than living only in the browser.
+   *
+   * `publishUnit` does the client half — it patches the cached user and fires
+   * the change event — so every open page re-renders its weights immediately.
+   * It runs BEFORE the request rather than after, because the switch is a
+   * display preference: the member should see the app change under them the
+   * moment they flip it, not a round trip later. The server write is what makes
+   * the choice survive on another device; if it fails the toggle rolls back and
+   * republishes the previous unit, so the UI never claims a preference that was
+   * not saved.
    */
   const changeUnit = async (next: Unit) => {
     if (next === unit || unitSaving) return;
@@ -104,28 +127,16 @@ export default function SettingsPage() {
     setUnit(next); // optimistic — the toggle should feel instant
     setUnitSaving(true);
     setUnitMsg("");
+    publishUnit(next);
     try {
       await apiClient.put("/profile", {
         preferences: { ...(user?.profile?.preferences ?? {}), unit: next },
       });
-      // Keep the cached user in sync so other pages read the new unit.
-      const stored = localStorage.getItem("user");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          parsed.profile = {
-            ...(parsed.profile ?? {}),
-            preferences: { ...(parsed.profile?.preferences ?? {}), unit: next },
-          };
-          localStorage.setItem("user", JSON.stringify(parsed));
-        } catch {
-          /* ignore malformed cache */
-        }
-      }
-      setUnitMsg(`Weights now display in ${next}.`);
+      setUnitMsg(t("settings.unitChanged", { unit: next }));
     } catch (caught) {
       setUnit(previous); // roll back on failure
-      setUnitMsg(caught instanceof Error ? caught.message : "Could not save the unit.");
+      publishUnit(previous);
+      setUnitMsg(caught instanceof Error ? caught.message : t("common.actionFailed"));
     } finally {
       setUnitSaving(false);
     }
@@ -140,7 +151,7 @@ export default function SettingsPage() {
       const res = await fetch(apiUrl("/profile/export"), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error("Export failed.");
+      if (!res.ok) throw new Error(t("settings.exportFailed"));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -151,7 +162,7 @@ export default function SettingsPage() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not export your data.");
+      setError(caught instanceof Error ? caught.message : t("settings.exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -159,7 +170,7 @@ export default function SettingsPage() {
 
   const deleteAccount = async () => {
     if (!deletePassword) {
-      setError("Enter your password to confirm account deletion.");
+      setError(t("settings.enterPassword"));
       return;
     }
     setDeleteBusy(true);
@@ -180,7 +191,7 @@ export default function SettingsPage() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(
-          payload?.errors?.password?.[0] ?? payload?.message ?? "Could not delete your account."
+          payload?.errors?.password?.[0] ?? payload?.message ?? t("settings.deleteFailed")
         );
       }
 
@@ -188,7 +199,7 @@ export default function SettingsPage() {
       localStorage.removeItem("user");
       window.location.href = "/";
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not delete your account.");
+      setError(caught instanceof Error ? caught.message : t("settings.deleteFailed"));
       setDeleteBusy(false);
       setDeleteOpen(false);
     }
@@ -198,6 +209,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setBioSaving(true);
     setBioMsg("");
+    setBioError(false);
     try {
       const payload = {
         age: bioForm.age === "" ? null : parseInt(bioForm.age, 10),
@@ -225,10 +237,11 @@ export default function SettingsPage() {
             }
           : prev
       );
-      setBioMsg("Saved.");
+      setBioMsg(t("toast.saved"));
       setTimeout(() => setBioMsg(""), 3000);
     } catch (e: any) {
-      setBioMsg("Error: " + (e.message || "Save failed"));
+      setBioMsg(e.message ? t("settings.saveError", { message: e.message }) : t("settings.saveFailed"));
+      setBioError(true);
     } finally {
       setBioSaving(false);
     }
@@ -238,6 +251,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setTrainingSaving(true);
     setTrainingMsg("");
+    setTrainingError(false);
     try {
       const payload = {
         experience_level: trainingForm.experience_level === "" ? null : trainingForm.experience_level,
@@ -263,10 +277,11 @@ export default function SettingsPage() {
             }
           : prev
       );
-      setTrainingMsg("Saved.");
+      setTrainingMsg(t("toast.saved"));
       setTimeout(() => setTrainingMsg(""), 3000);
     } catch (e: any) {
-      setTrainingMsg("Error: " + (e.message || "Save failed"));
+      setTrainingMsg(e.message ? t("settings.saveError", { message: e.message }) : t("settings.saveFailed"));
+      setTrainingError(true);
     } finally {
       setTrainingSaving(false);
     }
@@ -281,7 +296,7 @@ export default function SettingsPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <h1 className="font-headline-lg text-headline-lg text-primary">Settings</h1>
+        <h1 className="font-headline-lg text-headline-lg text-primary">{t("settings.title")}</h1>
 
         {loading ? (
           <div className="space-y-4">
@@ -292,28 +307,31 @@ export default function SettingsPage() {
         ) : error ? (
           <div className="p-6 bg-error-container rounded-xl text-on-error-container text-center">
             <p>{error}</p>
-            <button onClick={fetchProfile} className="mt-2 text-primary font-semibold">Retry</button>
+            <button onClick={fetchProfile} className="mt-2 text-primary font-semibold">{t("action.retry")}</button>
           </div>
         ) : (
           <div className="space-y-6 max-w-2xl">
             {/* Account */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
-              <h2 className="font-metric-sm text-metric-sm text-primary mb-4">Account</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary mb-4">{t("settings.account")}</h2>
               <div className="space-y-1">
-                <p className="font-body-md text-on-surface"><span className="font-medium">Name:</span> {user?.name || "—"}</p>
-                <p className="font-body-md text-on-surface"><span className="font-medium">Email:</span> {user?.email || "—"}</p>
+                <p className="font-body-md text-on-surface"><span className="font-medium">{t("settings.nameLabel")}</span> {user?.name || "—"}</p>
+                <p className="font-body-md text-on-surface"><span className="font-medium">{t("settings.emailLabel")}</span> {user?.email || "—"}</p>
               </div>
               <button onClick={signOut} className="mt-4 text-error border border-error/30 rounded-lg px-4 py-2 hover:bg-error/5">
-                Sign Out
+                {t("profile.signOut")}
               </button>
             </div>
 
+            {/* Consistency reminders */}
+            <ReminderSettings />
+
             {/* Biodata */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
-              <h2 className="font-metric-sm text-metric-sm text-primary mb-4">Biodata</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary mb-4">{t("profile.biodata")}</h2>
               <form onSubmit={saveBiodata} className="space-y-4">
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Age</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("profile.age")}</label>
                   <input
                     type="number"
                     min={13}
@@ -321,22 +339,22 @@ export default function SettingsPage() {
                     value={bioForm.age}
                     onChange={(e) => setBioForm({ ...bioForm, age: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
-                    placeholder="e.g. 24"
+                    placeholder={t("settings.agePlaceholder")}
                   />
                 </div>
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Location</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("profile.location")}</label>
                   <input
                     type="text"
                     maxLength={255}
                     value={bioForm.location}
                     onChange={(e) => setBioForm({ ...bioForm, location: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
-                    placeholder="e.g. Jakarta, ID"
+                    placeholder={t("settings.locationPlaceholder")}
                   />
                 </div>
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Weight (kg)</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("onboarding.weight")}</label>
                   <input
                     type="number"
                     step={0.1}
@@ -345,11 +363,11 @@ export default function SettingsPage() {
                     value={bioForm.weight_kg}
                     onChange={(e) => setBioForm({ ...bioForm, weight_kg: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
-                    placeholder="e.g. 70.5"
+                    placeholder={t("settings.weightPlaceholder")}
                   />
                 </div>
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Height (cm)</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("onboarding.height")}</label>
                   <input
                     type="number"
                     step={0.1}
@@ -358,11 +376,11 @@ export default function SettingsPage() {
                     value={bioForm.height_cm}
                     onChange={(e) => setBioForm({ ...bioForm, height_cm: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
-                    placeholder="e.g. 175"
+                    placeholder={t("settings.heightPlaceholder")}
                   />
                 </div>
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Target Weight (kg)</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("onboarding.targetWeightLabel")}</label>
                   <input
                     type="number"
                     step={0.1}
@@ -371,15 +389,15 @@ export default function SettingsPage() {
                     value={bioForm.target_weight_kg}
                     onChange={(e) => setBioForm({ ...bioForm, target_weight_kg: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
-                    placeholder="e.g. 72"
+                    placeholder={t("settings.targetWeightPlaceholder")}
                   />
                 </div>
                 <div className="flex items-center gap-4">
                   <button type="submit" disabled={bioSaving} className="bg-primary text-on-primary px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
-                    {bioSaving ? "Saving..." : "Save"}
+                    {bioSaving ? t("action.saving") : t("action.save")}
                   </button>
                   {bioMsg && (
-                    <span className={`text-sm ${bioMsg.startsWith("Error") ? "text-error" : "text-secondary"}`}>
+                    <span className={`text-sm ${bioError ? "text-error" : "text-secondary"}`}>
                       {bioMsg}
                     </span>
                   )}
@@ -389,42 +407,42 @@ export default function SettingsPage() {
 
             {/* Training Profile */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
-              <h2 className="font-metric-sm text-metric-sm text-primary mb-4">Training Profile</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary mb-4">{t("profile.trainingProfile")}</h2>
               <form onSubmit={saveTraining} className="space-y-4">
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Experience</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("profile.experience")}</label>
                   <select
                     value={trainingForm.experience_level}
                     onChange={(e) => setTrainingForm({ ...trainingForm, experience_level: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
                   >
-                    <option value="">Select</option>
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
+                    <option value="">{t("settings.select")}</option>
+                    <option value="beginner">{t("onboarding.expBeginner")}</option>
+                    <option value="intermediate">{t("onboarding.expIntermediate")}</option>
+                    <option value="advanced">{t("onboarding.expAdvanced")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Primary Goal</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("profile.primaryGoal")}</label>
                   <select
                     value={trainingForm.primary_goal}
                     onChange={(e) => setTrainingForm({ ...trainingForm, primary_goal: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
                   >
-                    <option value="">Select</option>
-                    <option value="muscle">Build Muscle</option>
-                    <option value="strength">Get Stronger</option>
-                    <option value="endurance">Conditioning</option>
+                    <option value="">{t("settings.select")}</option>
+                    <option value="muscle">{t("onboarding.goalMuscle")}</option>
+                    <option value="strength">{t("onboarding.goalStrength")}</option>
+                    <option value="endurance">{t("onboarding.goalEndurance")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Training Frequency (days/week)</label>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("profile.frequencyLabel")}</label>
                   <select
                     value={trainingForm.training_frequency}
                     onChange={(e) => setTrainingForm({ ...trainingForm, training_frequency: e.target.value })}
                     className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary"
                   >
-                    <option value="">Select</option>
+                    <option value="">{t("settings.select")}</option>
                     {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                       <option key={n} value={n}>
                         {n}
@@ -434,10 +452,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <button type="submit" disabled={trainingSaving} className="bg-primary text-on-primary px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
-                    {trainingSaving ? "Saving..." : "Save"}
+                    {trainingSaving ? t("action.saving") : t("action.save")}
                   </button>
                   {trainingMsg && (
-                    <span className={`text-sm ${trainingMsg.startsWith("Error") ? "text-error" : "text-secondary"}`}>
+                    <span className={`text-sm ${trainingError ? "text-error" : "text-secondary"}`}>
                       {trainingMsg}
                     </span>
                   )}
@@ -447,10 +465,9 @@ export default function SettingsPage() {
 
             {/* Units */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
-              <h2 className="font-metric-sm text-metric-sm text-primary mb-2">Units</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary mb-2">{t("settings.units")}</h2>
               <p className="font-body-md text-body-md text-on-surface-variant mb-4">
-                Choose how weights are displayed throughout the app. Your data is always stored in
-                kilograms.
+                {t("settings.unitsBody1")}
               </p>
               <div className="flex items-center gap-4">
                 <span className={`font-body-md ${unit === "kg" ? "text-primary font-semibold" : "text-on-surface-variant"}`}>
@@ -460,7 +477,7 @@ export default function SettingsPage() {
                   type="button"
                   role="switch"
                   aria-checked={unit === "lbs"}
-                  aria-label="Display weights in pounds"
+                  aria-label={t("settings.displayWeightsPounds")}
                   disabled={unitSaving}
                   onClick={() => changeUnit(unit === "kg" ? "lbs" : "kg")}
                   className={`relative h-6 w-12 rounded-full transition-colors disabled:opacity-60 ${
@@ -486,9 +503,9 @@ export default function SettingsPage() {
 
             {/* Data */}
             <div className="border border-outline-variant rounded-xl p-6 bg-surface-container-lowest">
-              <h2 className="font-metric-sm text-metric-sm text-primary mb-2">Data</h2>
+              <h2 className="font-metric-sm text-metric-sm text-primary mb-2">{t("settings.dataTitle")}</h2>
               <p className="font-body-md text-body-md text-on-surface-variant mb-4">
-                Download everything you have logged, or permanently remove your account.
+                {t("settings.dataBody")}
               </p>
               <div className="flex gap-4 flex-wrap">
                 <button
@@ -497,14 +514,14 @@ export default function SettingsPage() {
                   disabled={exporting}
                   className="border border-outline-variant rounded-lg px-4 py-2 hover:bg-surface-container-low transition-colors disabled:opacity-50"
                 >
-                  {exporting ? "Preparing…" : "Export my data"}
+                  {exporting ? t("settings.exportPreparing") : t("settings.exportData")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteOpen(true)}
                   className="border border-error/30 text-error rounded-lg px-4 py-2 hover:bg-error/5 transition-colors"
                 >
-                  Delete account
+                  {t("settings.deleteAccount")}
                 </button>
               </div>
             </div>
@@ -514,14 +531,9 @@ export default function SettingsPage() {
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Delete your account?"
-        description={
-          <>
-            This permanently deletes your profile, every workout, goal and conversation. It cannot be
-            undone.
-          </>
-        }
-        confirmLabel="Delete permanently"
+        title={t("settings.deleteTitle")}
+        description={t("settings.deleteBody")}
+        confirmLabel={t("settings.deletePermanently")}
         busy={deleteBusy}
         onConfirm={deleteAccount}
         onCancel={() => {
@@ -531,7 +543,7 @@ export default function SettingsPage() {
         extra={
           <label className="mt-4 block">
             <span className="font-label-caps text-label-caps text-on-surface-variant">
-              Confirm your password
+              {t("settings.confirmPassword")}
             </span>
             <input
               type="password"

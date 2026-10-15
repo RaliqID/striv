@@ -6,9 +6,10 @@ import type { WorkoutSession } from "@/types/history";
 import type { Paginated } from "@/types/exercise";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
-const ENABLED_FILTERS = ["ALL WORKOUTS"];
-const DISABLED_FILTERS = ["STRENGTH", "HYPERTROPHY"];
+const ENABLED_FILTER_KEYS = ["history.filterAll"];
+const DISABLED_FILTER_KEYS = ["history.filterStrength", "history.filterHypertrophy"];
 
 function formatDuration(total: number | null): string {
   if (total == null) return "—";
@@ -19,10 +20,10 @@ function formatDuration(total: number | null): string {
   return `${hours}h ${minutes}m`;
 }
 
-function formatStartedAt(iso: string): string {
+function formatStartedAt(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -36,11 +37,11 @@ function monthKey(iso: string): string {
   return `${date.getFullYear()}-${date.getMonth()}`;
 }
 
-function monthLabel(iso: string): string {
+function monthLabel(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   return date
-    .toLocaleString(undefined, { month: "long", year: "numeric" })
+    .toLocaleString(locale, { month: "long", year: "numeric" })
     .toUpperCase();
 }
 
@@ -50,7 +51,7 @@ interface SessionGroup {
   sessions: WorkoutSession[];
 }
 
-function groupByMonth(sessions: WorkoutSession[]): SessionGroup[] {
+function groupByMonth(sessions: WorkoutSession[], locale: string): SessionGroup[] {
   const groups: SessionGroup[] = [];
   for (const session of sessions) {
     const key = monthKey(session.started_at);
@@ -58,16 +59,17 @@ function groupByMonth(sessions: WorkoutSession[]): SessionGroup[] {
     if (last && last.key === key) {
       last.sessions.push(session);
     } else {
-      groups.push({ key, label: monthLabel(session.started_at), sessions: [session] });
+      groups.push({ key, label: monthLabel(session.started_at, locale), sessions: [session] });
     }
   }
   return groups;
 }
 
 export default function HistoryPage() {
+  const { t, locale } = useTranslation();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [searchInput, setSearchInput] = useState("");
-  const [activeFilter, setActiveFilter] = useState("ALL WORKOUTS");
+  const [activeFilter, setActiveFilter] = useState("history.filterAll");
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function HistoryPage() {
     ? sessions.filter(
         (s) =>
           (s.notes ?? "").toLowerCase().includes(search) ||
-          formatStartedAt(s.started_at).toLowerCase().includes(search)
+          formatStartedAt(s.started_at, locale).toLowerCase().includes(search)
       )
     : sessions;
 
@@ -111,14 +113,14 @@ export default function HistoryPage() {
         window.location.href = "/login";
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setError(err instanceof ApiError ? err.message : t("common.loadFailed"));
     } finally {
       if (id === requestId.current) {
         setLoading(false);
         setLoadingMore(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchPage(1, false);
@@ -143,7 +145,7 @@ export default function HistoryPage() {
         {/* Header row */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">
-            Training History
+            {t("history.trainingHistory")}
           </h1>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
@@ -154,15 +156,15 @@ export default function HistoryPage() {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search workouts..."
-                aria-label="Search workouts"
+                placeholder={t("history.searchPlaceholder")}
+                aria-label={t("history.searchPlaceholder")}
                 className="w-full md:w-64 rounded-xl bg-surface-container-low border border-outline-variant pl-10 pr-4 py-2 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant outline-none focus:outline-none focus:ring-1 focus:ring-outline transition"
               />
             </div>
             <button
               type="button"
-              aria-label="Filter list"
-              title="Filter list"
+              aria-label={t("history.filterList")}
+              title={t("history.filterList")}
               className="rounded-xl bg-surface-container-low border border-outline-variant p-2 text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <span className="material-symbols-outlined">filter_list</span>
@@ -171,45 +173,45 @@ export default function HistoryPage() {
         </header>
 
         {/* Filter row */}
-        <div className="flex flex-wrap items-center gap-3" role="group" aria-label="Filter workouts">
-          {ENABLED_FILTERS.map((label) => {
-            const active = activeFilter === label;
+        <div className="flex flex-wrap items-center gap-3" role="group" aria-label={t("history.filterLabel")}>
+          {ENABLED_FILTER_KEYS.map((key) => {
+            const active = activeFilter === key;
             return (
               <button
-                key={label}
+                key={key}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setActiveFilter(label)}
+                onClick={() => setActiveFilter(key)}
                 className={
                   active
                     ? "rounded-xl bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps uppercase transition-colors"
                     : "rounded-xl bg-surface text-on-surface border border-outline-variant px-4 py-2 font-label-caps text-label-caps uppercase hover:bg-surface-container transition-colors"
                 }
               >
-                {label}
+                {t(key)}
               </button>
             );
           })}
-          {DISABLED_FILTERS.map((label) => (
+          {DISABLED_FILTER_KEYS.map((key) => (
             <button
-              key={label}
+              key={key}
               type="button"
               disabled
-              title="Coming soon"
+              title={t("history.comingSoon")}
               aria-disabled="true"
               className="rounded-xl bg-surface text-on-surface border border-outline-variant px-4 py-2 font-label-caps text-label-caps uppercase opacity-50 cursor-not-allowed"
             >
-              {label}
+              {t(key)}
             </button>
           ))}
           <button
             type="button"
             disabled
-            title="Coming soon"
+            title={t("history.comingSoon")}
             aria-disabled="true"
             className="ml-auto flex items-center gap-1 bg-surface border border-outline-variant rounded px-4 py-2 font-body-md text-body-md text-primary opacity-60 cursor-not-allowed"
           >
-            Last 30 Days
+            {t("history.last30")}
             <span className="material-symbols-outlined text-[20px]">expand_more</span>
           </button>
         </div>
@@ -224,35 +226,35 @@ export default function HistoryPage() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
             <span className="material-symbols-outlined text-outline text-[32px]">cloud_off</span>
-            <p className="font-body-md text-body-md text-on-surface">Couldn&apos;t load history.</p>
+            <p className="font-body-md text-body-md text-on-surface">{t("history.couldntLoad")}</p>
             <button
               type="button"
               onClick={handleRetry}
               className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 hover:bg-primary-hover transition-colors"
             >
-              Retry
+              {t("action.retry")}
             </button>
           </div>
         ) : visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2 text-center">
             <span className="material-symbols-outlined text-outline text-[48px]">history</span>
             <p className="font-headline-lg-mobile text-headline-lg-mobile text-primary mt-2">
-              No training history yet.
+              {t("history.emptyTitle")}
             </p>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Your first workout starts building your training story.
+              {t("history.emptyBody")}
             </p>
             <Link
               href="/workout/active"
               className="mt-4 rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 hover:bg-primary-hover transition-colors"
             >
-              Start Workout
+              {t("workout.startWorkout")}
             </Link>
           </div>
         ) : (
           <>
             <div className="flex flex-col gap-6">
-              {groupByMonth(visible).map((group) => (
+              {groupByMonth(visible, locale).map((group) => (
                 <section key={group.key} className="flex flex-col gap-4">
                   <h2 className="font-label-caps text-label-caps uppercase text-on-surface-variant">
                     {group.label}
@@ -273,17 +275,17 @@ export default function HistoryPage() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="font-metric-sm text-body-md font-semibold text-primary truncate">
-                              {session.notes?.trim() ? session.notes.trim() : "Workout Session"}
+                              {session.notes?.trim() ? session.notes.trim() : t("workout.session")}
                             </h3>
                             <p className="flex items-center flex-wrap gap-1.5 font-label-caps text-label-caps text-on-surface-variant mt-1">
                               <span className="material-symbols-outlined text-[14px]">schedule</span>
                               <span>
                                 {session.finished_at == null
-                                  ? "In progress"
+                                  ? t("history.inProgress")
                                   : formatDuration(session.duration_minutes)}
                               </span>
                               <span aria-hidden="true">•</span>
-                              <span>{formatStartedAt(session.started_at)}</span>
+                              <span>{formatStartedAt(session.started_at, locale)}</span>
                             </p>
                           </div>
                         </div>
@@ -292,7 +294,7 @@ export default function HistoryPage() {
                         <div className="flex items-center gap-6">
                           <div className="text-right">
                             <p className="font-label-caps text-[10px] uppercase tracking-wider text-on-surface-variant">
-                              Exercises
+                              {t("nav.exercises")}
                             </p>
                             <p className="font-metric-sm text-metric-sm text-primary">
                               {session.workout_exercises_count ?? 0}
@@ -300,7 +302,7 @@ export default function HistoryPage() {
                           </div>
                           <div className="text-right">
                             <p className="font-label-caps text-[10px] uppercase tracking-wider text-on-surface-variant">
-                              Duration
+                              {t("history.duration")}
                             </p>
                             <p className="font-metric-sm text-metric-sm text-primary">
                               {session.finished_at == null
@@ -330,7 +332,7 @@ export default function HistoryPage() {
                   disabled={loadingMore}
                   className="border border-outline rounded px-6 py-3 font-metric-sm text-metric-sm text-primary hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loadingMore ? "Loading..." : "Load More"}
+                  {loadingMore ? t("history.loadingMore") : t("history.loadMore")}
                 </button>
               </div>
             )}

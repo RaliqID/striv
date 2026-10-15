@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Button from "./Button";
+import { useTranslation } from "@/lib/i18n/provider";
 
 /**
  * Modal confirmation for destructive actions.
@@ -15,7 +16,7 @@ export default function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   tone = "danger",
   requireText,
   extra,
@@ -35,6 +36,7 @@ export default function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [typed, setTyped] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,7 @@ export default function ConfirmDialog({
         {requireText && (
           <label className="mt-4 block">
             <span className="font-label-caps text-label-caps text-on-surface-variant">
-              Type <strong className="text-on-surface">{requireText}</strong> to confirm
+              {t("confirm.typeToConfirm", { text: requireText })}
             </span>
             <input
               ref={inputRef}
@@ -99,7 +101,7 @@ export default function ConfirmDialog({
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t("action.cancel")}
           </Button>
           <Button
             variant={tone === "danger" ? "danger" : "primary"}
@@ -107,7 +109,7 @@ export default function ConfirmDialog({
             disabled={!unlocked}
             busy={busy}
           >
-            {confirmLabel}
+            {confirmLabel ?? t("action.confirm")}
           </Button>
         </div>
       </div>

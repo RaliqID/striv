@@ -6,6 +6,7 @@ import type { Paginated } from "@/types/exercise";
 import type { Routine } from "@/types/routine";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/provider";
 
 type Exercise = { id: number; name: string; slug: string; category: string | null; equipment: string | null };
 
@@ -26,6 +27,7 @@ const emptyDraft = (): ExerciseDraft => ({
 });
 
 export default function RoutinesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function RoutinesPage() {
       setError("");
     } catch (e: any) {
       if (e.status === 401) router.push("/login");
-      setError(e.message || "Could not load routines");
+      setError(e.message || t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -179,9 +181,9 @@ export default function RoutinesPage() {
   const saveRoutine = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    if (!name.trim()) { setFormError("Name is required"); return; }
+    if (!name.trim()) { setFormError(t("routines.errName")); return; }
     if (estDuration !== "" && (isNaN(parseInt(estDuration, 10)) || parseInt(estDuration, 10) <= 0)) {
-      setFormError("Estimated duration must be a positive number");
+      setFormError(t("routines.errDuration"));
       return;
     }
     setSubmitting(true);
@@ -194,19 +196,19 @@ export default function RoutinesPage() {
       closeModals();
       fetchRoutines();
     } catch (e: any) {
-      setFormError(e.message || "Failed to save routine");
+      setFormError(e.message || t("common.actionFailed"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const deleteRoutine = async (id: number) => {
-    if (!confirm("Delete this routine?")) return;
+    if (!confirm(t("routines.confirmDelete"))) return;
     try {
       await apiClient.delete(`/routines/${id}`);
       fetchRoutines();
     } catch (e: any) {
-      alert(e.message || "Delete failed");
+      alert(e.message || t("routines.errDelete"));
     }
   };
 
@@ -226,7 +228,7 @@ export default function RoutinesPage() {
       }
     } catch (e: any) {
       if (e.status === 401) router.push("/login");
-      else alert(e.message || "Couldn't start routine");
+      else alert(e.message || t("routines.errStart"));
       setStartingId(null);
     }
   };
@@ -243,39 +245,39 @@ export default function RoutinesPage() {
           onClick={(e) => e.stopPropagation()}
         >
           <h2 className="font-headline-lg text-headline-lg text-primary mb-4">
-            {isEdit ? "Edit Routine" : "New Routine"}
+            {isEdit ? t("routines.edit") : t("routines.new")}
           </h2>
           <form onSubmit={saveRoutine} className="space-y-4">
             <div>
-              <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Name</label>
+              <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("routines.nameLabel")}</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Push Day A"
+                placeholder={t("routines.namePlaceholder")}
                 className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
                 required
               />
             </div>
             <div>
-              <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Notes (optional)</label>
+              <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">{t("routines.notesOptional")}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                placeholder="Anything to remember..."
+                placeholder={t("routines.notesPlaceholder")}
                 className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none resize-none"
               />
             </div>
             <div>
               <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">
-                Estimated Duration (min, optional)
+                {t("routines.durationLabel")}
               </label>
               <input
                 type="number"
                 value={estDuration}
                 onChange={(e) => setEstDuration(e.target.value)}
-                placeholder="~ min"
+                placeholder={t("routines.durationPlaceholder")}
                 className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
               />
             </div>
@@ -283,11 +285,11 @@ export default function RoutinesPage() {
             {/* Exercise list builder */}
             <div>
               <label className="font-label-caps text-label-caps text-on-surface-variant block mb-2">
-                Exercises
+                {t("nav.exercises")}
               </label>
               {drafts.length === 0 && (
                 <p className="font-body-md text-sm text-on-surface-variant mb-2">
-                  No exercises yet. Add your first one below.
+                  {t("routines.noExercises")}
                 </p>
               )}
               {drafts.map((d, idx) => (
@@ -304,7 +306,7 @@ export default function RoutinesPage() {
                           setSearchInput(e.target.value);
                         }}
                         onFocus={() => openPicker(idx)}
-                        placeholder="Search exercise..."
+                        placeholder={t("exercises.searchPlaceholder")}
                         className="w-full border border-outline-variant rounded-lg px-4 py-2 bg-surface focus:border-primary focus:outline-none"
                       />
                       {searchFor === idx && searchResults.length > 0 && (
@@ -321,7 +323,7 @@ export default function RoutinesPage() {
                         </ul>
                       )}
                       {searchFor === idx && searchLoading && (
-                        <p className="text-xs text-on-surface-variant mt-1">Searching...</p>
+                        <p className="text-xs text-on-surface-variant mt-1">{t("routines.searching")}</p>
                       )}
                     </div>
                   ) : (
@@ -334,7 +336,7 @@ export default function RoutinesPage() {
                           type="button"
                           onClick={() => moveDraft(idx, -1)}
                           disabled={idx === 0}
-                          aria-label={`Move ${d.name} up`}
+                          aria-label={t("routines.moveUpAria", { name: d.name })}
                           className="text-on-surface-variant hover:text-primary transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
@@ -343,7 +345,7 @@ export default function RoutinesPage() {
                           type="button"
                           onClick={() => moveDraft(idx, 1)}
                           disabled={idx === drafts.length - 1}
-                          aria-label={`Move ${d.name} down`}
+                          aria-label={t("routines.moveDownAria", { name: d.name })}
                           className="text-on-surface-variant hover:text-primary transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
@@ -351,7 +353,7 @@ export default function RoutinesPage() {
                         <button
                           type="button"
                           onClick={() => removeDraft(idx)}
-                          aria-label={`Remove ${d.name}`}
+                          aria-label={t("routines.removeAria", { name: d.name })}
                           className="text-on-surface-variant hover:text-error transition-colors p-1"
                         >
                           <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -364,7 +366,7 @@ export default function RoutinesPage() {
                   {d.exercise_id > 0 && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1 text-[10px]">SETS</label>
+                        <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1 text-[10px]">{t("routines.setsLabel")}</label>
                         <input
                           type="number"
                           value={d.target_sets}
@@ -374,7 +376,7 @@ export default function RoutinesPage() {
                         />
                       </div>
                       <div>
-                        <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1 text-[10px]">REPS</label>
+                        <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1 text-[10px]">{t("routines.repsLabel")}</label>
                         <input
                           type="number"
                           value={d.target_reps}
@@ -384,7 +386,7 @@ export default function RoutinesPage() {
                         />
                       </div>
                       <div>
-                        <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1 text-[10px]">KG</label>
+                        <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1 text-[10px]">{t("routines.kgLabel")}</label>
                         <input
                           type="number"
                           step={0.1}
@@ -404,7 +406,7 @@ export default function RoutinesPage() {
                 className="w-full border-2 border-dashed border-outline-variant rounded-lg py-3 flex items-center justify-center gap-2 font-metric-sm text-metric-sm text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
               >
                 <span className="material-symbols-outlined text-[20px]">add</span>
-                Add Exercise
+                {t("routines.addExercise")}
               </button>
             </div>
 
@@ -415,14 +417,14 @@ export default function RoutinesPage() {
                 onClick={closeModals}
                 className="px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
               >
-                Cancel
+                {t("action.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="bg-primary text-on-primary px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                {submitting ? (isEdit ? "Saving..." : "Creating...") : isEdit ? "Save Changes" : "Create"}
+                {submitting ? t("action.saving") : isEdit ? t("goals.saveChanges") : t("routines.create")}
               </button>
             </div>
           </form>
@@ -435,12 +437,12 @@ export default function RoutinesPage() {
     <AppLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-headline-lg font-headline-lg text-primary">Routines</h1>
+          <h1 className="text-headline-lg font-headline-lg text-primary">{t("routines.title")}</h1>
           <button
             onClick={openCreate}
             className="bg-primary text-on-primary rounded-lg px-4 py-2 font-metric-sm hover:bg-primary/90 transition-colors"
           >
-            New Routine
+            {t("routines.new")}
           </button>
         </div>
 
@@ -454,21 +456,21 @@ export default function RoutinesPage() {
           <div className="p-6 bg-error-container rounded-xl text-on-error-container text-center">
             <p>{error}</p>
             <button onClick={fetchRoutines} className="mt-2 text-primary font-semibold hover:underline">
-              Retry
+              {t("action.retry")}
             </button>
           </div>
         ) : routines.length === 0 ? (
           <div className="border border-dashed border-outline-variant rounded-xl p-12 text-center">
             <span className="material-symbols-outlined text-4xl text-outline block mb-4">list_alt</span>
-            <p className="font-headline-lg-mobile text-primary">No routines yet.</p>
+            <p className="font-headline-lg-mobile text-primary">{t("routines.empty")}</p>
             <p className="font-body-md text-on-surface-variant mt-1">
-              Save a template to reuse next session.
+              {t("routines.hint")}
             </p>
             <button
               onClick={openCreate}
               className="mt-6 bg-primary text-on-primary rounded-lg px-4 py-2 font-metric-sm hover:bg-primary/90 transition-colors"
             >
-              New Routine
+              {t("routines.new")}
             </button>
           </div>
         ) : (
@@ -486,21 +488,24 @@ export default function RoutinesPage() {
                       <button
                         onClick={() => openEdit(r)}
                         className="text-on-surface-variant hover:text-primary transition-colors p-1"
-                        aria-label={`Edit ${r.name}`}
+                        aria-label={t("routines.editAria", { name: r.name })}
                       >
                         <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         onClick={() => deleteRoutine(r.id)}
                         className="text-on-surface-variant hover:text-error transition-colors p-1"
-                        aria-label={`Delete ${r.name}`}
+                        aria-label={t("routines.deleteAria", { name: r.name })}
                       >
                         <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </div>
                   <p className="font-body-md text-on-surface-variant mt-1 text-sm">
-                    {count} {count === 1 ? "exercise" : "exercises"} · ~
+                    {count === 1
+                      ? t("routines.exerciseCount", { count })
+                      : t("routines.exerciseCountPlural", { count })}{" "}
+                    · ~
                     {r.est_duration_minutes != null ? r.est_duration_minutes : "—"} min
                   </p>
                   <div className="mt-2 flex-1">
@@ -511,7 +516,7 @@ export default function RoutinesPage() {
                     ))}
                     {exNames.length > 3 && (
                       <p className="font-body-md text-sm text-on-surface-variant">
-                        +{exNames.length - 3} more
+                        {t("routines.more", { count: exNames.length - 3 })}
                       </p>
                     )}
                   </div>
@@ -521,7 +526,7 @@ export default function RoutinesPage() {
                       disabled={startingId !== null}
                       className="bg-primary text-on-primary rounded-lg px-3 py-1 font-metric-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
-                      {startingId === r.id ? "Starting..." : "Use"}
+                      {startingId === r.id ? t("action.sending") : t("action.continue")}
                     </button>
                   </div>
                 </div>

@@ -3,6 +3,7 @@
 import AppLayout from "@/components/AppLayout";
 import { apiClient } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/lib/i18n/provider";
 
 type Message = {
   id: number;
@@ -30,18 +31,22 @@ type SessionSummary = {
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_IMAGE_EDGE = 1024;
 
-const fmtRelative = (iso: string) => {
+const fmtRelative = (
+  iso: string,
+  t: (key: string, params?: Record<string, string | number>) => string,
+  locale: string
+) => {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
   const diff = Date.now() - then;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("time.justNow");
+  if (minutes < 60) return t("time.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("time.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, {
+  if (days < 7) return t("time.daysAgo", { count: days });
+  return new Date(iso).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
   });
@@ -49,19 +54,21 @@ const fmtRelative = (iso: string) => {
 
 // Map network-level failures (fetch TypeError, "Failed to fetch") to a
 // readable message. Server messages (e.g. 429) pass through untouched.
-const friendlyError = (e: any, fallback: string): string => {
+// `t` is a parameter because this is a module-level helper with no hook access.
+const friendlyError = (e: any, fallback: string, t: (key: string) => string): string => {
   const raw = typeof e?.message === "string" ? e.message : "";
   if (
     e?.name === "TypeError" ||
     /failed to fetch|networkerror|load failed/i.test(raw)
   ) {
-    return "Can't reach the server. Check your connection and try again.";
+    return t("coach.errOffline");
   }
   return raw || fallback;
 };
 
 // Downscale image via canvas to max 1024px longest edge, JPEG q0.8 data URL.
-const downscaleImage = (file: File): Promise<string> =>
+// `t` is passed in for the same reason as friendlyError: module-level helper.
+const downscaleImage = (file: File, t: (key: string) => string): Promise<string> =>
   new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -79,7 +86,7 @@ const downscaleImage = (file: File): Promise<string> =>
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           URL.revokeObjectURL(url);
-          reject(new Error("Could not process image."));
+          reject(new Error(t("coach.errImage")));
           return;
         }
         ctx.drawImage(img, 0, 0, w, h);
@@ -92,12 +99,13 @@ const downscaleImage = (file: File): Promise<string> =>
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Could not read image file."));
+      reject(new Error(t("coach.errImageRead")));
     };
     img.src = url;
   });
 
 export default function CoachPage() {
+  const { t, locale } = useTranslation();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -140,7 +148,7 @@ export default function CoachPage() {
         setActiveSessionId(res.session?.id ?? null);
       } catch (e: any) {
         if (!handle401(e)) {
-          setError(friendlyError(e, "Could not load chat."));
+          setError(friendlyError(e, t("coach.errLoad"), t));
         }
       } finally {
         fetchSessions();
@@ -166,7 +174,7 @@ export default function CoachPage() {
       setMessages(res.messages ?? []);
     } catch (e: any) {
       if (!handle401(e)) {
-        setError(friendlyError(e, "Could not open conversation."));
+        setError(friendlyError(e, t("common.actionFailed"), t));
       }
     } finally {
       setSwitching(false);
@@ -184,7 +192,7 @@ export default function CoachPage() {
       setMessages([]);
     } catch (e: any) {
       if (!handle401(e)) {
-        setError(friendlyError(e, "Could not start a new conversation."));
+        setError(friendlyError(e, t("common.actionFailed"), t));
       }
     } finally {
       setSwitching(false);
@@ -192,7 +200,7 @@ export default function CoachPage() {
   };
 
   const deleteSession = async (id: number) => {
-    if (!confirm("Delete this conversation? This cannot be undone.")) return;
+    if (!confirm(t("coach.confirmDelete"))) return;
     try {
       await apiClient.delete(`/chat/sessions/${id}`);
       setSessions((prev) => prev.filter((s) => s.id !== id));
@@ -212,7 +220,7 @@ export default function CoachPage() {
       }
     } catch (e: any) {
       if (!handle401(e)) {
-        setError(friendlyError(e, "Could not delete conversation."));
+        setError(friendlyError(e, t("common.actionFailed"), t));
       }
     }
   };
@@ -222,16 +230,16 @@ export default function CoachPage() {
     e.target.value = ""; // allow re-selecting same file
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
-      setError("Image is larger than 10MB. Choose a smaller image.");
+      setError(t("coach.errImageLarge"));
       return;
     }
     setError("");
     setProcessingImage(true);
     try {
-      const dataUrl = await downscaleImage(file);
+        const dataUrl = await downscaleImage(file, t);
       setImagePreview(dataUrl);
     } catch (err: any) {
-      setError(err.message || "Could not process image.");
+      setError(err.message || t("coach.errImage"));
     } finally {
       setProcessingImage(false);
     }
@@ -294,7 +302,7 @@ export default function CoachPage() {
       });
     } catch (e: any) {
       if (handle401(e)) return;
-      setError(friendlyError(e, "Couldn't send message."));
+      setError(friendlyError(e, t("common.actionFailed"), t));
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setLoading(false);
@@ -305,9 +313,9 @@ export default function CoachPage() {
     <AppLayout>
       <div className="max-w-6xl mx-auto flex flex-col h-[calc(100dvh-9rem)] min-h-0">
         <div className="mb-4 shrink-0">
-          <h1 className="font-headline-lg text-headline-lg text-primary">AI Coach</h1>
+          <h1 className="font-headline-lg text-headline-lg text-primary">{t("coach.title")}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Ask about your training, progress, or get advice based on your data.
+            {t("coach.emptyHint")}
           </p>
         </div>
 
@@ -322,13 +330,13 @@ export default function CoachPage() {
                 className="w-full max-w-full bg-primary text-on-primary rounded-lg px-4 py-2.5 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
-                New chat
+                {t("coach.newChat")}
               </button>
             </div>
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 p-2 space-y-1">
               {sessions.length === 0 ? (
                 <p className="font-body-md text-body-md text-on-surface-variant px-3 py-4 text-center">
-                  No conversations yet.
+                  {t("coach.noConversations")}
                 </p>
               ) : (
                 sessions.map((s) => (
@@ -350,7 +358,7 @@ export default function CoachPage() {
                             : "text-on-surface-variant/70"
                         }`}
                       >
-                        {fmtRelative(s.last_message_at)}
+                        {fmtRelative(s.last_message_at, t, locale)}
                       </p>
                     </div>
                     <button
@@ -358,7 +366,7 @@ export default function CoachPage() {
                         ev.stopPropagation();
                         deleteSession(s.id);
                       }}
-                      aria-label={`Delete conversation: ${s.title}`}
+                      aria-label={t("coach.deleteConversationAria", { title: s.title ?? "" })}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
                     >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -395,7 +403,7 @@ export default function CoachPage() {
                     ev.stopPropagation();
                     deleteSession(s.id);
                   }}
-                  aria-label={`Delete conversation: ${s.title}`}
+                  aria-label={t("coach.deleteConversationAria", { title: s.title ?? "" })}
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-on-surface-variant hover:text-error opacity-70 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
                 >
                   <span className="material-symbols-outlined text-[16px]">close</span>
@@ -419,9 +427,9 @@ export default function CoachPage() {
               {messages.length === 0 && !switching ? (
                 <div className="flex flex-col items-center justify-center h-full text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl">chat</span>
-                  <p className="mt-2 font-body-md">Ask Striv about your training.</p>
-                  <p className="text-sm">e.g. &quot;How is my bench press trending?&quot;</p>
-                  <p className="text-sm mt-1">You can also attach an image of your form or setup.</p>
+                  <p className="mt-2 font-body-md">{t("coach.emptyTitle")}</p>
+                  <p className="text-sm">{t("coach.emptyExample")}</p>
+                  <p className="text-sm mt-1">{t("coach.emptyAttach")}</p>
                 </div>
               ) : (
                 messages.map((msg) => (
@@ -435,20 +443,20 @@ export default function CoachPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={msg.image_url}
-                          alt="Attached image"
+                          alt={t("coach.attachedImage")}
                           className="block w-auto max-w-full max-h-56 rounded-xl border border-outline-variant"
                         />
                         {msg.content && (
                           <div className="mt-2 min-w-0 max-w-full rounded-xl px-4 py-3 bg-primary text-on-primary">
                             <p className="font-body-md text-body-md whitespace-pre-wrap">{msg.content}</p>
                             <p className="text-[10px] opacity-60 mt-1">
-                              {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                              {new Date(msg.created_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
                         )}
                         {!msg.content && (
                           <p className="text-[10px] opacity-60 mt-1">
-                            {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(msg.created_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         )}
                       </div>
@@ -462,7 +470,7 @@ export default function CoachPage() {
                       >
                         <p className="font-body-md text-body-md whitespace-pre-wrap">{msg.content}</p>
                         <p className="text-[10px] opacity-60 mt-1">
-                          {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(msg.created_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     )}
@@ -496,19 +504,19 @@ export default function CoachPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imagePreview}
-                    alt="Image to attach"
+                    alt={t("coach.imageToAttach")}
                     className="h-16 w-16 rounded-lg object-cover border border-outline-variant"
                   />
                   <button
                     onClick={() => setImagePreview(null)}
-                    aria-label="Remove image"
+                    aria-label={t("coach.removeImage")}
                     className="absolute -top-2 -right-2 bg-surface border border-outline-variant rounded-full p-0.5 text-on-surface-variant hover:text-error transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 </div>
                 <p className="font-label-caps text-label-caps text-on-surface-variant">
-                  Image attached
+                  {t("coach.imageAttached")}
                 </p>
               </div>
             )}
@@ -520,13 +528,13 @@ export default function CoachPage() {
                 accept="image/*"
                 onChange={handleFileSelect}
                 className="hidden"
-                aria-label="Attach image"
+                aria-label={t("coach.attachImage")}
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading || processingImage}
-                aria-label="Attach image"
+                aria-label={t("coach.attachImage")}
                 className="shrink-0 rounded-xl border border-outline-variant bg-surface px-3 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <span className="material-symbols-outlined">
@@ -537,7 +545,7 @@ export default function CoachPage() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your training..."
+                placeholder={t("coach.inputPlaceholder")}
                 className="flex-1 min-w-0 rounded-xl border border-outline-variant bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition disabled:opacity-50"
                 disabled={loading}
               />
@@ -546,7 +554,7 @@ export default function CoachPage() {
                 disabled={loading || !input.trim()}
                 className="shrink-0 bg-primary text-on-primary rounded-xl px-4 sm:px-6 py-3 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send
+                {t("action.send")}
               </button>
             </form>
           </div>

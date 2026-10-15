@@ -69,10 +69,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Toast dispatch.
+ *
+ * Returns no-ops rather than throwing when there is no provider above. Throwing
+ * looked like a helpful guardrail but broke server-side prerendering: a page
+ * that renders its own layout (which is where the provider lives) calls this
+ * hook during render, before that layout's provider exists, so every such page
+ * failed to prerender. A toast that silently does nothing during prerender is
+ * correct — nothing user-visible happens on the server anyway — and in the
+ * browser the provider is always present by the time an action can fire.
+ */
 export function useToast(): ToastContextValue {
   const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error("useToast must be used inside a ToastProvider");
-  }
-  return context;
+
+  return context ?? { success: () => {}, error: () => {} };
 }

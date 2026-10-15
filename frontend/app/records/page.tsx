@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import { apiClient } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n/provider";
+import { useUnit } from "@/lib/use-unit";
 
 type PRType = "weight" | "one_rm" | "volume";
 
@@ -26,11 +28,16 @@ interface PaginatedResponse {
   last_page: number;
 }
 
-const PR_TYPE_LABELS: Record<PRType, string> = {
-  weight: "Weight",
-  one_rm: "1RM",
-  volume: "Volume",
+const PR_TYPE_KEYS: Record<PRType, string> = {
+  weight: "records.typeWeight",
+  one_rm: "records.typeOneRm",
+  volume: "records.typeVolume",
 };
+
+/** Human label for a PR type. Takes `t` because this is a module-level map. */
+function prTypeLabel(type: PRType, t: (key: string) => string): string {
+  return t(PR_TYPE_KEYS[type]);
+}
 
 const PR_TYPE_ICONS: Record<PRType, string> = {
   weight: "fitness_center",
@@ -39,13 +46,17 @@ const PR_TYPE_ICONS: Record<PRType, string> = {
 };
 
 export default function RecordsPage() {
+  const { t, locale } = useTranslation();
+  const { label, formatWeight } = useUnit();
   const router = useRouter();
   const [filter, setFilter] = useState<PRType | "all">("all");
   const [records, setRecords] = useState<PR[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   const fetchRecords = useCallback(async () => {
+    const id = ++requestId.current;
     setLoading(true);
     setError(null);
     try {
@@ -57,21 +68,40 @@ export default function RecordsPage() {
         const res = await apiClient.get<PaginatedResponse>(
           `/records${query}${query ? "&" : "?"}page=${page}`
         );
+        /*
+         * Checked INSIDE the loop, not only before the final setState.
+         *
+         * A filter change abandons the run in flight, but this loop can still be
+         * several requests from finishing: without this it would keep walking
+         * pages of the filter nobody is looking at, and the aggregate it finally
+         * wrote would be a mix of pages the member never asked for.
+         */
+        if (id !== requestId.current) return; // stale response
         allRecords = allRecords.concat(res.data);
         page = res.current_page + 1;
         lastPage = res.last_page;
       } while (page <= lastPage);
+      if (id !== requestId.current) return; // stale response
       setRecords(allRecords);
     } catch (err: any) {
+      if (id !== requestId.current) return;
       if (err.status === 401) {
         router.push("/login");
         return;
       }
-      setError(err.message || "Failed to load records");
+      setError(err.message || t("common.loadFailed"));
     } finally {
-      setLoading(false);
+      // Only the newest request owns the spinner. An older one clearing it
+      // would reveal the empty state while the current filter is still loading.
+      if (id === requestId.current) setLoading(false);
     }
-  }, [filter, router]);
+    /*
+     * `t` is a dependency because the catch above uses it for the fallback
+     * message. It is a useCallback keyed on locale, so it is stable until the
+     * language changes — at which point this callback is rebuilt and a later
+     * failure reports in the new language rather than the original one.
+     */
+  }, [filter, router, t]);
 
   useEffect(() => {
     fetchRecords();
@@ -109,7 +139,7 @@ export default function RecordsPage() {
         {/* Header */}
         <header className="flex items-center justify-between">
           <h1 className="font-metric-display text-headline-lg-mobile md:text-metric-display text-primary tracking-tight">
-            Personal Records
+            {t("records.personalRecords")}
           </h1>
           <div className="flex items-center gap-2">
             <button className="rounded-xl bg-surface-variant border border-outline-variant p-2.5 transition-colors hover:bg-primary/5">
@@ -137,7 +167,7 @@ export default function RecordsPage() {
                   : "bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low"
               }`}
             >
-              {type === "all" ? "All Types" : PR_TYPE_LABELS[type]}
+              {type === "all" ? t("records.allTypes") : prTypeLabel(type, t)}
             </button>
           ))}
         </div>
@@ -146,47 +176,47 @@ export default function RecordsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2">
             <span className="font-label-caps text-label-caps text-outline uppercase tracking-widest">
-              Heaviest Lift
+              {t("records.heaviestLift")}
             </span>
             {heaviestLift ? (
               <>
                 <div className="font-metric-display text-metric-display text-primary">
-                  {heaviestLift.value}{" "}
-                  <span className="text-xl text-outline ml-1">lbs</span>
+                  {formatWeight(heaviestLift.value)}{" "}
+                  <span className="text-xl text-outline ml-1">{label}</span>
                 </div>
                 <div className="font-body-md text-body-md text-on-surface-variant">
                   {heaviestLift.exercise.name}
                 </div>
                 <div className="font-body-sm text-body-sm text-outline">
-                  {new Date(heaviestLift.achieved_at).toLocaleDateString()}
+                  {new Date(heaviestLift.achieved_at).toLocaleDateString(locale)}
                 </div>
               </>
             ) : (
               <div className="font-body-md text-body-md text-on-surface-variant">
-                No records yet
+                {t("records.noneYet")}
               </div>
             )}
           </div>
           <div className="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2">
             <span className="font-label-caps text-label-caps text-outline uppercase tracking-widest">
-              Best Est. 1RM
+              {t("records.best1rm")}
             </span>
             {bestOneRm ? (
               <>
                 <div className="font-metric-display text-metric-display text-primary">
-                  {bestOneRm.value}{" "}
-                  <span className="text-xl text-outline ml-1">lbs</span>
+                  {formatWeight(bestOneRm.value)}{" "}
+                  <span className="text-xl text-outline ml-1">{label}</span>
                 </div>
                 <div className="font-body-md text-body-md text-on-surface-variant">
                   {bestOneRm.exercise.name}
                 </div>
                 <div className="font-body-sm text-body-sm text-outline">
-                  {new Date(bestOneRm.achieved_at).toLocaleDateString()}
+                  {new Date(bestOneRm.achieved_at).toLocaleDateString(locale)}
                 </div>
               </>
             ) : (
               <div className="font-body-md text-body-md text-on-surface-variant">
-                No records yet
+                {t("records.noneYet")}
               </div>
             )}
           </div>
@@ -217,7 +247,7 @@ export default function RecordsPage() {
               onClick={handleRetry}
               className="px-6 py-2 bg-primary text-on-primary rounded-full font-medium hover:bg-primary/80 transition-colors"
             >
-              Retry
+              {t("action.retry")}
             </button>
           </div>
         ) : records.length === 0 ? (
@@ -226,9 +256,9 @@ export default function RecordsPage() {
               fitness_center
             </span>
             <div className="font-body-lg text-body-lg text-on-surface-variant text-center">
-              No personal records yet.
+              {t("records.empty")}
               <br />
-              Log more workouts to set records.
+              {t("records.keepGoing")}
             </div>
           </div>
         ) : (
@@ -249,15 +279,15 @@ export default function RecordsPage() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="font-metric-sm text-metric-sm text-primary">
-                          {record.value}{" "}
-                          <span className="text-sm text-outline ml-1">lbs</span>
+                          {formatWeight(record.value)}{" "}
+                          <span className="text-sm text-outline ml-1">{label}</span>
                         </div>
                         <div className="font-label-caps text-label-caps text-outline uppercase tracking-wider">
-                          {PR_TYPE_LABELS[record.pr_type]}
+                          {prTypeLabel(record.pr_type, t)}
                         </div>
                       </div>
                       <div className="font-body-sm text-body-sm text-outline text-right whitespace-nowrap">
-                        {new Date(record.achieved_at).toLocaleDateString()}
+                        {new Date(record.achieved_at).toLocaleDateString(locale)}
                       </div>
                     </div>
                   ))}

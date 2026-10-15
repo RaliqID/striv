@@ -135,3 +135,78 @@ html {
 button, a, [role="button"] {
   -webkit-touch-callout: none;
 }
+
+/*
+ * Page entrance fade.
+ *
+ * Content mounts in a single frame on a client-side route change, so without
+ * this a page swap is a hard cut. The 4px rise is small enough to read as the
+ * content settling rather than sliding. `both` fill holds the start state
+ * before the run and the end state after it, so there is no flash.
+ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s ease-out both;
+}
+
+/* Honour reduced-motion: content appears at once, without the entrance fade. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn {
+    animation: none;
+  }
+}
+
+/*
+ * AI signature ring.
+ *
+ * A gradient border cannot be a real border — a border takes one colour — so
+ * it is drawn by a masked ::before instead: the mask keeps just the difference
+ * between the border box and the padding box, a 1px ring that never paints
+ * over the card content. `border-radius: inherit` keeps the ring on the card's
+ * radius; the faint outer shadow is what marks AI-derived cards at a glance.
+ */
+.ai-glow {
+  position: relative;
+  box-shadow: 0 0 14px rgba(70, 72, 212, 0.10);
+}
+
+.ai-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(70, 72, 212, 0.45),
+    rgba(96, 99, 238, 0.12),
+    transparent
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/*
+ * Resting elevation for the dashboard cards. A shadow this soft lifts the
+ * white card off the #FDF8F8 page without the border doing all the work. Only
+ * width and colour are declared here — the Tailwind `border`/`border-none` and
+ * `rounded-xl` classes on the element still own style and radius.
+ */
+.minimal-card {
+  border-width: 1px;
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgba(28, 27, 27, 0.04), 0 2px 8px rgba(28, 27, 27, 0.03);
+}
