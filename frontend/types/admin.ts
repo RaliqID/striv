@@ -13,11 +13,18 @@ export type AdminStats = {
   top_exercises: Array<{ name: string; uses: number }>;
 };
 
+export type UserRole = "user" | "trainer" | "admin";
+
 export type AdminUser = {
   id: number;
   name: string;
   email: string;
+  /** The authoritative role. `is_admin`/`is_trainer` are derived convenience flags. */
+  role: UserRole;
   is_admin: boolean;
+  is_trainer: boolean;
+  specialization: string | null;
+  capacity: number | null;
   is_suspended: boolean;
   must_change_password: boolean;
   created_at: string;

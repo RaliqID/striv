@@ -65,11 +65,69 @@ function Start-Frontend {
     }
 }
 
+function Start-QueueWorker {
+    <#
+      Run the queue worker.
+
+      Without this, queued jobs accumulate forever and never execute. That is
+      not a theoretical concern: the database was found holding 50 pending
+      `GenerateInsight` jobs with `attempts = 0` — never once picked up — because
+      the launcher started only the web server and the frontend. The AI insight
+      feature was therefore silently dead in development: finishing a workout
+      dispatched the job, the job sat in the table, and nothing ever produced an
+      insight.
+
+      `queue:work` (not `queue:listen`) because it boots the framework once and
+      stays resident; `--tries=3` so a genuinely failing job is retried a couple
+      of times before landing in failed_jobs rather than being dropped after one
+      attempt.
+
+      `--stop-when-empty` is deliberately NOT used: a long-running worker is what
+      makes the feature work, and stopping when the queue drains would mean jobs
+      dispatched a minute later sit until the next restart.
+    #>
+    $running = Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object {
+        $_.CommandLine -like "*queue:work*" -and $_.CommandLine -like "*Striv*"
+    }
+    if ($running) {
+        Write-Host "[dev] queue    OK  already running (PID $($running.ProcessId -join ','))" -ForegroundColor DarkGray
+        return
+    }
+
+    Start-Process -FilePath "php" `
+        -ArgumentList "artisan","queue:work","--tries=3","--timeout=120" `
+        -WorkingDirectory $Root -WindowStyle Hidden
+
+    Start-Sleep -Seconds 2
+
+    $procId = (Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object {
+        $_.CommandLine -like "*queue:work*" -and $_.CommandLine -like "*Striv*"
+    }).ProcessId
+
+    if ($procId) {
+        Write-Host "[dev] queue    OK  worker running (PID $procId)" -ForegroundColor Green
+    } else {
+        Write-Host "[dev] queue    FAIL (jobs will not run)" -ForegroundColor Red
+    }
+}
+
+function Stop-QueueWorker {
+    # Matched on the command line rather than a port: a worker listens on
+    # nothing, so the port-based Stop-Port helper cannot see it.
+    Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object {
+        $_.CommandLine -like "*queue:work*"
+    } | ForEach-Object {
+        Write-Host "[dev] killing queue worker PID $($_.ProcessId)" -ForegroundColor Yellow
+        taskkill /PID $_.ProcessId /F 2>&1 | Out-Null
+    }
+}
+
 switch ($Action) {
     "start" {
         Write-Host "[dev] starting Striv..." -ForegroundColor Cyan
         Start-Backend
         Start-Frontend
+        Start-QueueWorker
         Write-Host "[dev] done. Local: http://localhost:$FrontendPort" -ForegroundColor Cyan
     }
     "stop" {
@@ -77,6 +135,7 @@ switch ($Action) {
         # Close the tunnel first: it holds a public URL that would dangle if the
         # app behind it stopped serving.
         & (Join-Path $Root "share.ps1") stop
+        Stop-QueueWorker
         Stop-Port $BackendPort
         Stop-Port $FrontendPort
         Stop-StrivFrontends
