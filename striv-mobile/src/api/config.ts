@@ -3,17 +3,18 @@
  *
  * Resolution order matters, because each source exists for a different reason:
  *
- *  1. EXPO_PUBLIC_API_URL — an explicit override for pointing a build at a
- *     staging or production backend without editing code.
- *  2. The dev-server host — Metro tells the app which machine it was loaded
- *     from, so a device on the same Wi-Fi reaches the backend on that same
- *     machine. Without this, "localhost" on a phone means the phone itself and
- *     every request fails.
- *  3. A last-resort literal.
+ *  1. EXPO_PUBLIC_API_URL — baked in at build time. This is what a standalone
+ *     APK uses, since there is no dev server to ask.
+ *  2. The development server host — Metro tells the app which machine served
+ *     it, so a phone on the same Wi-Fi reaches the backend running there. Only
+ *     available in Expo Go / dev builds.
+ *  3. `extra.apiUrl` from app.json — a fallback for a build that set neither of
+ *     the above.
+ *  4. A last-resort literal.
  *
- * Platform note: an Android emulator reaches the host machine at 10.0.2.2, not
+ * Platform note: an Android emulator reaches its host at 10.0.2.2, not
  * localhost, so that substitution is made explicitly rather than left to fail
- * with a confusing connection error.
+ * with an opaque connection error.
  */
 import Constants from "expo-constants";
 import { Platform } from "react-native";
@@ -21,11 +22,10 @@ import { Platform } from "react-native";
 const PORT = 8001;
 const API_SUFFIX = "/api/v1";
 
+/** Where Metro served this bundle from, when there is a dev server. */
 function fromDevServer(): string | null {
-  // e.g. "192.168.1.20:8081" — the machine running Metro, i.e. the dev machine.
   const hostUri =
     Constants.expoConfig?.hostUri ??
-    // Older manifest shape, still present on some Expo Go versions.
     (Constants.manifest2 as { extra?: { expoGo?: { debuggerHost?: string } } })
       ?.extra?.expoGo?.debuggerHost ??
     null;
@@ -38,6 +38,12 @@ function fromDevServer(): string | null {
   return `http://${host}:${PORT}${API_SUFFIX}`;
 }
 
+/** Value baked into app.json under expo.extra.apiUrl. */
+function fromAppConfig(): string | null {
+  const configured = (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl;
+  return configured?.trim() || null;
+}
+
 function resolveBaseUrl(): string {
   const explicit = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (explicit) return explicit.replace(/\/+$/, "");
@@ -45,8 +51,10 @@ function resolveBaseUrl(): string {
   const devServer = fromDevServer();
   if (devServer) return devServer;
 
+  const configured = fromAppConfig();
+  if (configured) return configured.replace(/\/+$/, "");
+
   if (Platform.OS === "android") {
-    // 10.0.2.2 is how the Android emulator addresses its host machine.
     return `http://10.0.2.2:${PORT}${API_SUFFIX}`;
   }
 
