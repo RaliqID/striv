@@ -6,6 +6,16 @@
 .env.backup
 .env.production
 
+# Timestamped .env backups.
+#
+# `env.bak-*` is deliberately explicit rather than a broad `*.bak` rule: a
+# blanket pattern would also swallow backups of files that are safe to keep.
+# These copies contain every secret in .env — DB credentials, API keys — and
+# the naming is produced by `Copy-Item .env ".env.bak-<timestamp>"`, so the
+# wildcard is what actually matches what gets created.
+.env.bak-*
+.env.bak.*
+
 # IDE
 /.fleet
 /.idea
@@ -45,6 +55,14 @@ smoke_*.php
 check_*.php
 db_check.php
 debug_*.php
+# One-off probes run through artisan tinker or the CLI server.
+*_probe.php
+
+# Credentials captured for manual API probing — a plaintext password.
+storage/login.json
+
+# Merge leftovers. `*.head` is what a conflicted `git checkout --ours` writes.
+*.head
 
 # Laravel
 .env.backup
