@@ -4,6 +4,7 @@ import StrivLogo from "@/components/StrivLogo";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import XpBar from "@/components/XpBar";
 import LevelUpOverlay from "@/components/LevelUpOverlay";
+import ActiveWorkoutDrawer from "@/components/workout/ActiveWorkoutDrawer";
 import { useTranslation } from "@/lib/i18n/provider";
 import { LEVEL_UP_EVENT, USER_UPDATED_EVENT, Progression } from "@/lib/progression";
 import { storeUser } from "@/lib/auth";
@@ -168,7 +169,7 @@ export default function AppLayout({
         <div className="flex items-center gap-3">
           {/* Language first on mobile: it is the control a user who cannot read
               the current language needs to find before anything else. */}
-          <LanguageSwitcher />
+          <LanguageSwitcher collapsed={true} placement="down" />
           {/* Both controls lead somewhere real: a decorative bell that does
               nothing is worse than no bell, because it implies a feature. */}
           <Link
@@ -292,38 +293,39 @@ export default function AppLayout({
             if (user?.role === "admin" || user?.is_admin) {
               items.push(trainerNavItem, adminNavItem);
             }
-            return items;
-          })().map((item) => {
-            const active = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                title={collapsed ? t(item.key) : undefined}
-                aria-label={collapsed ? t(item.key) : undefined}
-                aria-current={active ? "page" : undefined}
-                className={`flex items-center rounded-lg transition-all duration-150 ${
-                  collapsed
-                    ? "mx-3 h-11 w-11 shrink-0 justify-center"
-                    : "mx-3 gap-3 px-3 py-2.5"
-                } ${
-                  active
-                    ? "bg-secondary-container text-on-secondary-container font-semibold"
-                    : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
-                }`}
-              >
-                <span
-                  className="material-symbols-outlined text-[20px] shrink-0"
-                  style={active ? { fontVariationSettings: "'FILL' 1" } : {}}
+            if (items.length === 0) return null;
+            return items.map((item) => {
+              const active = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  title={collapsed ? t(item.key) : undefined}
+                  aria-label={collapsed ? t(item.key) : undefined}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center rounded-lg transition-all duration-150 ${
+                    collapsed
+                      ? "mx-3 h-11 w-11 shrink-0 justify-center"
+                      : "mx-3 gap-3 px-3 py-2.5"
+                  } ${
+                    active
+                      ? "bg-secondary-container text-on-secondary-container font-semibold"
+                      : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
+                  }`}
                 >
-                  {item.icon}
-                </span>
-                {!collapsed && (
-                  <span className="font-body-md text-body-md whitespace-nowrap">{t(item.key)}</span>
-                )}
-              </Link>
-            );
-          })}
+                  <span
+                    className="material-symbols-outlined text-[20px] shrink-0"
+                    style={active ? { fontVariationSettings: "'FILL' 1" } : {}}
+                  >
+                    {item.icon}
+                  </span>
+                  {!collapsed && (
+                    <span className="font-body-md text-body-md whitespace-nowrap">{t(item.key)}</span>
+                  )}
+                </Link>
+              );
+            });
+          })()}
         </nav>
 
         {/* Start Tracking button — only when expanded */}
@@ -348,13 +350,16 @@ export default function AppLayout({
           collapsed ? "md:ml-[72px]" : "md:ml-[256px]"
         }`}
       >
-        <div className="px-margin-mobile py-8 md:px-margin-desktop max-w-container-max mx-auto">
+        <div className="px-margin-mobile pt-6 pb-28 md:py-8 md:px-margin-desktop max-w-container-max mx-auto">
           {children}
         </div>
       </main>
 
+      {/* Persistent Floating Active Workout Mini-Drawer */}
+      <ActiveWorkoutDrawer />
+
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 w-full bg-surface border-t border-outline-variant flex justify-around items-center h-16 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+      <nav className="md:hidden fixed bottom-0 w-full bg-surface border-t border-outline-variant flex justify-around items-center h-16 safe-bottom z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
         {bottomNavItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
           return (
@@ -368,7 +373,7 @@ export default function AppLayout({
               <span className={`material-symbols-outlined text-[24px] mb-1 ${active ? "text-primary" : ""}`}>
                 {item.icon}
               </span>
-              <span>{t(item.key)}</span>
+              <span className="truncate max-w-[64px] text-center leading-tight">{t(item.key)}</span>
             </Link>
           );
         })}

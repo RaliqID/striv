@@ -23,6 +23,8 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:5,60');              // 5 signups/hour per IP
 
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/exchange-token', [AuthController::class, 'exchangeOAuthToken'])
+        ->middleware('throttle:30,1');
 
     // OAuth entry points: capped to stop redirect-loop / enumeration abuse.
     Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
@@ -89,6 +91,7 @@ Route::prefix('v1')->group(function () {
         // Analytics
         Route::get('/analytics/dashboard', [\App\Http\Controllers\AnalyticsController::class, 'dashboard']);
         Route::get('/analytics/progress', [\App\Http\Controllers\AnalyticsController::class, 'progress']);
+        Route::get('/analytics/heatmap', [\App\Http\Controllers\AnalyticsController::class, 'heatmap']);
         Route::get('/analytics/exercises/{slug}', [\App\Http\Controllers\AnalyticsController::class, 'exerciseAnalytics'])->where('slug', '[a-z0-9-]+');
 
         // Personal records
@@ -265,6 +268,11 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('admin')->middleware(['auth:sanctum', 'not_suspended', 'admin'])->group(function () {
         Route::get('/stats', [\App\Http\Controllers\AdminStatsController::class, 'index']);
+
+        // Analytics dashboard. `export` sits before any wildcard so it is not
+        // captured as a range parameter.
+        Route::get('/analytics/export', [\App\Http\Controllers\AdminAnalyticsController::class, 'export']);
+        Route::get('/analytics', [\App\Http\Controllers\AdminAnalyticsController::class, 'index']);
 
         // Audit trail + authentication security telemetry.
         Route::get('/audit-logs', [\App\Http\Controllers\AdminAuditLogController::class, 'index']);

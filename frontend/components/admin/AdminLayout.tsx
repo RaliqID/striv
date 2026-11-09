@@ -7,6 +7,9 @@ import { useTranslation } from "@/lib/i18n/provider";
 
 const sections = [
   { key: "admin.overview", href: "/admin", icon: "monitoring", exact: true },
+  // Reporting sits next to the overview: both answer "how are we doing", the
+  // overview at a glance and this one over a chosen window.
+  { key: "admin.analytics", href: "/admin/analytics", icon: "insights" },
   { key: "admin.users", href: "/admin/users", icon: "group" },
   // Roster, workload and the waiting queue. Placed before Security because it
   // is a daily-operations concern rather than a compliance one.

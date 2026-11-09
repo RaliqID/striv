@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Security\LoginThrottle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -44,12 +45,16 @@ class AuthController extends Controller
          * the person can simply try again.
          */
         [$user, $token] = DB::transaction(function () use ($validated) {
-            $user = User::create([
+            $user = new User([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
-                'role' => User::ROLE_USER,
             ]);
+
+            // Privilege columns are not mass-assignable; set them directly so a
+            // crafted request payload can never promote itself.
+            $user->role = User::ROLE_USER;
+            $user->save();
 
             // Create empty profile
             $user->profile()->create();
@@ -210,12 +215,15 @@ class AuthController extends Controller
              * taken).
              */
             $user = DB::transaction(function () use ($googleUser) {
-                $user = User::create([
+                $user = new User([
                     'name' => $googleUser->name,
                     'email' => $googleUser->email,
                     'password' => Hash::make(Str::random(24)),
-                    'role' => User::ROLE_USER,
                 ]);
+
+                // Same reason as register(): role is never mass-assignable.
+                $user->role = User::ROLE_USER;
+                $user->save();
                 $user->profile()->create();
 
                 // Same as the password path: demand is recorded at signup, the
@@ -230,12 +238,57 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Secure one-time auth code exchange flow: avoid leaking bearer token
+        // in browser history, server access logs, and HTTP Referer headers.
+        $code = Str::random(40);
+        Cache::put("oauth_code:{$code}", [
+            'token' => $token,
+            'user_id' => $user->id,
+        ], now()->addSeconds(60));
+
         $needsOnboarding = $user->profile === null
             || $user->profile->onboarding_completed_at === null;
 
         $frontend = config('app.frontend_url', 'http://localhost:3000');
         $path = $needsOnboarding ? '/onboarding' : '/dashboard';
 
-        return redirect($frontend . $path . '?token=' . $token);
+        return redirect($frontend . $path . '?code=' . $code);
+    }
+
+    public function exchangeOAuthToken(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string',
+        ]);
+
+        $cached = Cache::pull("oauth_code:{$validated['code']}");
+
+        if (! is_array($cached) || empty($cached['token']) || empty($cached['user_id'])) {
+            return response()->json([
+                'message' => 'Invalid or expired exchange code.',
+            ], 400);
+        }
+
+        $user = User::find($cached['user_id']);
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        if ($user->is_suspended) {
+            return response()->json(['message' => __('messages.auth.suspended')], 403);
+        }
+
+        $user->load('profile');
+
+        return response()->json([
+            'user' => [
+                ...$user->toArray(),
+                ...$this->progressionFor($user),
+            ],
+            'token' => $cached['token'],
+        ]);
     }
 }

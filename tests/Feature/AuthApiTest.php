@@ -121,4 +121,45 @@ class AuthApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('email', 'me@example.com');
     }
+
+    public function test_exchange_oauth_token_with_valid_code_returns_user_and_token(): void
+    {
+        $user = User::factory()->create(['email' => 'oauth@example.com']);
+        $token = 'sample-sanctum-token';
+        $code = 'valid-test-code-12345';
+
+        \Illuminate\Support\Facades\Cache::put("oauth_code:{$code}", [
+            'token' => $token,
+            'user_id' => $user->id,
+        ], now()->addSeconds(60));
+
+        $response = $this->postJson('/api/v1/auth/exchange-token', ['code' => $code]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('token', $token)
+            ->assertJsonPath('user.email', 'oauth@example.com');
+
+        // Verify one-time use: cache is pulled
+        $this->assertNull(\Illuminate\Support\Facades\Cache::get("oauth_code:{$code}"));
+    }
+
+    public function test_exchange_oauth_token_with_invalid_code_returns_400(): void
+    {
+        $response = $this->postJson('/api/v1/auth/exchange-token', ['code' => 'invalid-code']);
+        $response->assertStatus(400);
+    }
+
+    public function test_user_role_and_suspension_are_guarded_against_mass_assignment(): void
+    {
+        $user = new User([
+            'name' => 'Mass Assigner',
+            'email' => 'mass@example.com',
+            'password' => 'secret123',
+            'role' => User::ROLE_ADMIN,
+            'is_suspended' => true,
+        ]);
+
+        $this->assertNotSame(User::ROLE_ADMIN, $user->role);
+        $this->assertNotSame(true, $user->is_suspended);
+    }
 }

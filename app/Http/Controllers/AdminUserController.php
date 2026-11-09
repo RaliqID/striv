@@ -219,7 +219,8 @@ class AdminUserController extends Controller
             ], 422);
         }
 
-        $user->forceFill(['is_suspended' => true])->save();
+        $user->is_suspended = true;
+        $user->save();
 
         // Suspension is meaningless if the tokens keep working.
         $revoked = $user->tokens()->delete();
@@ -233,7 +234,8 @@ class AdminUserController extends Controller
 
     public function unsuspend(Request $request, User $user)
     {
-        $user->forceFill(['is_suspended' => false])->save();
+        $user->is_suspended = false;
+        $user->save();
 
         $this->audit->log('user.unsuspended', $request->user(), $user, [], $request);
 
@@ -282,27 +284,30 @@ class AdminUserController extends Controller
 
         $previous = $user->role;
 
-        $attributes = ['role' => $role];
-        if ($role === User::ROLE_TRAINER) {
-            if (array_key_exists('specialization', $validated)) {
-                $attributes['specialization'] = $validated['specialization'];
-            }
-            if (array_key_exists('bio', $validated)) {
-                $attributes['bio'] = $validated['bio'];
-            }
-            if (! empty($validated['capacity'])) {
-                $attributes['capacity'] = (int) $validated['capacity'];
-            }
-        }
-
         // Losing panel access must not leave the account signed in with the
-        // privileges it just lost.
+        // privileges it just lost. Evaluated before the role is mutated, while
+        // canAccessPanel() still reflects the old role.
         $revoked = 0;
         if ($user->canAccessPanel() && ! in_array($role, User::PANEL_ROLES, true)) {
             $revoked = $user->tokens()->delete();
         }
 
-        $user->forceFill($attributes)->save();
+        // Direct assignment, not fill(): `role` and `is_suspended` are not
+        // mass-assignable, so a request body can never reach them by accident.
+        $user->role = $role;
+        if ($role === User::ROLE_TRAINER) {
+            if (array_key_exists('specialization', $validated)) {
+                $user->specialization = $validated['specialization'];
+            }
+            if (array_key_exists('bio', $validated)) {
+                $user->bio = $validated['bio'];
+            }
+            if (! empty($validated['capacity'])) {
+                $user->capacity = (int) $validated['capacity'];
+            }
+        }
+
+        $user->save();
 
         $this->audit->log('user.role_changed', $request->user(), $user, [
             'from' => $previous,

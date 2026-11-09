@@ -166,7 +166,7 @@ class CertificateService
         $best = DB::table('workout_sessions')
             ->where('user_id', $user->id)
             ->whereNotNull('finished_at')
-            ->selectRaw("strftime('%Y-%m', finished_at) as ym, COUNT(*) as c")
+            ->selectRaw($this->monthExpression('finished_at').' as ym, COUNT(*) as c')
             ->groupBy('ym')
             ->orderByDesc('c')
             ->first();
@@ -316,5 +316,16 @@ class CertificateService
             ->orderByDesc('issued_at')
             ->get()
             ->all();
+    }
+
+    private function monthExpression(string $column): string
+    {
+        $driver = DB::connection()->getDriverName();
+
+        return match ($driver) {
+            'pgsql' => "to_char({$column}, 'YYYY-MM')",
+            'sqlite' => "strftime('%Y-%m', {$column})",
+            default => "DATE_FORMAT({$column}, '%Y-%m')",
+        };
     }
 }

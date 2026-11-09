@@ -57,12 +57,12 @@ class TrainerSeeder extends Seeder
 
             $trainer->fill([
                 'name' => $data['name'],
-                'role' => User::ROLE_TRAINER,
                 'specialization' => $data['specialization'],
                 'bio' => $data['bio'],
                 'capacity' => $data['capacity'],
                 'is_available' => true,
             ]);
+            $trainer->role = User::ROLE_TRAINER;
 
             if (! $trainer->exists) {
                 // Only invent a password for accounts we are creating. An

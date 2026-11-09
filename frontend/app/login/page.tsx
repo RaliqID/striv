@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiUrl } from "@/lib/api";
+import { exchangeOAuthCode } from "@/lib/auth";
 import { useTranslation } from "@/lib/i18n/provider";
 
 export default function LoginPage() {
@@ -11,6 +12,86 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const token = params.get("token");
+
+    if (!code && !token) return;
+
+    let cancelled = false;
+
+    const handleOAuthCallback = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        let authToken = token;
+        let account: any = null;
+
+        if (code) {
+          const exchange = await exchangeOAuthCode(code);
+          authToken = exchange.token;
+          account = exchange.user;
+        }
+
+        if (authToken) {
+          localStorage.setItem("token", authToken);
+        }
+
+        if (account) {
+          localStorage.setItem("user", JSON.stringify(account));
+        }
+
+        // Clean query params
+        params.delete("code");
+        params.delete("token");
+        const qs = params.toString();
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash
+        );
+
+        if (!account && authToken) {
+          const meRes = await fetch(apiUrl("/auth/user"), {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              Accept: "application/json",
+            },
+          });
+          if (meRes.ok) {
+            account = await meRes.json();
+            localStorage.setItem("user", JSON.stringify(account));
+          }
+        }
+
+        if (cancelled) return;
+
+        if (account?.is_admin) {
+          window.location.href = "/admin";
+          return;
+        }
+
+        const completed = account?.profile?.onboarding_completed_at;
+        window.location.href = completed ? "/dashboard" : "/onboarding";
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || t("auth.loginFailed"));
+          setLoading(false);
+        }
+      }
+    };
+
+    handleOAuthCallback();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

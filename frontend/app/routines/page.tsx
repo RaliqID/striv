@@ -7,6 +7,7 @@ import type { Routine } from "@/types/routine";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n/provider";
+import { setActiveWorkout } from "@/lib/active-workout";
 
 type Exercise = { id: number; name: string; slug: string; category: string | null; equipment: string | null };
 
@@ -215,11 +216,21 @@ export default function RoutinesPage() {
   const startRoutine = async (id: number) => {
     if (startingId != null) return;
     setStartingId(id);
+    const routine = routines.find((r) => r.id === id);
     try {
       const session = await apiClient.post<{ id: number }>(`/routines/${id}/start`, {});
       if (session?.id) {
         try {
           sessionStorage.setItem("activeSessionId", String(session.id));
+          setActiveWorkout({
+            sessionId: session.id,
+            name: routine?.name || t("workout.session"),
+            startedAt: new Date().toISOString(),
+            completedSetsCount: 0,
+            totalSetsCount: 0,
+            exerciseCount: 0,
+            lastUpdated: Date.now(),
+          });
         } catch {
           // Private-mode storage can throw; the active page re-reads it from
           // the API when the id is absent.

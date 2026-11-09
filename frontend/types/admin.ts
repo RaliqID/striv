@@ -133,3 +133,76 @@ export type AdminSecurityResponse = {
   top_targeted_accounts: SecurityAccountRow[];
   recent_attempts: SecurityAttempt[];
 };
+
+/** Analytics windows the backend accepts; anything else falls back to `30d`. */
+export type AnalyticsRange = "daily" | "7d" | "30d" | "90d" | "1y";
+
+export type AnalyticsGranularity = "hour" | "day" | "week" | "month";
+
+/**
+ * A metric for the current window with the same metric for the window before
+ * it. `delta_pct` is null when the previous window was zero, because a jump
+ * from nothing has no meaningful percentage.
+ */
+export type AnalyticsKpi = {
+  value: number;
+  previous: number;
+  delta_pct: number | null;
+};
+
+/** Keys are stable identifiers; the UI maps them to translated labels. */
+export type AnalyticsKpiKey =
+  | "new_users"
+  | "active_users"
+  | "workouts"
+  | "sets"
+  | "volume_kg"
+  | "chat_messages"
+  | "certificates"
+  | "achievements";
+
+export type AnalyticsSeriesKey =
+  | "signups"
+  | "workouts"
+  | "sets"
+  | "chat_messages"
+  | "certificates"
+  | "volume_kg"
+  | "active_users";
+
+export type AnalyticsBreakdowns = {
+  roles: Array<{ label: UserRole; value: number }>;
+  top_exercises: Array<{ name: string; uses: number }>;
+  top_users: Array<{ id: number; name: string; workouts: number; volume_kg: number }>;
+  recent_signups: Array<{
+    id: number;
+    name: string;
+    email: string;
+    role: UserRole;
+    created_at: string;
+  }>;
+};
+
+export type AdminAnalyticsResponse = {
+  range: AnalyticsRange;
+  granularity: AnalyticsGranularity;
+  generated_at: string;
+  range_start: string;
+  range_end: string;
+  kpis: Record<AnalyticsKpiKey, AnalyticsKpi>;
+  totals: {
+    total_users: number;
+    total_workouts: number;
+    total_sets: number;
+    total_volume_kg: number;
+    suspended_users: number;
+    trainers: number;
+    admins: number;
+  };
+  series: {
+    /** Bucket keys, aligned index-for-index with every metrics array. */
+    labels: string[];
+    metrics: Record<AnalyticsSeriesKey, number[]>;
+  };
+  breakdowns: AnalyticsBreakdowns;
+};

@@ -1,5 +1,5 @@
 # Striv dev manager
-# Usage: .\dev.ps1 start|stop|restart|status
+# Usage: .\dev.ps1 start|stop|restart|status|share|verify
 param([Parameter(Position=0)][string]$Action = "status")
 
 $ErrorActionPreference = "SilentlyContinue"
@@ -87,25 +87,27 @@ function Start-QueueWorker {
       dispatched a minute later sit until the next restart.
     #>
     $running = Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object {
-        $_.CommandLine -like "*queue:work*" -and $_.CommandLine -like "*Striv*"
+        $_.CommandLine -like "*queue:work*" -and ($_.CommandLine -like "*Striv*" -or $_.CommandLine -like "*artisan*")
     }
     if ($running) {
-        Write-Host "[dev] queue    OK  already running (PID $($running.ProcessId -join ','))" -ForegroundColor DarkGray
+        $pids = ($running | ForEach-Object { $_.ProcessId }) -join ','
+        Write-Host "[dev] queue    OK  already running (PID $pids)" -ForegroundColor DarkGray
         return
     }
 
     Start-Process -FilePath "php" `
-        -ArgumentList "artisan","queue:work","--tries=3","--timeout=120" `
+        -ArgumentList "`"$Root\artisan`"","queue:work","--tries=3","--timeout=120" `
         -WorkingDirectory $Root -WindowStyle Hidden
 
     Start-Sleep -Seconds 2
 
     $procId = (Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object {
-        $_.CommandLine -like "*queue:work*" -and $_.CommandLine -like "*Striv*"
+        $_.CommandLine -like "*queue:work*" -and ($_.CommandLine -like "*Striv*" -or $_.CommandLine -like "*artisan*")
     }).ProcessId
 
     if ($procId) {
-        Write-Host "[dev] queue    OK  worker running (PID $procId)" -ForegroundColor Green
+        $displayPid = if ($procId -is [array]) { $procId -join ', ' } else { $procId }
+        Write-Host "[dev] queue    OK  worker running (PID $displayPid)" -ForegroundColor Green
     } else {
         Write-Host "[dev] queue    FAIL (jobs will not run)" -ForegroundColor Red
     }
@@ -115,7 +117,7 @@ function Stop-QueueWorker {
     # Matched on the command line rather than a port: a worker listens on
     # nothing, so the port-based Stop-Port helper cannot see it.
     Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object {
-        $_.CommandLine -like "*queue:work*"
+        $_.CommandLine -like "*queue:work*" -and ($_.CommandLine -like "*Striv*" -or $_.CommandLine -like "*artisan*")
     } | ForEach-Object {
         Write-Host "[dev] killing queue worker PID $($_.ProcessId)" -ForegroundColor Yellow
         taskkill /PID $_.ProcessId /F 2>&1 | Out-Null
@@ -176,9 +178,13 @@ switch ($Action) {
         Write-Host "frontend :$(if ($fp) { " RUNNING (PID $fp)" } else { " stopped" })"
         & (Join-Path $Root "share.ps1") status
     }
+    "verify" {
+        & "$Root\scripts\verify.ps1"
+    }
     default {
-        Write-Host "Usage: .\dev.ps1 start | stop | restart | status | share"
+        Write-Host "Usage: .\dev.ps1 start | stop | restart | status | share | verify"
         Write-Host "  start    run backend + frontend locally"
         Write-Host "  share    run everything and expose a public HTTPS URL"
+        Write-Host "  verify   run automated verification suite"
     }
 }

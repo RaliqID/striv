@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // 24 hours by default. A stolen bearer token is otherwise valid forever:
+    // there is no revocation short of deleting the row, so the window is bounded.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 1440),
 
     /*
     |--------------------------------------------------------------------------

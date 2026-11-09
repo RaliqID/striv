@@ -22,6 +22,10 @@ import {
   type SessionXp,
   type UnlockedBadge,
 } from "@/lib/progression";
+import RestTimer from "@/components/workout/RestTimer";
+import { setActiveWorkout, clearActiveWorkout } from "@/lib/active-workout";
+import PlateCalculatorModal from "@/components/workout/PlateCalculatorModal";
+import OneRmEstimatorPopover from "@/components/workout/OneRmEstimatorPopover";
 
 /**
  * What the server said about a set's evidence.
@@ -129,7 +133,9 @@ export default function ActiveWorkoutPage() {
   // Timer state
   const [globalSeconds, setGlobalSeconds] = useState(0);
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
+  const [restTotalSeconds, setRestTotalSeconds] = useState<number>(90);
   const [restActive, setRestActive] = useState(false);
+  const [restPaused, setRestPaused] = useState(false);
   const [completedSets, setCompletedSets] = useState<Set<string>>(new Set());
   const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedAtRef = useRef<number>(Date.now());
@@ -148,6 +154,23 @@ export default function ActiveWorkoutPage() {
   const [verdicts, setVerdicts] = useState<Record<string, PhotoVerdict>>({});
 
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  // Plate Calculator modal state
+  const [plateCalcTarget, setPlateCalcTarget] = useState<{
+    exerciseId: number;
+    exerciseName: string;
+    setId: number;
+    setIndex: number;
+    weight: number;
+  } | null>(null);
+
+  // 1RM Estimator Popover state
+  const [oneRmTarget, setOneRmTarget] = useState<{
+    exerciseName: string;
+    setIndex: number;
+    weight: number;
+    reps: number;
+  } | null>(null);
 
   /**
    * The unit as of the latest render, for callbacks that outlive theirs.
@@ -216,6 +239,7 @@ export default function ActiveWorkoutPage() {
       if (err instanceof ApiError && (err.status === 404 || err.status === 403)) {
         // Stale session id (deleted, not yours, already finished). Clear and bounce to Lobby.
         sessionStorage.removeItem("activeSessionId");
+        clearActiveWorkout();
         window.location.href = "/workout";
         return;
       }
@@ -274,52 +298,116 @@ export default function ActiveWorkoutPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Rest timer
-  const startRest = (seconds: number) => {
+  // Rest timer handlers
+  const startRest = useCallback((seconds = 90) => {
     if (restIntervalRef.current) clearInterval(restIntervalRef.current);
+    setRestTotalSeconds(seconds);
     setRestSeconds(seconds);
     setRestActive(true);
-    // The updater below is pure on purpose: React may invoke it more than once
-    // (StrictMode does so deliberately to surface impurity), so the tick only
-    // computes the next number. Clearing the interval and flipping `restActive`
-    // happen in the effect underneath, which runs once per real transition.
+    setRestPaused(false);
+
     restIntervalRef.current = setInterval(() => {
       setRestSeconds((prev) => {
         if (prev === null || prev <= 0) return null;
         return prev - 1;
       });
     }, 1000);
-  };
+  }, []);
 
-  const closeRest = () => {
+  const closeRest = useCallback(() => {
     if (restIntervalRef.current) clearInterval(restIntervalRef.current);
     restIntervalRef.current = null;
     setRestActive(false);
+    setRestPaused(false);
     setRestSeconds(null);
-  };
+  }, []);
+
+  const skipRest = useCallback(() => {
+    closeRest();
+  }, [closeRest]);
+
+  const setPresetSeconds = useCallback(
+    (sec: number) => {
+      setRestTotalSeconds(sec);
+      setRestSeconds(sec);
+      if (!restActive) {
+        startRest(sec);
+      }
+    },
+    [restActive, startRest]
+  );
+
+  const addRestSeconds = useCallback((delta: number) => {
+    setRestSeconds((prev) => {
+      const current = prev ?? 0;
+      const next = Math.max(0, current + delta);
+      return next === 0 ? null : next;
+    });
+    setRestTotalSeconds((prev) => Math.max(15, prev + delta));
+  }, []);
+
+  const toggleRestPause = useCallback(() => {
+    setRestPaused((paused) => {
+      const next = !paused;
+      if (next) {
+        if (restIntervalRef.current) {
+          clearInterval(restIntervalRef.current);
+          restIntervalRef.current = null;
+        }
+      } else {
+        if (restIntervalRef.current) clearInterval(restIntervalRef.current);
+        restIntervalRef.current = setInterval(() => {
+          setRestSeconds((prev) => {
+            if (prev === null || prev <= 0) return null;
+            return prev - 1;
+          });
+        }, 1000);
+      }
+      return next;
+    });
+  }, []);
 
   /**
-   * Retire the rest timer once the countdown reaches zero.
-   *
-   * Kept out of the `setRestSeconds` updater: an updater must be pure, and
-   * calling `setRestActive` (plus clearing the interval) inside one ran those
-   * side effects twice per tick under StrictMode.
+   * Retire the rest timer once countdown reaches zero (after brief chime window).
    */
   useEffect(() => {
-    if (restSeconds !== null || !restActive) return;
-
-    if (restIntervalRef.current) {
-      clearInterval(restIntervalRef.current);
-      restIntervalRef.current = null;
+    if (restSeconds === 0) {
+      const timeout = setTimeout(() => {
+        closeRest();
+      }, 1200);
+      return () => clearTimeout(timeout);
     }
-    setRestActive(false);
-  }, [restSeconds, restActive]);
+    if (restSeconds === null && restActive) {
+      closeRest();
+    }
+  }, [restSeconds, restActive, closeRest]);
 
   useEffect(() => {
     return () => {
       if (restIntervalRef.current) clearInterval(restIntervalRef.current);
     };
   }, []);
+
+  // Sync session state to storage for persistent floating mini-drawer
+  useEffect(() => {
+    if (!sessionId) return;
+    const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const workoutName =
+      exercises.length > 0
+        ? exercises.map((e) => e.name).slice(0, 2).join(", ") +
+          (exercises.length > 2 ? ` +${exercises.length - 2}` : "")
+        : "Workout Session";
+
+    setActiveWorkout({
+      sessionId,
+      name: workoutName,
+      startedAt: sessionStartedAtRef.current || new Date(mountedAtRef.current).toISOString(),
+      completedSetsCount: completedSets.size,
+      totalSetsCount: totalSets,
+      exerciseCount: exercises.length,
+      lastUpdated: Date.now(),
+    });
+  }, [sessionId, exercises, completedSets]);
 
   // Debounce picker search
   useEffect(() => {
@@ -602,6 +690,11 @@ export default function ActiveWorkoutPage() {
     );
   };
 
+  const handleApplyPlateWeight = (appliedWeight: number) => {
+    if (!plateCalcTarget) return;
+    updateSetField(plateCalcTarget.exerciseId, plateCalcTarget.setId, "kg", String(appliedWeight));
+  };
+
   // Ref mirror for debounce closures
   const exercisesRef = useRef<UiExercise[]>([]);
   useEffect(() => {
@@ -724,7 +817,7 @@ export default function ActiveWorkoutPage() {
       // Accepted: the server already marked the set complete.
       setCompletedSets((prev) => new Set(prev).add(key));
       setVerdicts((prev) => ({ ...prev, [key]: res }));
-      startRest(90);
+      startRest(restTotalSeconds || 90);
     } catch (err) {
       /*
        * A rejected photo comes back as 422 with the verdict in the body, which
@@ -797,6 +890,7 @@ export default function ActiveWorkoutPage() {
         {}
       );
       sessionStorage.removeItem("activeSessionId");
+      clearActiveWorkout();
       setSummary(
         response?.summary ?? {
           exercises: exercises.length,
@@ -961,14 +1055,29 @@ export default function ActiveWorkoutPage() {
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleFinish}
-          disabled={finishing}
-          className="bg-primary text-on-primary px-6 py-3 rounded-full font-metric-sm text-metric-sm hover:bg-on-surface-variant transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {finishing ? t("workout.finishing") : t("workout.finish")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (!restActive) startRest(restTotalSeconds || 90);
+              else setRestActive(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-outline-variant hover:bg-surface-container transition-colors text-primary text-xs font-semibold"
+            title={t("workout.restTimer")}
+          >
+            <span className="material-symbols-outlined text-[16px] text-primary">timer</span>
+            <span className="hidden sm:inline">{t("workout.restTimer")}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={finishing}
+            className="bg-primary text-on-primary px-5 py-2.5 rounded-full font-metric-sm text-metric-sm hover:bg-on-surface-variant transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {finishing ? t("workout.finishing") : t("workout.finish")}
+          </button>
+        </div>
       </header>
 
       {finishError && (
@@ -1096,6 +1205,23 @@ export default function ActiveWorkoutPage() {
                         // nothing wrong.
                         const showUnverified = verdict !== undefined && verdict.accepted && verdict.unverified === true;
 
+                        const numWeight = parseFloat(set.kg);
+                        const numReps = parseInt(set.reps, 10);
+                        const hasValidWeight = Number.isFinite(numWeight) && numWeight > 0;
+                        const hasValidReps = Number.isFinite(numReps) && numReps > 0;
+
+                        let est1rmDisplay: string | null = null;
+                        if (hasValidWeight && hasValidReps) {
+                          if (numReps === 1) {
+                            est1rmDisplay = `${numWeight} ${label}`;
+                          } else if (numReps > 1 && numReps <= 15) {
+                            const e = numWeight * (1 + numReps / 30);
+                            const b = numWeight * (36 / (37 - numReps));
+                            const avg = Math.round(((e + b) / 2) * 10) / 10;
+                            est1rmDisplay = `${avg} ${label}`;
+                          }
+                        }
+
                         return (
                           <div
                             key={set.id}
@@ -1183,6 +1309,55 @@ export default function ActiveWorkoutPage() {
                                         : "photo_camera"}
                                 </span>
                               </button>
+                            </div>
+
+                            {/* Accessory row: Olympic Plate Calculator trigger + Real-time 1RM estimator pill */}
+                            <div className="col-span-12 -mt-1 pt-1 flex items-center justify-between flex-wrap gap-2 text-xs">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPlateCalcTarget({
+                                    exerciseId: exercise.id,
+                                    exerciseName: exercise.name,
+                                    setId: set.id,
+                                    setIndex: setIdx,
+                                    weight: hasValidWeight ? numWeight : 0,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors border border-outline-variant/60"
+                                title="Open Olympic Barbell Plate Calculator"
+                              >
+                                <span className="material-symbols-outlined text-[15px] text-secondary">
+                                  calculate
+                                </span>
+                                <span>Plates</span>
+                                {hasValidWeight && (
+                                  <span className="text-on-surface-variant/70 text-[10px]">
+                                    ({Math.max(0, Math.round(((numWeight - (unit === "lbs" ? 45 : 20)) / 2) * 10) / 10)} {label}/side)
+                                  </span>
+                                )}
+                              </button>
+
+                              {est1rmDisplay != null && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOneRmTarget({
+                                      exerciseName: exercise.name,
+                                      setIndex: setIdx,
+                                      weight: numWeight,
+                                      reps: numReps,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/20 transition-all hover:scale-[1.02]"
+                                  title="View 1RM calculation & training intensity zones"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">
+                                    trending_up
+                                  </span>
+                                  <span>Est. 1RM: {est1rmDisplay}</span>
+                                </button>
+                              )}
                             </div>
 
                             {/*
@@ -1335,30 +1510,17 @@ export default function ActiveWorkoutPage() {
       )}
 
       {/* Rest Timer Widget */}
-      {restActive && restSeconds !== null && (
-        <div
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant rounded-full px-2 py-2 flex items-center gap-4 shadow-lg z-50"
-          style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease" }}
-        >
-          <div className="w-12 h-12 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-primary text-[20px]">timer</span>
-          </div>
-          <div className="flex flex-col pr-4 min-w-[80px]">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">{t("workout.resting")}</span>
-            <span className="font-headline-lg-mobile text-headline-lg-mobile tabular-nums tracking-tighter leading-none">
-              {formatTime(restSeconds)}
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-label={t("workout.closeRestTimer")}
-            className="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center transition-colors text-on-surface-variant"
-            onClick={closeRest}
-          >
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
-        </div>
-      )}
+      <RestTimer
+        active={restActive}
+        secondsRemaining={restSeconds}
+        totalSeconds={restTotalSeconds}
+        onClose={closeRest}
+        onSkip={skipRest}
+        onSetSeconds={setPresetSeconds}
+        onAddSeconds={addRestSeconds}
+        isPaused={restPaused}
+        onTogglePause={toggleRestPause}
+      />
 
       {/*
         The camera sheet. Opened by the tick on a set, and the only path by which
@@ -1369,6 +1531,28 @@ export default function ActiveWorkoutPage() {
         exerciseName={photoTarget?.exerciseName ?? ""}
         onCapture={submitPhoto}
         onCancel={() => setPhotoTarget(null)}
+      />
+
+      {/* Olympic Barbell Plate Calculator Modal */}
+      <PlateCalculatorModal
+        open={plateCalcTarget !== null}
+        onClose={() => setPlateCalcTarget(null)}
+        initialWeight={plateCalcTarget?.weight ?? 0}
+        initialUnit={unit}
+        onApplyWeight={handleApplyPlateWeight}
+        exerciseName={plateCalcTarget?.exerciseName}
+        setIndex={plateCalcTarget?.setIndex}
+      />
+
+      {/* Real-time 1RM Estimator & Training Zones Popover */}
+      <OneRmEstimatorPopover
+        open={oneRmTarget !== null}
+        onClose={() => setOneRmTarget(null)}
+        weight={oneRmTarget?.weight ?? 0}
+        reps={oneRmTarget?.reps ?? 0}
+        unit={unit}
+        exerciseName={oneRmTarget?.exerciseName}
+        setIndex={oneRmTarget?.setIndex}
       />
     </div>
   );

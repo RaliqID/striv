@@ -19,6 +19,13 @@ class AnalyticsController extends Controller
         return response()->json($this->analytics->dashboardOverview($user));
     }
 
+    public function heatmap(Request $request)
+    {
+        return response()->json(
+            $this->analytics->activityHeatmap($request->user(), (int) $request->input('weeks', 52))
+        );
+    }
+
     public function progress(Request $request)
     {
         $user = $request->user();

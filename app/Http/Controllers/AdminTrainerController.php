@@ -258,13 +258,12 @@ class AdminTrainerController extends Controller
             return response()->json(['message' => __('messages.training.already_trainer')], 422);
         }
 
-        $user->forceFill([
-            'role' => User::ROLE_TRAINER,
-            'specialization' => $validated['specialization'] ?? null,
-            'bio' => $validated['bio'] ?? null,
-            'capacity' => $validated['capacity'] ?? 25,
-            'is_available' => true,
-        ])->save();
+        $user->role = User::ROLE_TRAINER;
+        $user->specialization = $validated['specialization'] ?? null;
+        $user->bio = $validated['bio'] ?? null;
+        $user->capacity = $validated['capacity'] ?? 25;
+        $user->is_available = true;
+        $user->save();
 
         // A new trainer means previously unmatchable members can now be placed.
         $matched = $this->matching->matchPendingRequests(200);

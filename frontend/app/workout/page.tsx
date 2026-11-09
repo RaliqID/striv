@@ -9,6 +9,7 @@ import type { Routine } from "@/types/routine";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { setActiveWorkout } from "@/lib/active-workout";
 
 /**
  * The server's answer to "what am I training today?".
@@ -146,6 +147,15 @@ export default function WorkoutLobbyPage() {
     try {
       const res = await apiClient.post<{ id: number }>(`/routines/${routineId}/start`, {});
       sessionStorage.setItem("activeSessionId", String(res.id));
+      setActiveWorkout({
+        sessionId: res.id,
+        name: today?.routine?.name || t("workout.session"),
+        startedAt: new Date().toISOString(),
+        completedSetsCount: 0,
+        totalSetsCount: 0,
+        exerciseCount: 0,
+        lastUpdated: Date.now(),
+      });
       router.push("/workout/active");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -169,6 +179,15 @@ export default function WorkoutLobbyPage() {
       if (session?.id) {
         try {
           sessionStorage.setItem("activeSessionId", String(session.id));
+          setActiveWorkout({
+            sessionId: session.id,
+            name: t("workout.session"),
+            startedAt: session.started_at || new Date().toISOString(),
+            completedSetsCount: 0,
+            totalSetsCount: 0,
+            exerciseCount: 0,
+            lastUpdated: Date.now(),
+          });
         } catch {}
       }
       router.push("/workout/active");
@@ -188,6 +207,7 @@ export default function WorkoutLobbyPage() {
     if (usingRoutineId != null) return;
     setUsingRoutineId(routineId);
     setStartError(null);
+    const routine = routines.find((r) => r.id === routineId);
     try {
       const session = await apiClient.post<{ id: number }>(
         `/routines/${routineId}/start`,
@@ -196,6 +216,15 @@ export default function WorkoutLobbyPage() {
       if (session?.id) {
         try {
           sessionStorage.setItem("activeSessionId", String(session.id));
+          setActiveWorkout({
+            sessionId: session.id,
+            name: routine?.name || t("workout.session"),
+            startedAt: new Date().toISOString(),
+            completedSetsCount: 0,
+            totalSetsCount: 0,
+            exerciseCount: 0,
+            lastUpdated: Date.now(),
+          });
         } catch {}
         window.location.href = "/workout/active";
         return;

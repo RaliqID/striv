@@ -16,7 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'locale', 'is_suspended', 'must_change_password', 'specialization', 'bio', 'avatar_path', 'avatar_mime', 'avatar_updated_at', 'avatar_change_allowed_at', 'is_available', 'capacity', 'phone', 'reminder_email_enabled', 'reminder_whatsapp_enabled', 'remind_morning_of_training', 'remind_streak_break', 'remind_post_workout', 'remind_weekly_recap', 'remind_missed_session'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'must_change_password', 'specialization', 'bio', 'avatar_path', 'avatar_mime', 'avatar_updated_at', 'avatar_change_allowed_at', 'is_available', 'capacity', 'phone', 'reminder_email_enabled', 'reminder_whatsapp_enabled', 'remind_morning_of_training', 'remind_streak_break', 'remind_post_workout', 'remind_weekly_recap', 'remind_missed_session'])]
 #[Hidden([
     'password',
     'remember_token',

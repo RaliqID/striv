@@ -52,7 +52,6 @@ class CertifiedMemberSeeder extends Seeder
             [
                 'name' => 'Certified Member',
                 'password' => Hash::make('password'),
-                'role' => User::ROLE_USER,
                 'locale' => 'id',
             ],
         );

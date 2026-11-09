@@ -170,9 +170,9 @@ class DemoSeeder extends Seeder
 
         $admin->fill([
             'name' => 'Demo Admin',
-            'role' => User::ROLE_ADMIN,
-            'is_suspended' => false,
         ]);
+        $admin->role = User::ROLE_ADMIN;
+        $admin->is_suspended = false;
 
         if (! $admin->exists) {
             $admin->password = Hash::make(self::DEMO_PASSWORD);
@@ -198,13 +198,13 @@ class DemoSeeder extends Seeder
 
         $trainer->fill([
             'name' => $data['name'],
-            'role' => User::ROLE_TRAINER,
             'specialization' => $data['specialization'],
             'bio' => $data['bio'],
             'capacity' => $data['capacity'],
             'is_available' => true,
-            'is_suspended' => false,
         ]);
+        $trainer->role = User::ROLE_TRAINER;
+        $trainer->is_suspended = false;
 
         if (! $trainer->exists) {
             $trainer->password = Hash::make(self::DEMO_PASSWORD);
@@ -231,9 +231,9 @@ class DemoSeeder extends Seeder
 
         $member->fill([
             'name' => $data['name'],
-            'role' => User::ROLE_USER,
-            'is_suspended' => false,
         ]);
+        $member->role = User::ROLE_USER;
+        $member->is_suspended = false;
 
         if (! $member->exists) {
             $member->password = Hash::make(self::DEMO_PASSWORD);

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n/provider";
 import { useUnit } from "@/lib/use-unit";
+import ActivityHeatmap from "@/components/dashboard/ActivityHeatmap";
 
 /*
  * PR types arrive as machine enums ("one_rm"), which must not reach the UI
@@ -325,6 +326,9 @@ export default function DashboardPage() {
             )}
           </div>
         </section>
+
+        {/* 52-Week Activity Consistency Heatmap */}
+        <ActivityHeatmap />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
           <section className="minimal-card rounded-xl p-6 lg:col-span-2 flex flex-col border border-border bg-surface-container-lowest">

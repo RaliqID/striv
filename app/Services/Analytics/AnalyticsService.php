@@ -63,6 +63,116 @@ class AnalyticsService
     }
 
     /**
+     * Aggregated workout activity per calendar day over the last N weeks (default 52).
+     *
+     * Computes daily session count, total volume, total sets, and streak metrics.
+     *
+     * @return array{
+     *     dates: array<int, array{date: string, count: int, volume: float, sets: int}>,
+     *     days: array<int, array{date: string, count: int, volume: float, sets: int}>,
+     *     current_streak_days: int,
+     *     best_streak_days: int,
+     *     total_active_days: int,
+     *     current_streak: int,
+     *     best_streak: int
+     * }
+     */
+    public function activityHeatmap(User $user, int $weeks = 52): array
+    {
+        if ($weeks <= 0) {
+            $weeks = 52;
+        }
+
+        $start = Carbon::now()->subWeeks($weeks)->startOfWeek();
+        $now = Carbon::now();
+
+        $sessions = WorkoutSession::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('finished_at')
+            ->where('started_at', '>=', $start)
+            ->where('started_at', '<=', $now->copy()->endOfDay())
+            ->with(['workoutExercises.sets'])
+            ->orderBy('started_at')
+            ->get();
+
+        $grouped = [];
+
+        foreach ($sessions as $session) {
+            $date = Carbon::parse($session->started_at)->toDateString();
+
+            if (!isset($grouped[$date])) {
+                $grouped[$date] = [
+                    'date' => $date,
+                    'count' => 0,
+                    'volume' => 0.0,
+                    'sets' => 0,
+                ];
+            }
+
+            $grouped[$date]['count']++;
+            $grouped[$date]['volume'] += $this->sessionVolume($session);
+            $grouped[$date]['sets'] += (int) $session->workoutExercises->sum(fn ($we) => $we->sets->count());
+        }
+
+        $dates = array_values(array_map(function ($item) {
+            $item['volume'] = round((float) $item['volume'], 2);
+            return $item;
+        }, $grouped));
+
+        usort($dates, fn ($a, $b) => strcmp($a['date'], $b['date']));
+
+        $activeDateSet = array_flip(array_column($dates, 'date'));
+        $totalActiveDays = count($dates);
+
+        // Longest consecutive active days in the window
+        $bestStreak = 0;
+        $runningStreak = 0;
+        $prevDate = null;
+
+        foreach ($dates as $item) {
+            $curr = Carbon::parse($item['date']);
+            if ($prevDate !== null && $prevDate->copy()->addDay()->toDateString() === $curr->toDateString()) {
+                $runningStreak++;
+            } else {
+                $runningStreak = 1;
+            }
+            if ($runningStreak > $bestStreak) {
+                $bestStreak = $runningStreak;
+            }
+            $prevDate = $curr;
+        }
+
+        // Current active streak ending today (or yesterday if today is not logged yet)
+        $currentStreak = 0;
+        $todayStr = Carbon::now()->toDateString();
+        $yesterdayStr = Carbon::now()->subDay()->toDateString();
+
+        $cursor = null;
+        if (isset($activeDateSet[$todayStr])) {
+            $cursor = Carbon::now();
+        } elseif (isset($activeDateSet[$yesterdayStr])) {
+            $cursor = Carbon::now()->subDay();
+        }
+
+        if ($cursor !== null) {
+            while (isset($activeDateSet[$cursor->toDateString()])) {
+                $currentStreak++;
+                $cursor->subDay();
+            }
+        }
+
+        return [
+            'dates' => $dates,
+            'days' => $dates,
+            'current_streak_days' => $currentStreak,
+            'best_streak_days' => $bestStreak,
+            'total_active_days' => $totalActiveDays,
+            'current_streak' => $currentStreak,
+            'best_streak' => $bestStreak,
+        ];
+    }
+
+    /**
      * Volume aggregated per ISO week for the last N weeks (week starts Monday).
      *
      * @return array<int, array{week_start: string, volume: float}>
