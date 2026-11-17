@@ -90,7 +90,7 @@ export default function ExerciseDetailPage() {
             points: Array.isArray(res?.points) ? res.points : [],
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (cancelled) return;
 
         if (err instanceof ApiError && err.status === 401) {
@@ -99,7 +99,11 @@ export default function ExerciseDetailPage() {
           return;
         }
 
-        setError(err?.status === 404 ? t("exercises.notFound") : t("common.loadFailed"));
+        setError(
+          err instanceof ApiError && err.status === 404
+            ? t("exercises.notFound")
+            : t("common.loadFailed")
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }

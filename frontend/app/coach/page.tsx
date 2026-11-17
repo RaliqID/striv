@@ -1,7 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiError } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/lib/i18n/provider";
 
@@ -55,10 +55,10 @@ const fmtRelative = (
 // Map network-level failures (fetch TypeError, "Failed to fetch") to a
 // readable message. Server messages (e.g. 429) pass through untouched.
 // `t` is a parameter because this is a module-level helper with no hook access.
-const friendlyError = (e: any, fallback: string, t: (key: string) => string): string => {
-  const raw = typeof e?.message === "string" ? e.message : "";
+const friendlyError = (e: unknown, fallback: string, t: (key: string) => string): string => {
+  const raw = e instanceof Error ? e.message : "";
   if (
-    e?.name === "TypeError" ||
+    (e instanceof Error && e.name === "TypeError") ||
     /failed to fetch|networkerror|load failed/i.test(raw)
   ) {
     return t("coach.errOffline");
@@ -118,8 +118,8 @@ export default function CoachPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handle401 = (e: any) => {
-    if (e?.status === 401) {
+  const handle401 = (e: unknown) => {
+    if (e instanceof ApiError && e.status === 401) {
       window.location.href = "/login";
       return true;
     }
@@ -132,7 +132,7 @@ export default function CoachPage() {
         "/chat/sessions"
       );
       setSessions(res.sessions ?? []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       handle401(e);
     }
   };
@@ -146,7 +146,7 @@ export default function CoachPage() {
         );
         setMessages(res.messages ?? []);
         setActiveSessionId(res.session?.id ?? null);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!handle401(e)) {
           setError(friendlyError(e, t("coach.errLoad"), t));
         }
@@ -172,7 +172,7 @@ export default function CoachPage() {
       );
       setActiveSessionId(id);
       setMessages(res.messages ?? []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!handle401(e)) {
         setError(friendlyError(e, t("common.actionFailed"), t));
       }
@@ -190,7 +190,7 @@ export default function CoachPage() {
       setSessions((prev) => [res.session, ...prev]);
       setActiveSessionId(res.session.id);
       setMessages([]);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!handle401(e)) {
         setError(friendlyError(e, t("common.actionFailed"), t));
       }
@@ -214,11 +214,11 @@ export default function CoachPage() {
           );
           setMessages(res.messages ?? []);
           setActiveSessionId(res.session?.id ?? null);
-        } catch (e: any) {
+        } catch (e: unknown) {
           handle401(e);
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!handle401(e)) {
         setError(friendlyError(e, t("common.actionFailed"), t));
       }
@@ -238,8 +238,9 @@ export default function CoachPage() {
     try {
         const dataUrl = await downscaleImage(file, t);
       setImagePreview(dataUrl);
-    } catch (err: any) {
-      setError(err.message || t("coach.errImage"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("coach.errImage");
+      setError(msg);
     } finally {
       setProcessingImage(false);
     }
@@ -300,7 +301,7 @@ export default function CoachPage() {
             new Date(a.last_message_at).getTime()
         );
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (handle401(e)) return;
       setError(friendlyError(e, t("common.actionFailed"), t));
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -425,11 +426,31 @@ export default function CoachPage() {
                 </div>
               )}
               {messages.length === 0 && !switching ? (
-                <div className="flex flex-col items-center justify-center h-full text-on-surface-variant">
-                  <span className="material-symbols-outlined text-4xl">chat</span>
-                  <p className="mt-2 font-body-md">{t("coach.emptyTitle")}</p>
-                  <p className="text-sm">{t("coach.emptyExample")}</p>
-                  <p className="text-sm mt-1">{t("coach.emptyAttach")}</p>
+                <div className="flex flex-col items-center justify-center h-full text-on-surface-variant p-6 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary mb-3">
+                    <span className="material-symbols-outlined text-[28px]">smart_toy</span>
+                  </div>
+                  <h3 className="font-headline-lg-mobile text-primary font-bold">{t("coach.emptyTitle")}</h3>
+                  <p className="font-body-md text-sm text-on-surface-variant max-w-sm mt-1">
+                    {t("coach.emptyExample")} {t("coach.emptyAttach")}
+                  </p>
+
+                  <div className="mt-6 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 max-w-md">
+                    {[
+                      "How is my bench press volume progressing?",
+                      "Suggest a 4-day hypertrophy split",
+                      "How do I break through a strength plateau?",
+                    ].map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => setInput(prompt)}
+                        className="px-3.5 py-2 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface hover:border-secondary hover:text-secondary hover:bg-secondary-fixed/20 transition-all text-left shadow-2xs"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 messages.map((msg) => (

@@ -3,7 +3,7 @@
 import AppLayout from "@/components/AppLayout";
 import ReminderSettings from "@/components/ReminderSettings";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
-import { apiClient, apiUrl } from "@/lib/api";
+import { apiClient, apiUrl, ApiError } from "@/lib/api";
 import { getUserUnit, publishUnit, type Unit } from "@/lib/units";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -92,9 +92,10 @@ export default function SettingsPage() {
        */
       setUnit(p?.preferences?.unit ?? getUserUnit());
       setError("");
-    } catch (e: any) {
-      if (e.status === 401) router.push("/login");
-      setError(e.message || t("common.loadFailed"));
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) router.push("/login");
+      const message = e instanceof Error ? e.message : t("common.loadFailed");
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -153,6 +154,9 @@ export default function SettingsPage() {
       });
       if (!res.ok) throw new Error(t("settings.exportFailed"));
       const blob = await res.blob();
+      if (blob.size === 0) {
+        throw new Error(t("settings.exportEmpty") || "No workout data to export (empty)");
+      }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -239,8 +243,13 @@ export default function SettingsPage() {
       );
       setBioMsg(t("toast.saved"));
       setTimeout(() => setBioMsg(""), 3000);
-    } catch (e: any) {
-      setBioMsg(e.message ? t("settings.saveError", { message: e.message }) : t("settings.saveFailed"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "";
+      setBioMsg(
+        message
+          ? t("settings.saveError", { message })
+          : t("settings.saveFailed")
+      );
       setBioError(true);
     } finally {
       setBioSaving(false);
@@ -279,8 +288,13 @@ export default function SettingsPage() {
       );
       setTrainingMsg(t("toast.saved"));
       setTimeout(() => setTrainingMsg(""), 3000);
-    } catch (e: any) {
-      setTrainingMsg(e.message ? t("settings.saveError", { message: e.message }) : t("settings.saveFailed"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "";
+      setTrainingMsg(
+        message
+          ? t("settings.saveError", { message })
+          : t("settings.saveFailed")
+      );
       setTrainingError(true);
     } finally {
       setTrainingSaving(false);

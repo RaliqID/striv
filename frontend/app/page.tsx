@@ -120,7 +120,7 @@ export default function LandingPage() {
     const name = (form.querySelector('#contact-name') as HTMLInputElement).value.trim();
     const email = (form.querySelector('#contact-email') as HTMLInputElement).value.trim();
     const message = (form.querySelector('#contact-msg') as HTMLTextAreaElement).value.trim();
-    if (!name || !email || !message) {
+    if (name.length === 0 || email.length === 0 || message.length === 0) {
       setContactError(t("landing.errFields"));
       return;
     }
@@ -138,8 +138,9 @@ export default function LandingPage() {
       }
       setContactStatus('success');
       form.reset();
-    } catch (err: any) {
-      setContactError(err.message || t("landing.genericRetry"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("landing.genericRetry");
+      setContactError(msg);
       setContactStatus('error');
     } finally {
       setTimeout(() => setContactStatus(null), 5000);

@@ -1,7 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiError } from "@/lib/api";
 import { formatVolume } from "@/lib/format";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n/provider";
@@ -76,16 +76,17 @@ export default function ReviewsPage() {
       const res = await apiClient.get<{ data: WeeklyReport[]; current_page: number; last_page: number }>("/reviews/weekly");
       setReports(res.data ?? []);
       setError("");
-    } catch (e: any) {
-      if (e.status === 401) { window.location.href = "/login"; return; }
-      setError(e.message || t("reviews.errorLoad"));
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) { window.location.href = "/login"; return; }
+      const message = e instanceof Error ? e.message : t("reviews.errorLoad");
+      setError(message);
     } finally { setLoading(false); }
   }, [t]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
   useEffect(() => {
-    apiClient.get<{ data: any[] }>("/workout-sessions?page=1").then(r => {
+    apiClient.get<{ data: unknown[] }>("/workout-sessions?page=1").then(r => {
       setHasSessions((r.data ?? []).length > 0);
     }).catch(() => {});
   }, []);
@@ -99,8 +100,9 @@ export default function ReviewsPage() {
         if (prev.some(r => r.id === res.id)) return prev;
         return [res, ...prev];
       });
-    } catch (e: any) {
-      setError(e.message || t("reviews.generateFailed"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : t("reviews.generateFailed");
+      setError(message);
     } finally { setGenerating(false); }
   };
 

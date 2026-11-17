@@ -301,26 +301,39 @@ export default function DashboardPage() {
               <div className="col-span-4 text-error font-body-md">{t("dashboard.errorStats")}</div>
             ) : (
               <>
-                <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("dashboard.statWorkouts")}</span>
+                <div className="minimal-card rounded-xl p-5 flex flex-col justify-between border border-border bg-surface-container-lowest hover:border-primary/40 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("dashboard.statWorkouts")}</span>
+                    <span className="material-symbols-outlined text-outline text-[18px]">fitness_center</span>
+                  </div>
                   <span className="font-headline-lg text-headline-lg text-primary">{stats?.workouts_last_30d ?? 0}</span>
                 </div>
-                <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("progress.sets")}</span>
+
+                <div className="minimal-card rounded-xl p-5 flex flex-col justify-between border border-border bg-surface-container-lowest hover:border-primary/40 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("progress.sets")}</span>
+                    <span className="material-symbols-outlined text-outline text-[18px]">repeat</span>
+                  </div>
                   <span className="font-headline-lg text-headline-lg text-primary">{stats?.sets_last_30d ?? 0}</span>
                 </div>
-                <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("progress.volume")}</span>
+
+                <div className="minimal-card rounded-xl p-5 flex flex-col justify-between border border-border bg-surface-container-lowest hover:border-primary/40 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("progress.volume")}</span>
+                    <span className="material-symbols-outlined text-outline text-[18px]">scale</span>
+                  </div>
                   <span className="font-headline-lg text-headline-lg text-primary">
                     {formatVolume(stats?.volume_last_30d ?? 0)}
-                    {/* A real space, not a margin: a margin leaves textContent
-                        as "236.8kkg", which is what a screen reader reads out. */}
                     {" "}
                     <span className="font-metric-sm text-metric-sm text-on-surface-variant">{label}</span>
                   </span>
                 </div>
-                <div className="minimal-card rounded-xl p-6 flex flex-col justify-between border border-border bg-surface-container-lowest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">{t("progress.strengthTrend")}</span>
+
+                <div className="minimal-card rounded-xl p-5 flex flex-col justify-between border border-border bg-surface-container-lowest hover:border-primary/40 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">{t("progress.strengthTrend")}</span>
+                    <span className="material-symbols-outlined text-secondary text-[18px]">trending_up</span>
+                  </div>
                   <span className="font-headline-lg text-headline-lg text-primary">{strengthDisplay}</span>
                 </div>
               </>
@@ -346,22 +359,39 @@ export default function DashboardPage() {
             ) : (
               <div className="flex-1 relative min-h-[200px] md:min-h-[240px] w-full">
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 400 200">
+                  <defs>
+                    <linearGradient id="dashboardStrengthGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--secondary)" stopOpacity="0.22" />
+                      <stop offset="100%" stopColor="var(--secondary)" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
                   {/* Horizontal grid lines */}
-                  <line stroke="#f1edec" strokeWidth="1" x1="0" x2="400" y1="50" y2="50" />
-                  <line stroke="#f1edec" strokeWidth="1" x1="0" x2="400" y1="100" y2="100" />
-                  <line stroke="#f1edec" strokeWidth="1" x1="0" x2="400" y1="150" y2="150" />
+                  <line stroke="var(--outline-variant)" strokeOpacity="0.35" strokeWidth="1" x1="0" x2="400" y1="50" y2="50" />
+                  <line stroke="var(--outline-variant)" strokeOpacity="0.35" strokeWidth="1" x1="0" x2="400" y1="100" y2="100" />
+                  <line stroke="var(--outline-variant)" strokeOpacity="0.35" strokeWidth="1" x1="0" x2="400" y1="150" y2="150" />
                   {pathD && (
-                    <path className="stroke-primary fill-none" d={pathD} strokeWidth="2" />
+                    <>
+                      <path
+                        d={`${pathD} L ${getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).x},${chartHeight - padding} L ${getPoint(0, chartPoints[0]).x},${chartHeight - padding} Z`}
+                        fill="url(#dashboardStrengthGrad)"
+                      />
+                      <path className="stroke-secondary fill-none" d={pathD} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </>
                   )}
                   {chartPoints.length > 0 && (
-                    <circle cx={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).x} cy={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).y} fill="#000" r="4" />
+                    <circle
+                      cx={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).x}
+                      cy={getPoint(chartPoints.length - 1, chartPoints[chartPoints.length - 1]).y}
+                      fill="var(--secondary)"
+                      r="4"
+                    />
                   )}
                 </svg>
               </div>
             )}
           </section>
 
-          <section className="minimal-card rounded-xl p-4 md:p-6 bg-surface-container-low border-none relative overflow-hidden border border-border">
+          <section className="ai-glow rounded-xl p-5 md:p-6 bg-surface-container-low relative overflow-hidden border border-outline-variant flex flex-col justify-between">
             <div className="absolute top-0 right-0 p-4">
               <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>
                 auto_awesome
@@ -415,7 +445,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {stats?.recent_prs?.slice(0, 5).map((pr) => (
-                  <div key={pr.id} className="flex justify-between items-center p-4 bg-surface-container-low rounded-lg">
+                  <div key={pr.id} className="flex justify-between items-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg border border-transparent hover:border-outline-variant/60 transition-all">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
                         <span className="material-symbols-outlined text-primary">fitness_center</span>
@@ -447,7 +477,7 @@ export default function DashboardPage() {
 
           {/* Latest Weekly Review */}
           {!loading && latestReview?.content && (
-            <section className="minimal-card rounded-xl p-6 lg:col-span-2 border border-border bg-surface-container-lowest">
+            <section className="minimal-card rounded-xl p-6 lg:col-span-2 border border-border bg-surface-container-lowest hover:border-outline-variant transition-colors">
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h3 className="font-metric-sm text-metric-sm text-primary">{t("dashboard.latestReview")}</h3>
                 <Link

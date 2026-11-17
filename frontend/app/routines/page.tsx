@@ -1,7 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiError } from "@/lib/api";
 import type { Paginated } from "@/types/exercise";
 import type { Routine } from "@/types/routine";
 import { useState, useEffect } from "react";
@@ -57,9 +57,10 @@ export default function RoutinesPage() {
       const res = await apiClient.get<Paginated<Routine>>("/routines");
       setRoutines(res.data ?? []);
       setError("");
-    } catch (e: any) {
-      if (e.status === 401) router.push("/login");
-      setError(e.message || t("common.loadFailed"));
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) router.push("/login");
+      const message = e instanceof Error ? e.message : t("common.loadFailed");
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -196,8 +197,10 @@ export default function RoutinesPage() {
       }
       closeModals();
       fetchRoutines();
-    } catch (e: any) {
-      setFormError(e.message || t("common.actionFailed"));
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : t("common.actionFailed");
+      setFormError(message);
     } finally {
       setSubmitting(false);
     }
@@ -208,8 +211,10 @@ export default function RoutinesPage() {
     try {
       await apiClient.delete(`/routines/${id}`);
       fetchRoutines();
-    } catch (e: any) {
-      alert(e.message || t("routines.errDelete"));
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : t("routines.errDelete");
+      alert(message);
     }
   };
 
@@ -237,9 +242,13 @@ export default function RoutinesPage() {
         }
         window.location.href = "/workout/active";
       }
-    } catch (e: any) {
-      if (e.status === 401) router.push("/login");
-      else alert(e.message || t("routines.errStart"));
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) router.push("/login");
+      else {
+        const message =
+          e instanceof Error ? e.message : t("routines.errStart");
+        alert(message);
+      }
       setStartingId(null);
     }
   };

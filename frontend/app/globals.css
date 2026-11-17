@@ -140,6 +140,38 @@ button, a, [role="button"] {
 }
 
 /*
+ * Tactile press feedback — Emil Kowalski design engineering principle:
+ * buttons must feel responsive to press, scaling subtly down on click/tap.
+ */
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.98);
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Accessible focus ring across all interactive controls */
+:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+/* Sleek minimalist scrollbar matching theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(116, 120, 120, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(116, 120, 120, 0.6);
+}
+
+/*
  * Page entrance fade.
  *
  * Content mounts in a single frame on a client-side route change, so without
@@ -211,5 +243,10 @@ button, a, [role="button"] {
 .minimal-card {
   border-width: 1px;
   border-color: var(--border);
-  box-shadow: 0 1px 2px rgba(28, 27, 27, 0.04), 0 2px 8px rgba(28, 27, 27, 0.03);
+  box-shadow: 0 1px 3px rgba(28, 27, 27, 0.04), 0 2px 8px rgba(28, 27, 27, 0.02);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.minimal-card:hover {
+  box-shadow: 0 2px 6px rgba(28, 27, 27, 0.06), 0 6px 16px rgba(28, 27, 27, 0.04);
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiError } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n/provider";
 import { useUnit } from "@/lib/use-unit";
 
@@ -83,13 +83,15 @@ export default function RecordsPage() {
       } while (page <= lastPage);
       if (id !== requestId.current) return; // stale response
       setRecords(allRecords);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (id !== requestId.current) return;
-      if (err.status === 401) {
+      if (err instanceof ApiError && err.status === 401) {
         router.push("/login");
         return;
       }
-      setError(err.message || t("common.loadFailed"));
+      const message =
+        err instanceof Error ? err.message : t("common.loadFailed");
+      setError(message);
     } finally {
       // Only the newest request owns the spinner. An older one clearing it
       // would reveal the empty state while the current filter is still loading.
@@ -142,14 +144,19 @@ export default function RecordsPage() {
             {t("records.personalRecords")}
           </h1>
           <div className="flex items-center gap-2">
-            <button className="rounded-xl bg-surface-variant border border-outline-variant p-2.5 transition-colors hover:bg-primary/5">
-              <span className="material-symbols-outlined text-on-surface-variant text-2xl">
-                filter_list
-              </span>
-            </button>
-            <button className="rounded-xl bg-surface-variant border border-outline-variant p-2.5 transition-colors hover:bg-primary/5">
-              <span className="material-symbols-outlined text-on-surface-variant text-2xl">
-                more_horiz
+            <button
+              onClick={handleRetry}
+              disabled={loading}
+              className="rounded-xl border border-outline-variant bg-surface p-2.5 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary disabled:opacity-50"
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              <span
+                className={`material-symbols-outlined text-2xl ${
+                  loading ? "animate-spin" : ""
+                }`}
+              >
+                refresh
               </span>
             </button>
           </div>
@@ -174,7 +181,7 @@ export default function RecordsPage() {
 
         {/* Highlights */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2">
+          <div className="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm">
             <span className="font-label-caps text-label-caps text-outline uppercase tracking-widest">
               {t("records.heaviestLift")}
             </span>
@@ -197,7 +204,7 @@ export default function RecordsPage() {
               </div>
             )}
           </div>
-          <div className="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2">
+          <div className="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm">
             <span className="font-label-caps text-label-caps text-outline uppercase tracking-widest">
               {t("records.best1rm")}
             </span>
@@ -272,7 +279,7 @@ export default function RecordsPage() {
                   {grouped[exerciseName].map((record) => (
                     <div
                       key={record.id}
-                      className="bg-surface border border-outline-variant rounded-xl p-4 flex items-center gap-4"
+                      className="flex items-center gap-4 rounded-xl border border-outline-variant bg-surface p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/40 hover:shadow-sm"
                     >
                       <span className="material-symbols-outlined text-2xl text-secondary">
                         {PR_TYPE_ICONS[record.pr_type]}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import { useTranslation } from "@/lib/i18n/provider";
+import { ApiError } from "@/lib/api";
 import {
   Certificate,
   CertificatesResponse,
@@ -51,12 +52,14 @@ export default function CertificatesPage() {
         locked: Array.isArray(res?.locked) ? res.locked : [],
         count: typeof res?.count === "number" ? res.count : 0,
       });
-    } catch (err: any) {
-      if (err?.status === 401) {
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
         router.push("/login");
         return;
       }
-      setError(err?.message || t("common.loadFailed"));
+      const message =
+        err instanceof Error ? err.message : t("common.loadFailed");
+      setError(message);
     } finally {
       setLoading(false);
     }

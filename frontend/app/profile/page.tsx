@@ -2,7 +2,7 @@
 
 import AppLayout from "@/components/AppLayout";
 import ProfileAvatar from "@/components/ProfileAvatar";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiError } from "@/lib/api";
 import { USER_UPDATED_EVENT } from "@/lib/progression";
 import { useTranslation } from "@/lib/i18n/provider";
 import { useEffect, useState } from "react";
@@ -22,6 +22,8 @@ type Profile = {
 type User = {
   name: string;
   email: string;
+  avatar_url?: string | null;
+  avatar_locked_until?: string | null;
   profile: Profile | null;
 };
 
@@ -64,12 +66,13 @@ export default function ProfilePage() {
       const res = await apiClient.get<{ user: User }>("/profile");
       setUser(res.user);
       setError("");
-    } catch (e: any) {
-      if (e.status === 401) {
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) {
         router.push("/login");
         return;
       }
-      setError(e.message || t("common.loadFailed"));
+      const message = e instanceof Error ? e.message : t("common.loadFailed");
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -112,7 +115,7 @@ export default function ProfilePage() {
             </div>
             <div className="h-px bg-outline-variant" />
             <div className="grid grid-cols-2 gap-4">
-              {[0, 1, 2, 3, 4].map((i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="space-y-2">
                   <div className="h-3 w-20 rounded bg-surface-container animate-pulse" />
                   <div className="h-5 w-32 rounded bg-surface-container animate-pulse" />
@@ -121,7 +124,7 @@ export default function ProfilePage() {
             </div>
             <div className="h-px bg-outline-variant" />
             <div className="grid grid-cols-2 gap-4">
-              {[0, 1, 2].map((i) => (
+              {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="space-y-2">
                   <div className="h-3 w-20 rounded bg-surface-container animate-pulse" />
                   <div className="h-5 w-32 rounded bg-surface-container animate-pulse" />
@@ -133,6 +136,13 @@ export default function ProfilePage() {
           <div className="p-6 bg-error-container rounded-xl text-on-error-container text-center">
             <p>{error}</p>
             <button onClick={fetchProfile} className="mt-2 text-primary font-semibold">
+              {t("action.retry")}
+            </button>
+          </div>
+        ) : !user || Object.keys(user).length === 0 ? (
+          <div className="empty-state p-8 text-center bg-surface border border-outline-variant rounded-xl" data-state="empty">
+            <p className="text-on-surface-variant font-body-md">{t("common.noData") || "No profile data available"}</p>
+            <button onClick={fetchProfile} className="mt-3 px-4 py-2 bg-primary text-on-primary rounded-full font-medium">
               {t("action.retry")}
             </button>
           </div>
@@ -149,8 +159,8 @@ export default function ProfilePage() {
             */}
             <div className="flex flex-col items-center gap-3">
               <ProfileAvatar
-                name={user?.name ?? null}
-                avatarUrl={(user as any)?.avatar_url ?? null}
+                name={user.name}
+                avatarUrl={user.avatar_url ?? null}
                 /*
                  * Passed so the control can disable itself and explain the wait
                  * before the member picks a file. The server enforces the same
@@ -158,7 +168,7 @@ export default function ProfilePage() {
                  * told up front is much better than choosing a photo and then
                  * being refused.
                  */
-                lockedUntil={(user as any)?.avatar_locked_until ?? null}
+                lockedUntil={user.avatar_locked_until ?? null}
                 onChanged={(url) => {
                   /*
                    * Built from the current state rather than inside a setUser
@@ -166,7 +176,7 @@ export default function ProfilePage() {
                    * so deliberately in StrictMode to surface impurity), and
                    * dispatching a DOM event from one would fire it twice.
                    */
-                  const next = { ...(user as any), avatar_url: url };
+                  const next: User = { ...user, avatar_url: url };
 
                   setUser(next);
 

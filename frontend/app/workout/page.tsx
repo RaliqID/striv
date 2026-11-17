@@ -249,28 +249,29 @@ export default function WorkoutLobbyPage() {
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">
             {t("workout.lobby")}
           </h1>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              aria-label={t("workout.filterList")}
-              className="rounded-xl bg-surface-variant border border-outline-variant p-2 text-on-surface hover:bg-surface-container-high transition-colors"
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/routines"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface px-3 py-2 font-metric-sm text-metric-sm text-on-surface hover:bg-surface-container-low transition-colors"
             >
-              <span className="material-symbols-outlined">filter_list</span>
-            </button>
-            <button
-              type="button"
-              aria-label={t("workout.moreOptions")}
-              className="rounded-xl bg-surface-variant border border-outline-variant p-2 text-on-surface hover:bg-surface-container-high transition-colors"
+              <span className="material-symbols-outlined text-[18px]">bookmark</span>
+              <span>{t("nav.routines")}</span>
+            </Link>
+            <Link
+              href="/history"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface px-3 py-2 font-metric-sm text-metric-sm text-on-surface hover:bg-surface-container-low transition-colors"
             >
-              <span className="material-symbols-outlined">more_horiz</span>
-            </button>
+              <span className="material-symbols-outlined text-[18px]">history</span>
+              <span>{t("nav.history")}</span>
+            </Link>
             <button
               type="button"
               onClick={handleStartWorkout}
               disabled={starting}
-              className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-4 py-2 hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-on-primary font-metric-sm text-metric-sm px-4 py-2 hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
             >
-              {starting ? t("action.sending") : t("workout.startWorkout")}
+              <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+              <span>{starting ? t("action.sending") : t("workout.startWorkout")}</span>
             </button>
           </div>
         </header>

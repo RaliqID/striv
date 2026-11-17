@@ -78,9 +78,11 @@ export default function LoginPage() {
 
         const completed = account?.profile?.onboarding_completed_at;
         window.location.href = completed ? "/dashboard" : "/onboarding";
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(err.message || t("auth.loginFailed"));
+          setError(
+            err instanceof Error ? err.message : t("auth.loginFailed")
+          );
           setLoading(false);
         }
       }
@@ -146,8 +148,8 @@ export default function LoginPage() {
       }
 
       window.location.href = completed ? "/dashboard" : "/onboarding";
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }

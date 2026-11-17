@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import { useTranslation } from "@/lib/i18n/provider";
+import { ApiError } from "@/lib/api";
 import {
   AchievementBadge,
   ProgressionStats,
@@ -57,12 +58,14 @@ export default function AchievementsPage() {
           : []
       );
       setStats(statsRes && typeof statsRes === "object" ? statsRes : null);
-    } catch (err: any) {
-      if (err?.status === 401) {
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
         router.push("/login");
         return;
       }
-      setError(err?.message || t("common.loadFailed"));
+      const message =
+        err instanceof Error ? err.message : t("common.loadFailed");
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -221,19 +224,33 @@ export default function AchievementsPage() {
           </div>
         ) : (
           <>
-            {grouped.map((group) => (
-              <section key={group.category} className="flex flex-col gap-3">
-                <h2 className="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant">
-                  {t(group.labelKey)}
-                </h2>
+            {grouped.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-outline-variant bg-surface p-12 text-center">
+                <span className="material-symbols-outlined mb-2 text-4xl text-outline">
+                  military_tech
+                </span>
+                <p className="font-metric-sm text-metric-sm text-on-surface">
+                  {t("achievements.title")}
+                </p>
+                <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                  {t("achievements.subtitle")}
+                </p>
+              </div>
+            ) : (
+              grouped.map((group) => (
+                <section key={group.category} className="flex flex-col gap-3">
+                  <h2 className="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant">
+                    {t(group.labelKey)}
+                  </h2>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {group.items.map((badge) => (
-                    <BadgeCard key={badge.key} badge={badge} />
-                  ))}
-                </div>
-              </section>
-            ))}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {group.items.map((badge) => (
+                      <BadgeCard key={badge.key} badge={badge} />
+                    ))}
+                  </div>
+                </section>
+              ))
+            )}
 
             {/* The ledger — the receipt for every point. */}
             {recentEvents.length > 0 && (
@@ -296,10 +313,10 @@ function BadgeCard({ badge }: { badge: AchievementBadge }) {
 
   return (
     <div
-      className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors ${
+      className={`group relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
         badge.unlocked
-          ? "border-primary/40 bg-primary/5"
-          : "border-outline-variant bg-surface"
+          ? "border-primary/40 bg-primary/5 shadow-sm"
+          : "border-outline-variant bg-surface opacity-80 hover:opacity-100"
       }`}
     >
       {badge.unlocked && !badge.seen && (
@@ -309,7 +326,7 @@ function BadgeCard({ badge }: { badge: AchievementBadge }) {
       )}
 
       <span
-        className={`material-symbols-outlined text-[32px] ${
+        className={`material-symbols-outlined text-[32px] transition-transform duration-200 group-hover:scale-110 ${
           badge.unlocked ? "text-primary" : "text-outline"
         }`}
         style={badge.unlocked ? { fontVariationSettings: "'FILL' 1" } : {}}
@@ -331,7 +348,7 @@ function BadgeCard({ badge }: { badge: AchievementBadge }) {
       </p>
 
       <span
-        className={`mt-auto rounded-full px-2 py-0.5 font-label-caps text-label-caps ${
+        className={`mt-auto rounded-full px-2 py-0.5 font-label-caps text-label-caps font-medium ${
           badge.unlocked
             ? "bg-primary/10 text-primary"
             : "bg-surface-container text-on-surface-variant"
@@ -361,7 +378,7 @@ function BadgeCard({ badge }: { badge: AchievementBadge }) {
  */
 function labelForEvent(
   event: { source: string; label: string | null },
-  t: (key: string, vars?: Record<string, any>) => string
+  t: (key: string, vars?: Record<string, string | number>) => string
 ): string {
   if (event.source === "achievement" && event.label?.startsWith("achievements.")) {
     return t(event.label);

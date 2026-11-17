@@ -352,7 +352,7 @@ export default function GoalsPage() {
                 return (
                   <article
                     key={goal.id}
-                    className="flex flex-col rounded-xl border border-outline-variant bg-surface-container-lowest p-5"
+                    className="flex flex-col rounded-xl border border-outline-variant bg-surface-container-lowest p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
                   >
                     <header className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
