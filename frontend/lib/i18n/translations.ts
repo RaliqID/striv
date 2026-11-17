@@ -22,6 +22,11 @@ export const DEFAULT_LOCALE: Locale = "en";
 export const dictionaries: Record<Locale, Record<string, string>> = {
   en: {
     // Navigation
+    "nav.groupTrain": "Training & Log",
+    "nav.groupIntelligence": "Intelligence",
+    "nav.groupCommunity": "Coaching & Community",
+    "nav.groupAccount": "Account & Tools",
+    "nav.toggleSidebar": "Toggle Sidebar",
     "nav.overview": "Overview",
     "nav.myTrainer": "My Trainer",
     "nav.workout": "Workout",
@@ -1387,6 +1392,11 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
 
   id: {
     // Navigasi
+    "nav.groupTrain": "Latihan & Log",
+    "nav.groupIntelligence": "Kecerdasan & Pola",
+    "nav.groupCommunity": "Pelatih & Komunitas",
+    "nav.groupAccount": "Akun & Alat",
+    "nav.toggleSidebar": "Beralih Menu Samping",
     "nav.overview": "Ringkasan",
     "nav.myTrainer": "Trainer Saya",
     "nav.workout": "Latihan",

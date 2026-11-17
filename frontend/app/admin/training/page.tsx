@@ -220,50 +220,82 @@ export default function AdminTrainingPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-outline-variant">
-                <table className="w-full min-w-[720px] text-left">
-                  <thead className="bg-surface-container-low">
-                    <tr className="font-label-caps text-label-caps text-on-surface-variant">
-                      <th className="px-4 py-3">{t("admin.colTrainer")}</th>
-                      <th className="px-4 py-3">{t("admin.colSpecialisation")}</th>
-                      <th className="px-4 py-3">{t("admin.colLoad")}</th>
-                      <th className="px-4 py-3">{t("admin.colRating")}</th>
-                      <th className="px-4 py-3">{t("admin.colStatus")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant">
-                    {trainers.map((trainer) => {
-                      const pct = trainer.capacity > 0 ? (trainer.active_clients / trainer.capacity) * 100 : 0;
-                      return (
-                        <tr key={trainer.id} className="bg-surface-container-lowest">
-                          <td className="px-4 py-3">
-                            <p className="font-body-md text-body-md text-on-surface">{trainer.name}</p>
-                            <p className="font-body-md text-sm text-on-surface-variant">{trainer.email}</p>
-                          </td>
-                          <td className="px-4 py-3 font-body-md text-body-md text-on-surface-variant capitalize">
-                            {trainer.specialization ?? "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="font-body-md text-body-md text-on-surface">
-                                {trainer.active_clients}/{trainer.capacity}
-                              </span>
-                              {/* A quick read of how close this trainer is to
-                                  full — orange means they are nearly closed. */}
-                              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-outline-variant">
-                                <span
-                                  className={`block h-full ${
-                                    pct >= 90 ? "bg-error" : pct >= 60 ? "bg-tertiary" : "bg-primary"
-                                  }`}
-                                  style={{ width: `${Math.min(100, pct)}%` }}
-                                />
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-body-md text-body-md text-on-surface">
-                            {trainer.rating !== null ? trainer.rating.toFixed(1) : "—"}
-                          </td>
-                          <td className="px-4 py-3">
+              <>
+                {/* Desktop view: structured table */}
+                <div className="hidden md:block overflow-x-auto rounded-xl border border-outline-variant">
+                  <table className="w-full text-left">
+                    <thead className="bg-surface-container-low">
+                      <tr className="font-label-caps text-label-caps text-on-surface-variant">
+                        <th className="px-4 py-3">{t("admin.colTrainer")}</th>
+                        <th className="px-4 py-3">{t("admin.colSpecialisation")}</th>
+                        <th className="px-4 py-3">{t("admin.colLoad")}</th>
+                        <th className="px-4 py-3">{t("admin.colRating")}</th>
+                        <th className="px-4 py-3">{t("admin.colStatus")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant">
+                      {trainers.map((trainer) => {
+                        const pct = trainer.capacity > 0 ? (trainer.active_clients / trainer.capacity) * 100 : 0;
+                        return (
+                          <tr key={trainer.id} className="bg-surface-container-lowest">
+                            <td className="px-4 py-3">
+                              <p className="font-body-md text-body-md text-on-surface font-medium">{trainer.name}</p>
+                              <p className="font-body-md text-xs text-on-surface-variant">{trainer.email}</p>
+                            </td>
+                            <td className="px-4 py-3 font-body-md text-body-md text-on-surface-variant capitalize">
+                              {trainer.specialization ?? "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="font-body-md text-body-md text-on-surface">
+                                  {trainer.active_clients}/{trainer.capacity}
+                                </span>
+                                <span className="h-1.5 w-16 overflow-hidden rounded-full bg-outline-variant">
+                                  <span
+                                    className={`block h-full ${
+                                      pct >= 90 ? "bg-error" : pct >= 60 ? "bg-tertiary" : "bg-primary"
+                                    }`}
+                                    style={{ width: `${Math.min(100, pct)}%` }}
+                                  />
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 font-body-md text-body-md text-on-surface">
+                              {trainer.rating !== null ? trainer.rating.toFixed(1) : "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {trainer.is_suspended ? (
+                                <Badge tone="error">{t("admin.statusSuspended")}</Badge>
+                              ) : !trainer.is_available ? (
+                                <Badge tone="neutral">{t("admin.statusNotAccepting")}</Badge>
+                              ) : trainer.slots_free === 0 ? (
+                                <Badge tone="warn">{t("admin.statusFull")}</Badge>
+                              ) : (
+                                <Badge tone="ok">{t("admin.slotsFree", { count: trainer.slots_free })}</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile view: adaptive card stack for 375px+ screens */}
+                <div className="md:hidden space-y-3">
+                  {trainers.map((trainer) => {
+                    const pct = trainer.capacity > 0 ? (trainer.active_clients / trainer.capacity) * 100 : 0;
+                    return (
+                      <div
+                        key={trainer.id}
+                        className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-metric-sm text-sm font-bold text-on-surface">{trainer.name}</p>
+                            <p className="font-body-md text-xs text-on-surface-variant">{trainer.email}</p>
+                          </div>
+                          <div>
                             {trainer.is_suspended ? (
                               <Badge tone="error">{t("admin.statusSuspended")}</Badge>
                             ) : !trainer.is_available ? (
@@ -273,13 +305,37 @@ export default function AdminTrainingPage() {
                             ) : (
                               <Badge tone="ok">{t("admin.slotsFree", { count: trainer.slots_free })}</Badge>
                             )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs border-t border-outline-variant/60 pt-2.5">
+                          <span className="text-on-surface-variant capitalize">
+                            {t("admin.colSpecialisation")}: <strong className="text-on-surface">{trainer.specialization ?? "—"}</strong>
+                          </span>
+                          <span className="text-on-surface-variant">
+                            {t("admin.colRating")}: <strong className="text-on-surface">{trainer.rating !== null ? trainer.rating.toFixed(1) : "—"}</strong>
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-on-surface-variant">
+                            <span>{t("admin.colLoad")}</span>
+                            <span>{trainer.active_clients}/{trainer.capacity}</span>
+                          </div>
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-outline-variant">
+                            <div
+                              className={`h-full ${
+                                pct >= 90 ? "bg-error" : pct >= 60 ? "bg-tertiary" : "bg-primary"
+                              }`}
+                              style={{ width: `${Math.min(100, pct)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </section>
         </div>

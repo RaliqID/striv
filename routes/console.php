@@ -85,3 +85,26 @@ Schedule::command('striv:missed-session-penalties')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping();
 
+/*
+ * Automatic weekly intelligence reviews generation.
+ *
+ * Runs Sunday night closing the week, ensuring reports are cached and ready
+ * for members on Monday morning.
+ */
+Schedule::command('striv:generate-weekly-reviews --weeks-ago=0')
+    ->weeklyOn(7, '23:59')
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping();
+
+/*
+ * Sweep abandoned workout sessions (> 24 hours).
+ *
+ * Deletes empty draft sessions and gracefully closes sessions left open,
+ * keeping TodayPlanService accurate and unblocked.
+ */
+Schedule::command('striv:cleanup-abandoned-sessions --hours=24')
+    ->dailyAt('04:00')
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping();
+
+

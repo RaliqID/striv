@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { apiClient } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n/provider";
@@ -164,10 +165,14 @@ export default function ProfileAvatar({
         }`}
       >
         {shown ? (
-          // eslint-disable-next-line @next/next/no-img-element -- served from an
-          // authorised API route, not a static asset, so next/image cannot
-          // optimise it.
-          <img src={shown} alt={name ?? ""} className="h-full w-full object-cover" />
+          <Image
+            src={shown}
+            alt={name ?? ""}
+            fill
+            sizes="80px"
+            unoptimized
+            className="object-cover"
+          />
         ) : (
           <span className="flex h-full w-full items-center justify-center font-metric-display text-2xl text-on-surface">
             {initial}

@@ -4,7 +4,7 @@ import AppLayout from "@/components/AppLayout";
 import { useTranslation } from "@/lib/i18n/provider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const trainerSections = [
   { key: "panel.clients", href: "/trainer", icon: "group", exact: true },
@@ -41,16 +41,15 @@ export default function TrainerLayout({
 }) {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [role] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem("user");
-      if (stored) setRole(JSON.parse(stored)?.role ?? null);
+      return stored ? JSON.parse(stored)?.role ?? null : null;
     } catch {
-      // A corrupt cache just means we fall back to the trainer-only tabs.
+      return null;
     }
-  }, []);
+  });
 
   const isAdmin = role === "admin";
   const sections = isAdmin ? [...trainerSections, ...adminSections] : trainerSections;

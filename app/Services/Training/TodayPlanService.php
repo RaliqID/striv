@@ -42,10 +42,12 @@ class TodayPlanService
         $today ??= Carbon::now();
         $isoDay = (int) $today->isoWeekday(); // 1 = Monday … 7 = Sunday
 
-        // An unfinished session takes precedence: the member is mid-workout and
-        // the UI must send them back into it rather than starting a new one.
+        // An unfinished session takes precedence only if it was started within the last 24 hours.
+        // A session older than 24 hours is considered abandoned and will be swept by the cleanup job,
+        // so it must not block today's scheduled training plan.
         $active = WorkoutSession::where('user_id', $user->id)
             ->whereNull('finished_at')
+            ->where('started_at', '>=', $today->copy()->subHours(24))
             ->latest('started_at')
             ->first();
 

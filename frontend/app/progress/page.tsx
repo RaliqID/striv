@@ -188,7 +188,7 @@ export default function ProgressPage() {
 
   // ---- Strength trend ----
   const e1rmSeries = data?.e1rm_trend?.find((s) => s.points.length >= 2) ?? null;
-  const e1rmPoints = e1rmSeries?.points ?? [];
+  const e1rmPoints = useMemo(() => e1rmSeries?.points ?? [], [e1rmSeries]);
   const latestE1rm = e1rmPoints.length > 0 ? e1rmPoints[e1rmPoints.length - 1].e1rm : null;
   const firstE1rm = e1rmPoints.length > 0 ? e1rmPoints[0].e1rm : null;
   const delta =
@@ -205,7 +205,7 @@ export default function ProgressPage() {
   );
 
   // ---- Frequency and adherence ----
-  const frequencyData = data?.frequency_weekly ?? [];
+  const frequencyData = useMemo(() => data?.frequency_weekly ?? [], [data?.frequency_weekly]);
   const totalWorkouts = frequencyData.reduce((sum, w) => sum + w.workouts, 0);
   const avgSessions = frequencyData.length > 0 ? totalWorkouts / frequencyData.length : null;
   const adherence = data?.consistency?.adherence_pct ?? null;

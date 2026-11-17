@@ -360,19 +360,14 @@ export default function WorkoutReward({ reward, xp, badges }: {
           </div>
 
           <div>
-            <div
-              role="progressbar"
-              aria-valuenow={xp.progress.progress_percent}
-              aria-valuemin={0}
-              aria-valuemax={100}
+            <progress
+              value={xp.progress.progress_percent}
+              max={100}
               aria-label={t("level.progressLabel")}
-              className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high"
+              className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high [&::-webkit-progress-bar]:bg-surface-container-high [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
             >
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-700"
-                style={{ width: `${xp.progress.progress_percent}%` }}
-              />
-            </div>
+              {xp.progress.progress_percent}%
+            </progress>
             <p className="mt-2 font-label-caps text-label-caps text-on-surface-variant">
               {t("level.toNextLevel", {
                 xp: xp.progress.xp_to_next_level,

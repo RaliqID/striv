@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import { apiClient, ApiError } from "@/lib/api";
 import { captureTokenFromUrl, readStoredUser, storeUser } from "@/lib/auth";
@@ -449,12 +450,12 @@ export default function DashboardPage() {
             <section className="minimal-card rounded-xl p-6 lg:col-span-2 border border-border bg-surface-container-lowest">
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h3 className="font-metric-sm text-metric-sm text-primary">{t("dashboard.latestReview")}</h3>
-                <a
+                <Link
                   href="/reviews/weekly"
                   className="font-metric-sm text-metric-sm text-secondary hover:underline"
                 >
                   {t("workout.viewAll")}
-                </a>
+                </Link>
               </div>
               <p className="font-body-md text-body-md text-sm text-on-surface-variant mb-2">
                 {formatReviewRange(latestReview.content, locale)}
@@ -492,12 +493,12 @@ export default function DashboardPage() {
                 <p className="font-body-md text-body-md text-on-surface-variant mb-4">
                   {t("dashboard.noActiveGoals")}
                 </p>
-                <a
+                <Link
                   href="/goals"
                   className="inline-block bg-primary text-on-primary rounded-lg px-4 py-2 font-metric-sm text-metric-sm hover:bg-primary/90 transition-colors"
                 >
                   {t("dashboard.goToGoals")}
-                </a>
+                </Link>
               </div>
             ) : (
               <div className="space-y-6">
@@ -540,19 +541,14 @@ export default function DashboardPage() {
                           {displayPct}
                         </span>
                       </div>
-                      <div
-                        className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden"
-                        role="progressbar"
-                        aria-valuenow={widthPct}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
+                      <progress
+                        value={widthPct}
+                        max={100}
                         aria-label={t("dashboard.ariaWorkoutsProgress", { name: g.exercise?.name ?? t("dashboard.statWorkouts") })}
+                        className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-surface-container-high [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                       >
-                        <div
-                          className="bg-primary h-full rounded-full transition-all"
-                          style={{ width: `${widthPct}%` }}
-                        ></div>
-                      </div>
+                        {widthPct}%
+                      </progress>
                     </div>
                   );
                 })}

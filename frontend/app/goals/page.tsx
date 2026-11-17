@@ -405,21 +405,18 @@ export default function GoalsPage() {
                     </div>
 
                     <div className="mt-3">
-                      <div
-                        className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high"
-                        role="progressbar"
-                        aria-valuenow={Math.round(pct)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
+                      <progress
+                        value={Math.round(pct)}
+                        max={100}
                         aria-label={t("goals.progressAria", { name: goal.exercise?.name ?? t("goals.allWorkouts") })}
+                        className={`h-2 w-full overflow-hidden rounded-full bg-surface-container-high [&::-webkit-progress-bar]:bg-surface-container-high ${
+                          goal.status === "completed"
+                            ? "[&::-webkit-progress-value]:bg-emerald-500 [&::-moz-progress-bar]:bg-emerald-500"
+                            : "[&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
+                        }`}
                       >
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            goal.status === "completed" ? "bg-emerald-500" : "bg-primary"
-                          }`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+                        {Math.round(pct)}%
+                      </progress>
                       <div className="mt-2 flex items-center justify-between">
                         <span className="font-body-md text-body-md text-on-surface-variant">
                           {t("goals.nowLabel")} <strong className="text-on-surface">{currentLabel}</strong>

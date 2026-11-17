@@ -130,20 +130,6 @@ export default async function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/*
-          Both families load as stylesheet links because this Next version's
-          next/font/google does not export Geist, and Material Symbols is an
-          icon font with variable axes next/font cannot express. display=swap
-          on Geist keeps label text visible during the font swap.
-        */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {/*
