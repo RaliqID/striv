@@ -129,6 +129,7 @@ export default function ActiveWorkoutPage() {
   const [pickerLoading, setPickerLoading] = useState(false);
   const [addingExerciseId, setAddingExerciseId] = useState<number | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [pickerMuscle, setPickerMuscle] = useState<string | null>(null);
 
   // Timer state
   const [globalSeconds, setGlobalSeconds] = useState(0);
@@ -421,6 +422,7 @@ export default function ActiveWorkoutPage() {
     try {
       const params = new URLSearchParams();
       if (pickerDebounced) params.set("search", pickerDebounced);
+      if (pickerMuscle) params.set("muscle", pickerMuscle);
       const response = await apiClient.get<Paginated<Exercise>>(
         `/exercises?${params.toString()}`
       );
@@ -434,13 +436,7 @@ export default function ActiveWorkoutPage() {
     } finally {
       setPickerLoading(false);
     }
-    /*
-     * `t` is a dependency because the catch above uses it for the fallback
-     * message. It is a useCallback keyed on locale, so it is stable until the
-     * language changes — at which point this callback is rebuilt and a later
-     * failure reports in the new language rather than the original one.
-     */
-  }, [pickerDebounced, t]);
+  }, [pickerDebounced, pickerMuscle, t]);
 
   useEffect(() => {
     if (!pickerOpen) return;
@@ -1465,6 +1461,43 @@ export default function ActiveWorkoutPage() {
                 aria-label={t("exercises.searchPlaceholder")}
                 className="w-full rounded-xl bg-surface-container-low border border-outline-variant pl-10 pr-4 py-2 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant outline-none focus:outline-none focus:ring-1 focus:ring-outline transition"
               />
+            </div>
+
+            {/* Quick Muscle Group Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+              <button
+                type="button"
+                onClick={() => setPickerMuscle(null)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                  pickerMuscle === null
+                    ? "bg-primary text-on-primary shadow-xs"
+                    : "bg-surface-container-low border border-outline-variant text-on-surface-variant hover:text-primary hover:bg-surface-container"
+                }`}
+              >
+                {t("workout.muscleAll")}
+              </button>
+              {[
+                { slug: "chest", label: t("workout.muscleChest") },
+                { slug: "back", label: t("workout.muscleBack") },
+                { slug: "shoulders", label: t("workout.muscleShoulders") },
+                { slug: "biceps", label: t("workout.muscleBiceps") },
+                { slug: "triceps", label: t("workout.muscleTriceps") },
+                { slug: "legs", label: t("workout.muscleLegs") },
+                { slug: "core", label: t("workout.muscleCore") },
+              ].map((m) => (
+                <button
+                  key={m.slug}
+                  type="button"
+                  onClick={() => setPickerMuscle(pickerMuscle === m.slug ? null : m.slug)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    pickerMuscle === m.slug
+                      ? "bg-primary text-on-primary shadow-xs"
+                      : "bg-surface-container-low border border-outline-variant text-on-surface-variant hover:text-primary hover:bg-surface-container"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
             </div>
             {pickerError && (
               <p className="text-error font-body-md text-sm" role="alert">{pickerError}</p>

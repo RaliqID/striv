@@ -133,14 +133,27 @@ export default function RestTimer({
 
         <div className="h-5 w-px bg-outline-variant" />
 
-        <button
-          type="button"
-          onClick={() => onAddSeconds(30)}
-          className="px-2 py-1 text-xs font-semibold rounded bg-surface-container hover:bg-surface-container-high transition-colors text-primary"
-          title={t("workout.add30s")}
-        >
-          {t("workout.add30s")}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onAddSeconds(-15)}
+            disabled={currentSec <= 15}
+            className="px-1.5 py-1 text-[11px] font-semibold rounded bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-primary disabled:opacity-40"
+            title={t("workout.minus15s")}
+            aria-label={t("workout.minus15s")}
+          >
+            -15s
+          </button>
+          <button
+            type="button"
+            onClick={() => onAddSeconds(15)}
+            className="px-1.5 py-1 text-[11px] font-semibold rounded bg-surface-container hover:bg-surface-container-high transition-colors text-primary"
+            title={t("workout.plus15s")}
+            aria-label={t("workout.plus15s")}
+          >
+            +15s
+          </button>
+        </div>
 
         <button
           type="button"

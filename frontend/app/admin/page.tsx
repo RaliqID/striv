@@ -11,7 +11,7 @@ import {
   formatVolume,
   redirectToLogin,
 } from "@/lib/admin";
-import type { AdminStats } from "@/types/admin";
+import type { AdminStats, SystemHealth } from "@/types/admin";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n/provider";
@@ -44,6 +44,9 @@ function StatCard({
 /** Signup bars. Sized to the window max, not the row count, so one spike does not flatten the rest. */
 function SignupsChart({ series }: { series: Array<{ date: string; count: number }> }) {
   const { t } = useTranslation();
+  if (series.length === 0) {
+    return <EmptyState icon="bar_chart" title={t("admin.noSignupData")} />;
+  }
   const max = Math.max(...series.map((point) => point.count), 1);
 
   return (
@@ -71,30 +74,46 @@ function SignupsChart({ series }: { series: Array<{ date: string; count: number 
 export default function AdminOverviewPage() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
 
+  const loadHealth = useCallback(async () => {
+    setHealthLoading(true);
+    try {
+      const data = await apiClient.get<SystemHealth>("/admin/health");
+      setHealth(data);
+    } catch {
+      // Telemetry error does not block the stats view
+    } finally {
+      setHealthLoading(false);
+    }
+  }, []);
+
   /*
    * Wrapped in useCallback so the effect below can depend on it safely.
-   *
-   * It was a plain `const load = async () => {...}`, which meant every render
-   * created a NEW function. Listing it as an effect dependency would therefore
-   * re-run the effect on every render — and since the effect's body calls
-   * setLoading/setError/setStats, each run triggers another render. That is a
-   * real infinite loop, not a theoretical one: it was measured at 52 requests to
-   * /admin/stats in 15 seconds before the change.
-   *
-   * `t` is included because the catch block builds a message from it. `t` is
-   * itself a useCallback keyed on locale, so it is stable until the language
-   * changes — at which point re-creating this callback and re-running the effect
-   * is correct, because the error string should follow the member's language.
    */
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      setStats(await apiClient.get<AdminStats>("/admin/stats"));
+      const [statsResult, healthResult] = await Promise.allSettled([
+        apiClient.get<AdminStats>("/admin/stats"),
+        apiClient.get<SystemHealth>("/admin/health"),
+      ]);
+
+      if (statsResult.status === "fulfilled") {
+        setStats(statsResult.value);
+      } else {
+        throw statsResult.reason;
+      }
+
+      if (healthResult.status === "fulfilled") {
+        setHealth(healthResult.value);
+      }
+
       setDenied(false);
     } catch (caught) {
       const { kind, message } = classifyError(caught, t);
@@ -248,6 +267,124 @@ export default function AdminOverviewPage() {
                 <p className="font-body-md text-body-md text-on-surface-variant">{t("admin.last7days")}</p>
               </div>
             </div>
+          </Panel>
+
+          {/* System & Queue Infrastructure Vitals */}
+          <Panel
+            title={t("admin.systemVitals")}
+            description={t("admin.vitalsSubtitle")}
+            action={
+              <div className="flex items-center gap-3">
+                {health && (
+                  <Badge tone={health.status === "ok" ? "success" : "warning"}>
+                    {health.status === "ok"
+                      ? t("admin.vitalsHealthy")
+                      : t("admin.vitalsDegraded")}
+                  </Badge>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void loadHealth()}
+                  disabled={healthLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-1.5 font-label-caps text-label-caps text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                  title={t("admin.refreshVitals")}
+                >
+                  <span
+                    className={`material-symbols-outlined text-[16px] ${
+                      healthLoading ? "animate-spin" : ""
+                    }`}
+                  >
+                    refresh
+                  </span>
+                  <span>{t("admin.refreshVitals")}</span>
+                </button>
+              </div>
+            }
+          >
+            {health ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-outline-variant/60 bg-surface-container-low p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">
+                      {t("admin.dbLatency")}
+                    </span>
+                    <span
+                      className={`inline-block w-2.5 h-2.5 rounded-full ${
+                        health.database.status === "ok"
+                          ? "bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                          : "bg-error"
+                      }`}
+                    />
+                  </div>
+                  <p className="mt-2 font-headline-lg text-headline-lg text-primary">
+                    {health.database.latency_ms} ms
+                  </p>
+                  <p className="mt-1 font-body-md text-xs text-on-surface-variant capitalize">
+                    {health.database.driver} • {health.database.status === "ok" ? "connected" : "error"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-outline-variant/60 bg-surface-container-low p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">
+                      {t("admin.queueStatus")}
+                    </span>
+                    <span
+                      className={`inline-block w-2.5 h-2.5 rounded-full ${
+                        health.queue.failed_jobs > 0
+                          ? "bg-amber-500 shadow-sm shadow-amber-500/50"
+                          : "bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                      }`}
+                    />
+                  </div>
+                  <p className="mt-2 font-headline-lg text-headline-lg text-primary">
+                    {health.queue.pending_jobs}{" "}
+                    <span className="font-body-md text-xs font-normal text-on-surface-variant">
+                      {t("admin.pendingJobs")}
+                    </span>
+                  </p>
+                  <p className="mt-1 font-body-md text-xs text-on-surface-variant">
+                    {health.queue.failed_jobs} {t("admin.failedJobs")} • {health.queue.driver}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-outline-variant/60 bg-surface-container-low p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">
+                      {t("admin.cacheStatus")}
+                    </span>
+                    <span
+                      className={`inline-block w-2.5 h-2.5 rounded-full ${
+                        health.cache.status === "ok" ? "bg-emerald-500 shadow-sm shadow-emerald-500/50" : "bg-error"
+                      }`}
+                    />
+                  </div>
+                  <p className="mt-2 font-headline-lg text-headline-lg text-primary capitalize">
+                    {health.cache.driver}
+                  </p>
+                  <p className="mt-1 font-body-md text-xs text-on-surface-variant">
+                    {t("admin.storageStatus")}: {health.storage.writable ? "writable" : "locked"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-outline-variant/60 bg-surface-container-low p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">
+                      Runtime & RAM
+                    </span>
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                  </div>
+                  <p className="mt-2 font-headline-lg text-headline-lg text-primary">
+                    {health.system.memory_usage_mb} MB
+                  </p>
+                  <p className="mt-1 font-body-md text-xs text-on-surface-variant">
+                    PHP {health.system.php_version.split("-")[0]} • Laravel {health.system.laravel_version}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="h-28 animate-pulse rounded-lg bg-surface-container" />
+            )}
           </Panel>
         </>
       )}

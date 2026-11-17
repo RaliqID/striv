@@ -206,3 +206,36 @@ export type AdminAnalyticsResponse = {
   };
   breakdowns: AnalyticsBreakdowns;
 };
+
+export type SystemHealth = {
+  status: "ok" | "degraded";
+  timestamp: string;
+  version: string;
+  database: {
+    status: string;
+    latency_ms: number;
+    connection: string;
+    driver: string;
+    error: string | null;
+  };
+  queue: {
+    status: string;
+    driver: string;
+    pending_jobs: number;
+    failed_jobs: number;
+  };
+  cache: {
+    status: string;
+    driver: string;
+  };
+  storage: {
+    status: string;
+    writable: boolean;
+  };
+  system: {
+    php_version: string;
+    laravel_version: string;
+    memory_usage_mb: number;
+    server_time: string;
+  };
+};

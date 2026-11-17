@@ -85,6 +85,11 @@ class User extends Authenticatable
         return $this->hasMany(Goal::class);
     }
 
+    public function weightLogs(): HasMany
+    {
+        return $this->hasMany(WeightLog::class);
+    }
+
     public function routines(): HasMany
     {
         return $this->hasMany(Routine::class);

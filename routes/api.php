@@ -10,6 +10,9 @@ use App\Http\Controllers\ProgressionController;
 
 Route::prefix('v1')->group(function () {
 
+    // Public health check for uptime monitors & container orchestration
+    Route::get('/health', [\App\Http\Controllers\HealthController::class, 'check']);
+
     /*
      * Public auth endpoints.
      *
@@ -142,6 +145,11 @@ Route::prefix('v1')->group(function () {
         Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
         Route::delete('/profile', [\App\Http\Controllers\ProfileController::class, 'destroy']);
 
+        // Bodyweight & biometrics tracking
+        Route::get('/profile/weight-history', [\App\Http\Controllers\WeightLogController::class, 'index']);
+        Route::post('/profile/weight-history', [\App\Http\Controllers\WeightLogController::class, 'store']);
+        Route::delete('/profile/weight-history/{id}', [\App\Http\Controllers\WeightLogController::class, 'destroy'])->whereNumber('id');
+
         // Routines (workout templates)
         Route::apiResource('routines', \App\Http\Controllers\RoutineController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
         Route::post('/routines/{routine}/start', [\App\Http\Controllers\RoutineController::class, 'start']);
@@ -268,6 +276,7 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('admin')->middleware(['auth:sanctum', 'not_suspended', 'admin'])->group(function () {
         Route::get('/stats', [\App\Http\Controllers\AdminStatsController::class, 'index']);
+        Route::get('/health', [\App\Http\Controllers\HealthController::class, 'admin']);
 
         // Analytics dashboard. `export` sits before any wildcard so it is not
         // captured as a range parameter.

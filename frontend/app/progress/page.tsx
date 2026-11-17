@@ -1,6 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
+import BodyweightTracker, { WeightHistoryData } from "@/components/progress/BodyweightTracker";
 import { apiClient, ApiError } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -150,11 +151,27 @@ export default function ProgressPage() {
   const { t, locale } = useTranslation();
   const { label, formatWeight, formatVolume } = useUnit();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"training" | "weight">("training");
   const [periodDays, setPeriodDays] = useState(90);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ProgressData | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  const [weightData, setWeightData] = useState<WeightHistoryData | null>(null);
+  const [weightLoading, setWeightLoading] = useState(false);
+
+  const fetchWeightData = useCallback(async () => {
+    setWeightLoading(true);
+    try {
+      const res = await apiClient.get<WeightHistoryData>("/profile/weight-history");
+      setWeightData(res);
+    } catch {
+      // Handled silently
+    } finally {
+      setWeightLoading(false);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -182,7 +199,8 @@ export default function ProgressPage() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData, reloadKey]);
+    fetchWeightData();
+  }, [fetchData, fetchWeightData, reloadKey]);
 
   const handleRetry = () => setReloadKey((k) => k + 1);
 
@@ -268,39 +286,78 @@ export default function ProgressPage() {
               {t("progress.subtitle")}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-1 bg-surface-container-low rounded-lg p-1 border border-outline-variant">
-            {PERIODS.map((p) => (
-              <button
-                key={p.label}
-                onClick={() => setPeriodDays(p.days)}
-                aria-pressed={periodDays === p.days}
-                className={`px-3 py-1.5 md:px-4 md:py-2 rounded font-metric-sm text-metric-sm transition-colors ${
-                  periodDays === p.days
-                    ? "bg-surface border border-outline-variant shadow-sm text-primary"
-                    : "text-on-surface-variant hover:text-primary"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          {activeTab === "training" && (
+            <div className="flex flex-wrap items-center gap-1 bg-surface-container-low rounded-lg p-1 border border-outline-variant">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setPeriodDays(p.days)}
+                  aria-pressed={periodDays === p.days}
+                  className={`px-3 py-1.5 md:px-4 md:py-2 rounded font-metric-sm text-metric-sm transition-colors ${
+                    periodDays === p.days
+                      ? "bg-surface border border-outline-variant shadow-sm text-primary"
+                      : "text-on-surface-variant hover:text-primary"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {error && (
-          <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
-            <p className="font-body-md text-body-md text-on-surface">{error}</p>
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 hover:bg-primary-hover transition-colors"
-            >
-              {t("action.retry")}
-            </button>
-          </div>
-        )}
+        {/* View Switcher Tabs */}
+        <div className="flex items-center gap-2 border-b border-outline-variant/60 pb-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab("training")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-metric-sm text-metric-sm transition-all ${
+              activeTab === "training"
+                ? "bg-primary text-on-primary font-bold shadow-sm"
+                : "text-on-surface-variant hover:text-primary hover:bg-surface-container-low"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">fitness_center</span>
+            <span>{t("progress.tabStrength")}</span>
+          </button>
 
-        {!error && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min">
+          <button
+            type="button"
+            onClick={() => setActiveTab("weight")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-metric-sm text-metric-sm transition-all ${
+              activeTab === "weight"
+                ? "bg-primary text-on-primary font-bold shadow-sm"
+                : "text-on-surface-variant hover:text-primary hover:bg-surface-container-low"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">scale</span>
+            <span>{t("progress.tabWeight")}</span>
+          </button>
+        </div>
+
+        {activeTab === "weight" ? (
+          <BodyweightTracker
+            data={weightData}
+            loading={weightLoading}
+            onRefresh={fetchWeightData}
+          />
+        ) : (
+          <>
+            {error && (
+              <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
+                <p className="font-body-md text-body-md text-on-surface">{error}</p>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="rounded bg-primary text-on-primary font-metric-sm text-metric-sm px-6 py-3 hover:bg-primary-hover transition-colors"
+                >
+                  {t("action.retry")}
+                </button>
+              </div>
+            )}
+
+            {!error && (
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min">
             {/* Strength trend — the hero card */}
             <div className="md:col-span-8 ai-glow bg-surface border border-outline-variant rounded-xl p-4 md:p-6 flex flex-col relative overflow-hidden">
               <div className="flex justify-between items-start gap-4">
@@ -750,7 +807,9 @@ export default function ProgressPage() {
             </div>
           </div>
         )}
-      </div>
-    </AppLayout>
+      </>
+    )}
+  </div>
+</AppLayout>
   );
 }
